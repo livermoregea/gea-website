@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
@@ -50,8 +51,15 @@ export default function Nav() {
       <div className="mx-auto max-w-6xl px-4 py-3 sm:px-6">
         <div className="flex items-center justify-between gap-3">
           <Link href="/" className="flex min-w-0 items-center gap-3" onClick={() => setOpen(false)}>
-            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-forest font-mono text-xs font-medium text-gold">
-              GEA
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full border border-forest/10 bg-paper">
+              <Image
+                src="/logo.png"
+                alt="Green Engineering Academy logo"
+                width={40}
+                height={40}
+                priority
+                className="h-full w-full object-cover"
+              />
             </span>
             <span className="flex min-w-0 flex-col leading-tight">
               <span className="truncate font-display text-sm font-medium tracking-wide text-forestdeep sm:text-base">
