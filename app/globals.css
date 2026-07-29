@@ -1,0 +1,95 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --font-display: "Space Grotesk", sans-serif;
+  --font-body: "Inter", sans-serif;
+  --font-mono: "IBM Plex Mono", monospace;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  background-color: #F6F3EC;
+  color: #1F2421;
+}
+
+body {
+  min-width: 320px;
+  overflow-x: hidden;
+}
+
+img,
+svg,
+video,
+canvas {
+  display: block;
+  max-width: 100%;
+}
+
+button,
+input,
+textarea,
+select {
+  font: inherit;
+  min-height: 44px;
+}
+
+button {
+  cursor: pointer;
+}
+
+input,
+textarea,
+select {
+  width: 100%;
+  color: #1F2421;
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: rgba(31, 36, 33, 0.45);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Dimension-line divider, drafting style */
+.dim-divider {
+  position: relative;
+  height: 1px;
+  background: rgba(201, 162, 39, 0.4);
+}
+.dim-divider::before,
+.dim-divider::after {
+  content: "";
+  position: absolute;
+  top: -4px;
+  width: 1px;
+  height: 9px;
+  background: rgba(201, 162, 39, 0.5);
+}
+.dim-divider::before { left: 0; }
+.dim-divider::after { right: 0; }
+
+.blueprint-bg {
+  background-color: #123524;
+  background-image:
+    linear-gradient(rgba(201,162,39,0.10) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(201,162,39,0.10) 1px, transparent 1px);
+  background-size: 36px 36px;
+}
+
+a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-visible {
+  outline: 2px solid #C9A227;
+  outline-offset: 2px;
+}

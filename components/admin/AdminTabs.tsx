@@ -1,0 +1,57 @@
+"use client";
+
+import { useState } from "react";
+import AdminApplications from "@/components/admin/AdminApplications";
+import AdminSlots from "@/components/admin/AdminSlots";
+import AdminQA from "@/components/admin/AdminQA";
+import AdminLeadership from "@/components/admin/AdminLeadership";
+
+const TABS = [
+  { key: "applications", label: "Applications" },
+  { key: "slots", label: "Interview Slots" },
+  { key: "qa", label: "Q&A Moderation" },
+  { key: "leadership", label: "Leadership Board" },
+] as const;
+
+export default function AdminTabs() {
+  const [tab, setTab] = useState<(typeof TABS)[number]["key"]>("applications");
+
+  return (
+    <div>
+      <div className="flex flex-wrap gap-2 overflow-x-auto border-b border-forest/10" role="tablist" aria-label="Admin sections">
+        {TABS.map((t) => (
+          <button
+            key={t.key}
+            id={`tab-${t.key}`}
+            onClick={() => setTab(t.key)}
+            role="tab"
+            aria-selected={tab === t.key}
+            aria-controls={`panel-${t.key}`}
+            tabIndex={tab === t.key ? 0 : -1}
+            className={`min-h-11 whitespace-nowrap px-4 py-2.5 font-mono text-xs uppercase tracking-[0.15em] ${
+              tab === t.key
+                ? "border-b-2 border-gold text-forest"
+                : "text-graphite/50 hover:text-forest"
+            }`}
+          >
+            {t.label}
+          </button>
+        ))}
+      </div>
+      <div className="pt-8">
+        <div role="tabpanel" id="panel-applications" aria-labelledby="tab-applications" hidden={tab !== "applications"}>
+          {tab === "applications" && <AdminApplications />}
+        </div>
+        <div role="tabpanel" id="panel-slots" aria-labelledby="tab-slots" hidden={tab !== "slots"}>
+          {tab === "slots" && <AdminSlots />}
+        </div>
+        <div role="tabpanel" id="panel-qa" aria-labelledby="tab-qa" hidden={tab !== "qa"}>
+          {tab === "qa" && <AdminQA />}
+        </div>
+        <div role="tabpanel" id="panel-leadership" aria-labelledby="tab-leadership" hidden={tab !== "leadership"}>
+          {tab === "leadership" && <AdminLeadership />}
+        </div>
+      </div>
+    </div>
+  );
+}
