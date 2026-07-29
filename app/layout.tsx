@@ -17,7 +17,7 @@ const mono = IBM_Plex_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Green Engineering Academy | Livermore High School",
+  title: "GEA Official Website",
   description:
     "The Green Engineering Academy (GEA) at Livermore High School prepares students for careers in engineering, sustainability, and STEM through hands-on projects, industry mentorship, and a four-year cohort pathway.",
 };
