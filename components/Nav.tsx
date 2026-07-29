@@ -53,7 +53,7 @@ export default function Nav() {
           <Link href="/" className="flex min-w-0 items-center gap-3" onClick={() => setOpen(false)}>
             <span className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full border border-forest/10 bg-paper">
               <Image
-                src="/logo.png"
+                src="/images/logo.png"
                 alt="Green Engineering Academy logo"
                 width={40}
                 height={40}
