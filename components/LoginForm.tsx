@@ -42,7 +42,7 @@ export default function LoginForm({
     <form onSubmit={handleSubmit} className="space-y-5">
       <div>
         <label htmlFor={emailId} className="font-mono text-xs uppercase tracking-[0.15em] text-graphite/70">
-          Email
+          Officer Email
         </label>
         <input
           id={emailId}

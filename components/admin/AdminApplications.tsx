@@ -8,6 +8,9 @@ type Application = {
   id: string;
   role: string;
   name: string;
+  display_username: string | null;
+  graduating_class_year: number | null;
+  student_id_number: string | null;
   school_email: string;
   why_apply: string;
   why_fit: string;
@@ -120,6 +123,14 @@ export default function AdminApplications() {
                   Proof of work
                 </p>
                 <p>{a.proof_of_work}</p>
+              </div>
+            )}
+            {a.student_id_number && (
+              <div className="sm:col-span-2">
+                <p className="font-mono text-[10px] uppercase tracking-[0.15em] text-graphite/40">
+                  Student ID on file
+                </p>
+                <p>{a.student_id_number}</p>
               </div>
             )}
           </div>

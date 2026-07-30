@@ -1,7 +1,20 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
+import { createClient } from "@/lib/supabase/server";
 import { getRole } from "@/lib/roles";
 import ApplicationForm from "@/components/ApplicationForm";
+import { hasSupabaseConfig } from "@/lib/supabase/config";
+
+type StudentProfile = {
+  id: string;
+  auth_user_id: string;
+  auth_email: string;
+  full_name: string;
+  display_username: string;
+  graduating_class_year: number;
+  student_id_number: string;
+  school_email: string | null;
+};
 
 export default async function ApplyPage({
   params,
@@ -10,6 +23,18 @@ export default async function ApplyPage({
 }) {
   const { role: roleSlug } = await params;
   const role = getRole(roleSlug);
+  const supabase = await createClient();
+  const user = hasSupabaseConfig() ? (await supabase.auth.getUser()).data.user : null;
+
+  const { data: profile } = hasSupabaseConfig() && user
+    ? await supabase
+        .from("student_profiles")
+        .select(
+          "id, auth_user_id, auth_email, full_name, display_username, graduating_class_year, student_id_number, school_email"
+        )
+        .eq("auth_user_id", user.id)
+        .maybeSingle()
+    : { data: null as StudentProfile | null };
 
   if (!role || !role.open) {
     notFound();
@@ -38,6 +63,8 @@ export default async function ApplyPage({
         roleSlug={role.slug}
         roleLabel={role.label}
         requiresProof={Boolean("requiresProof" in role && role.requiresProof)}
+        profile={profile}
+        authUserId={user?.id ?? null}
       />
     </div>
   );

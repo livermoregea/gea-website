@@ -12,7 +12,13 @@ type Question = {
   created_at: string;
 };
 
-export default function QuestionQueue({ answeredByName }: { answeredByName: string }) {
+export default function QuestionQueue({
+  answeredByName,
+  answeredByAuthUserId,
+}: {
+  answeredByName: string;
+  answeredByAuthUserId?: string | null;
+}) {
   const [questions, setQuestions] = useState<Question[]>([]);
   const [loading, setLoading] = useState(true);
   const [answeredIds, setAnsweredIds] = useState<string[]>([]);
@@ -55,6 +61,7 @@ export default function QuestionQueue({ answeredByName }: { answeredByName: stri
             <AnswerForm
               questionId={q.id}
               answeredByName={answeredByName}
+              answeredByAuthUserId={answeredByAuthUserId}
               onSubmitted={() => setAnsweredIds((ids) => [...ids, q.id])}
             />
           </div>

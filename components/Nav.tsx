@@ -12,39 +12,16 @@ const links = [
   { href: "/qa", label: "Q&A" },
 ];
 
-const studentLinks = [
-  { href: "/qa/students", label: "Student Forum" },
-  { href: "/students/resources", label: "Resources" },
-];
-
 const academyApplicationUrl =
   "https://docs.google.com/forms/d/e/1FAIpQLSdTDKvYr0IqeTOAl88It9BlaFNkUU359dHG5B6FBzN48W6yng/viewform";
 
 export default function Nav() {
   const [open, setOpen] = useState(false);
-  const [studentsOpen, setStudentsOpen] = useState(false);
   const pathname = usePathname();
-  const studentsMenuRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     setOpen(false);
-    setStudentsOpen(false);
   }, [pathname]);
-
-  useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
-      if (
-        studentsMenuRef.current &&
-        event.target instanceof Node &&
-        !studentsMenuRef.current.contains(event.target)
-      ) {
-        setStudentsOpen(false);
-      }
-    }
-
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
 
   return (
     <header className="sticky top-0 z-40 border-b border-forest/10 bg-paper/95 backdrop-blur">
@@ -81,36 +58,6 @@ export default function Nav() {
                 {l.label}
               </Link>
             ))}
-            <div ref={studentsMenuRef} className="relative">
-              <button
-                type="button"
-                className="rounded-sm font-mono text-xs uppercase tracking-[0.15em] text-forestdeep transition hover:text-forest"
-                aria-expanded={studentsOpen}
-                aria-controls="students-menu"
-                onClick={() => setStudentsOpen((v) => !v)}
-              >
-                Students
-              </button>
-              {studentsOpen && (
-                <div
-                  id="students-menu"
-                  className="absolute left-0 top-full z-50 mt-3 w-56 rounded-sm border border-forest/10 bg-paper p-2 shadow-lg"
-                  role="menu"
-                  aria-label="Students menu"
-                >
-                  {studentLinks.map((item) => (
-                    <Link
-                      key={item.href}
-                      href={item.href}
-                      role="menuitem"
-                      className="block rounded-sm px-3 py-2 font-mono text-xs uppercase tracking-[0.15em] text-forest transition hover:bg-forest/[0.06]"
-                    >
-                      {item.label}
-                    </Link>
-                  ))}
-                </div>
-              )}
-            </div>
           </nav>
           <Link
             href={academyApplicationUrl}
@@ -147,23 +94,6 @@ export default function Nav() {
                 {l.label}
               </Link>
             ))}
-            <div className="rounded-sm border border-forest/10 p-2">
-              <p className="px-1 pb-2 font-mono text-[10px] uppercase tracking-[0.2em] text-graphite/65">
-                Students
-              </p>
-              <div className="grid gap-1">
-                {studentLinks.map((item) => (
-                  <Link
-                    key={item.href}
-                    href={item.href}
-                    onClick={() => setOpen(false)}
-                    className="rounded-sm px-3 py-2 font-mono text-xs uppercase tracking-[0.15em] text-forestdeep transition hover:bg-forest/[0.06]"
-                  >
-                    {item.label}
-                  </Link>
-                ))}
-              </div>
-            </div>
             <Link
               href={academyApplicationUrl}
               target="_blank"

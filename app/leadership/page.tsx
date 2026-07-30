@@ -8,6 +8,7 @@ export const revalidate = 0;
 type Member = {
   role: string;
   name: string;
+  contact_email: string | null;
   bio: string | null;
 };
 
@@ -54,6 +55,17 @@ export default async function LeadershipPage() {
                 {member ? (
                   <div className="mt-4">
                     <p className="text-sm font-medium text-graphite">{member.name}</p>
+                    {member.contact_email && (
+                      <p className="mt-1 text-xs text-graphite/70">
+                        Contact:{" "}
+                        <a
+                          href={`mailto:${member.contact_email}`}
+                          className="text-forest underline decoration-gold underline-offset-4"
+                        >
+                          {member.contact_email}
+                        </a>
+                      </p>
+                    )}
                     {member.bio && (
                       <p className="mt-1 text-xs leading-relaxed text-graphite/70">{member.bio}</p>
                     )}

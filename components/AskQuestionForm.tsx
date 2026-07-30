@@ -4,8 +4,16 @@ import { useId, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { hasSupabaseConfig } from "@/lib/supabase/config";
 
-export default function AskQuestionForm() {
-  const [name, setName] = useState("");
+export default function AskQuestionForm({
+  defaultName = "",
+  authUserId = null,
+  onSubmitted,
+}: {
+  defaultName?: string;
+  authUserId?: string | null;
+  onSubmitted?: () => void;
+}) {
+  const [name, setName] = useState(defaultName);
   const [question, setQuestion] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [done, setDone] = useState(false);
@@ -30,7 +38,8 @@ export default function AskQuestionForm() {
     const supabase = createClient();
     const { error: insertError } = await supabase.from("qa_questions").insert({
       question: question.trim(),
-      asked_by_name: name.trim() || "Anonymous Student",
+      asked_by_name: authUserId ? name.trim() || defaultName || "GEA Student" : name.trim() || "Anonymous Student",
+      asked_by_auth_user_id: authUserId,
       status: "pending",
     });
     setSubmitting(false);
@@ -40,13 +49,14 @@ export default function AskQuestionForm() {
     }
     setDone(true);
     setQuestion("");
+    onSubmitted?.();
   }
 
   if (done) {
     return (
       <div className="rounded-sm bg-forest/[0.04] p-6 text-sm text-graphite/70 ring-1 ring-forest/10" aria-live="polite">
-        Thanks — your question was submitted and will appear here once an admin approves it and an
-        upperclassman answers.
+        Thanks — your question was submitted and will appear here once an admin approves it and a
+        student answers.
         <button
           onClick={() => setDone(false)}
           className="ml-2 font-mono text-xs uppercase tracking-[0.15em] text-forest underline"
@@ -70,6 +80,11 @@ export default function AskQuestionForm() {
           className="mt-2 w-full rounded-sm border border-forest/15 bg-paper px-4 py-2.5 text-sm outline-none focus:border-gold"
           placeholder="Leave blank to stay anonymous"
         />
+        {authUserId && (
+          <p className="mt-1 text-xs text-graphite/50">
+            Your signed-in account will be attached to this question so you can find it later.
+          </p>
+        )}
       </div>
       <div>
         <label htmlFor={questionId} className="font-mono text-xs uppercase tracking-[0.15em] text-graphite/70">

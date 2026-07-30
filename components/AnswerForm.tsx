@@ -7,10 +7,12 @@ import { hasSupabaseConfig } from "@/lib/supabase/config";
 export default function AnswerForm({
   questionId,
   answeredByName,
+  answeredByAuthUserId = null,
   onSubmitted,
 }: {
   questionId: string;
   answeredByName: string;
+  answeredByAuthUserId?: string | null;
   onSubmitted: () => void;
 }) {
   const [answer, setAnswer] = useState("");
@@ -34,6 +36,7 @@ export default function AnswerForm({
       question_id: questionId,
       answer: answer.trim(),
       answered_by_name: answeredByName,
+      answered_by_auth_user_id: answeredByAuthUserId,
       status: "pending",
     });
     setSubmitting(false);

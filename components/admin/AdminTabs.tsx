@@ -5,12 +5,16 @@ import AdminApplications from "@/components/admin/AdminApplications";
 import AdminSlots from "@/components/admin/AdminSlots";
 import AdminQA from "@/components/admin/AdminQA";
 import AdminLeadership from "@/components/admin/AdminLeadership";
+import AdminStudents from "@/components/admin/AdminStudents";
+import AdminTeacherInvites from "@/components/admin/AdminTeacherInvites";
 
 const TABS = [
   { key: "applications", label: "Applications" },
+  { key: "students", label: "Students" },
   { key: "slots", label: "Interview Slots" },
   { key: "qa", label: "Q&A Moderation" },
   { key: "leadership", label: "Leadership Board" },
+  { key: "teacher-invites", label: "Teacher Invites" },
 ] as const;
 
 export default function AdminTabs() {
@@ -42,6 +46,9 @@ export default function AdminTabs() {
         <div role="tabpanel" id="panel-applications" aria-labelledby="tab-applications" hidden={tab !== "applications"}>
           {tab === "applications" && <AdminApplications />}
         </div>
+        <div role="tabpanel" id="panel-students" aria-labelledby="tab-students" hidden={tab !== "students"}>
+          {tab === "students" && <AdminStudents />}
+        </div>
         <div role="tabpanel" id="panel-slots" aria-labelledby="tab-slots" hidden={tab !== "slots"}>
           {tab === "slots" && <AdminSlots />}
         </div>
@@ -50,6 +57,14 @@ export default function AdminTabs() {
         </div>
         <div role="tabpanel" id="panel-leadership" aria-labelledby="tab-leadership" hidden={tab !== "leadership"}>
           {tab === "leadership" && <AdminLeadership />}
+        </div>
+        <div
+          role="tabpanel"
+          id="panel-teacher-invites"
+          aria-labelledby="tab-teacher-invites"
+          hidden={tab !== "teacher-invites"}
+        >
+          {tab === "teacher-invites" && <AdminTeacherInvites />}
         </div>
       </div>
     </div>

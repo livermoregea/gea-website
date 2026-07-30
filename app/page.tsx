@@ -1,14 +1,15 @@
 import Link from "next/link";
 import HomeHeroCarousel from "@/components/HomeHeroCarousel";
+import { SocialIcon, socialLinks } from "@/components/SocialIcons";
 
 const benefits = [
   {
     label: "Cohort Model",
-    body: "The same students and teachers stay together across all four years, so support and mentorship compound instead of resetting every fall.",
+    body: "Because every student takes the PLTW engineering pathway, there is a much higher chance of staying with the same classmates for all four years while building support and mentorship over time.",
   },
   {
     label: "Industry Tools",
-    body: "Students design in CAD, model structures, and prototype with the same engineering software used in professional firms — not simplified classroom versions.",
+    body: "Students work in the same tools used by real engineers: Onshape in 9th grade, VEX V5 / VEXcode VR in 10th grade, and Revit in 11th grade, rather than watered-down classroom versions.",
   },
   {
     label: "Real Partners",
@@ -16,14 +17,14 @@ const benefits = [
   },
   {
     label: "College-Ready Rigor",
-    body: "Every GEA course is UC/CSU approved, layering AP options and PLTW engineering credit onto a standard college-prep transcript.",
+    body: "GEA does not restrict students from taking AP or honors classes. Every course is UC/CSU approved, and students can still build a full college-prep schedule alongside PLTW engineering credit.",
   },
 ];
 
 const sequence = [
-  { year: "Freshman", focus: "Intro to Engineering Design", note: "Foundations in drafting, design thinking, and the engineering process." },
-  { year: "Sophomore", focus: "Principles of Engineering", note: "Mechanisms, energy, and materials — the physics behind the machines." },
-  { year: "Junior", focus: "Civil Engineering & Architecture", note: "Structural design and sustainable building, honors-weighted." },
+  { year: "Freshman", focus: "Intro to Engineering Design", note: "Foundations in drafting, design thinking, and Onshape modeling." },
+  { year: "Sophomore", focus: "Principles of Engineering", note: "Mechanisms, energy, and VEX V5 / VEXcode VR coding." },
+  { year: "Junior", focus: "Civil Engineering & Architecture", note: "Structural design and Revit, honors-weighted." },
   { year: "Senior", focus: "Engineering Capstone", note: "An independent, portfolio-defining project from concept to presentation." },
 ];
 
@@ -57,7 +58,7 @@ function HeroCopy() {
           href="/leadership"
           className="inline-flex min-h-11 w-full items-center justify-center rounded-sm border border-white/30 px-6 py-3 font-mono text-xs uppercase tracking-[0.15em] text-white transition hover:border-white hover:text-white sm:w-auto"
         >
-          Student Leadership
+          Join the Academy Now!
         </Link>
       </div>
     </div>
@@ -80,7 +81,7 @@ export default function HomePage() {
       {/* Benefits */}
       <section className="mx-auto max-w-6xl px-4 py-16 sm:px-6 md:py-20">
         <div className="flex items-end justify-between">
-          <h2 className="font-display text-xl font-medium text-gray-900 sm:text-2xl md:text-3xl">
+          <h2 className="font-display text-2xl font-medium text-gray-900 sm:text-3xl md:text-5xl">
             Why a partnership academy, not just a class
           </h2>
         </div>
@@ -91,7 +92,7 @@ export default function HomePage() {
               <p className="font-mono text-xs uppercase tracking-[0.2em] text-[#1A362B]">
                 {b.label}
               </p>
-              <p className="mt-2 text-sm leading-relaxed text-graphite/80">{b.body}</p>
+              <p className="mt-2 text-base leading-relaxed text-graphite/80">{b.body}</p>
             </div>
           ))}
         </div>
@@ -103,9 +104,10 @@ export default function HomePage() {
           <h2 className="font-display text-xl font-medium text-gray-900 sm:text-2xl md:text-3xl">
             A four-year pathway, one cohort
           </h2>
-          <p className="mt-3 max-w-2xl text-sm text-graphite/70 sm:text-base">
-            Every GEA student takes their core courses alongside the same classmates, layering
-            engineering coursework onto a full college-prep schedule.
+          <p className="mt-3 max-w-2xl text-base leading-relaxed text-graphite/75 sm:text-lg">
+            Every GEA student takes the PLTW engineering pathway alongside their other classes, so
+            there is a strong chance of staying together as a cohort for all four years. Students
+            can still enroll in AP and honors courses and build a full college-prep schedule.
           </p>
           <div className="mt-8 grid grid-cols-1 gap-4 md:mt-10 md:grid-cols-4 md:gap-6">
             {sequence.map((s, i) => (
@@ -117,7 +119,7 @@ export default function HomePage() {
                   Year {i + 1} — {s.year}
                 </p>
                 <p className="mt-3 font-display text-lg text-gray-900">{s.focus}</p>
-                <p className="mt-2 text-xs leading-relaxed text-graphite/70">{s.note}</p>
+                <p className="mt-2 text-sm leading-relaxed text-graphite/70">{s.note}</p>
               </div>
             ))}
           </div>
@@ -136,11 +138,12 @@ export default function HomePage() {
           <h2 className="font-display text-xl font-medium text-paper sm:text-2xl md:text-3xl">
             Want to join GEA?
           </h2>
-          <p className="mx-auto mt-3 max-w-lg text-sm text-paper/70 sm:text-base">
+          <p className="mx-auto mt-4 max-w-3xl text-base leading-relaxed text-paper/75 sm:text-lg">
             If you&apos;d like to apply to the academy itself, use the official Google Form below.
-            Student leadership roles are still listed separately on the leadership page.
+            Student leadership roles are listed separately, and more general questions can be
+            found on the Q&amp;A page.
           </p>
-          <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:justify-center">
+          <div className="mt-7 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:justify-center">
             <Link
               href={academyApplicationUrl}
               target="_blank"
@@ -153,8 +156,83 @@ export default function HomePage() {
               href="/leadership"
               className="inline-flex items-center justify-center rounded-sm border border-paper/30 px-6 py-3 font-mono text-xs uppercase tracking-[0.15em] text-paper transition hover:border-gold hover:text-gold"
             >
-              View Leadership Roles
+              View Leadership
             </Link>
+            <Link
+              href="/qa"
+              className="inline-flex items-center justify-center rounded-sm border border-paper/30 px-6 py-3 font-mono text-xs uppercase tracking-[0.15em] text-paper transition hover:border-gold hover:text-gold"
+            >
+              Q&amp;A
+            </Link>
+          </div>
+
+          <div className="mt-8 grid gap-4 lg:grid-cols-2">
+            <div className="rounded-sm border border-paper/12 bg-paper/5 px-5 py-5 text-left text-paper/75">
+              <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-paper/45">
+                Transfer and enrollment
+              </p>
+              <p className="mt-2 text-sm leading-relaxed sm:text-base">
+                If you need transfer information, use the LVJUSD enrollment page for the latest
+                details.
+              </p>
+              <Link
+                href="https://www.livermoreschools.org/departments/educational-services/student-services/enrollment-transfers"
+                target="_blank"
+                rel="noreferrer"
+                className="mt-3 inline-flex font-mono text-[11px] uppercase tracking-[0.16em] text-paper/85 underline decoration-paper/30 underline-offset-4 transition hover:text-paper"
+              >
+                Open transfer page
+              </Link>
+            </div>
+
+            <div className="rounded-sm border border-paper/12 bg-paper/5 px-5 py-5 text-left text-paper/75">
+              <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-paper/45">
+                Questions
+              </p>
+              <p className="mt-2 text-sm leading-relaxed sm:text-base">
+                Contact your academic counselor or the GEA coordinators:
+              </p>
+              <div className="mt-3 space-y-1 text-sm sm:text-base">
+                <p>
+                  Karen Fletcher:{" "}
+                  <a
+                    href="mailto:kfletcher@lvjusd.org"
+                    className="text-paper underline decoration-paper/30 underline-offset-4"
+                  >
+                    kfletcher@lvjusd.org
+                  </a>
+                </p>
+                <p>
+                  Dorothy Morallos:{" "}
+                  <a
+                    href="mailto:dmorallos@lvjusd.org"
+                    className="text-paper underline decoration-paper/30 underline-offset-4"
+                  >
+                    dmorallos@lvjusd.org
+                  </a>
+                </p>
+              </div>
+            </div>
+          </div>
+          <div className="mt-8 flex flex-col items-center gap-3">
+            <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-paper/50">
+              Follow GEA
+            </p>
+            <div className="flex flex-wrap justify-center gap-3">
+              {socialLinks.map((social) => (
+                <Link
+                  key={social.label}
+                  href={social.href}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-paper/20 bg-paper/5 text-paper/90 transition hover:border-gold hover:text-gold"
+                  aria-label={social.label}
+                  title={social.label}
+                >
+                  <SocialIcon icon={social.icon} className="h-5 w-5" />
+                </Link>
+              ))}
+            </div>
           </div>
         </div>
       </section>

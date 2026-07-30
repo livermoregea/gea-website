@@ -9,11 +9,28 @@ type Props = {
   roleSlug: string;
   roleLabel: string;
   requiresProof: boolean;
+  profile?: {
+    id: string;
+    auth_user_id: string;
+    auth_email: string;
+    full_name: string;
+    display_username: string;
+    graduating_class_year: number;
+    student_id_number: string;
+    school_email: string | null;
+  } | null;
+  authUserId?: string | null;
 };
 
-export default function ApplicationForm({ roleSlug, roleLabel, requiresProof }: Props) {
-  const [name, setName] = useState("");
-  const [email, setEmail] = useState("");
+export default function ApplicationForm({
+  roleSlug,
+  roleLabel,
+  requiresProof,
+  profile,
+  authUserId,
+}: Props) {
+  const [name, setName] = useState(profile?.full_name ?? "");
+  const [email, setEmail] = useState(profile?.school_email ?? "");
   const [whyApply, setWhyApply] = useState("");
   const [whyFit, setWhyFit] = useState("");
   const [proofOfWork, setProofOfWork] = useState("");
@@ -59,6 +76,11 @@ export default function ApplicationForm({ roleSlug, roleLabel, requiresProof }: 
     const { error: insertError } = await supabase.from("applications").insert({
       role: roleSlug,
       name: name.trim(),
+      student_profile_id: profile?.id ?? null,
+      auth_user_id: authUserId ?? null,
+      display_username: profile?.display_username ?? null,
+      graduating_class_year: profile?.graduating_class_year ?? null,
+      student_id_number: profile?.student_id_number ?? null,
       school_email: email.trim().toLowerCase(),
       why_apply: whyApply.trim(),
       why_fit: whyFit.trim(),
@@ -90,6 +112,15 @@ export default function ApplicationForm({ roleSlug, roleLabel, requiresProof }: 
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
+      {profile && (
+        <div className="rounded-sm bg-paper p-4 ring-1 ring-forest/10">
+          <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-gold">Using Student Profile</p>
+          <p className="mt-2 text-sm text-graphite/80">
+            {profile.full_name} - @{profile.display_username} - Class of {profile.graduating_class_year}
+          </p>
+        </div>
+      )}
+
       <div>
         <label htmlFor={nameId} className="font-mono text-xs uppercase tracking-[0.15em] text-graphite/70">
           Full Name

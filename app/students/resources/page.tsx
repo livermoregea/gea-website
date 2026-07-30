@@ -8,10 +8,10 @@ const resources = [
     label: "Read FAQs",
   },
   {
-    title: "Student Forum",
-    body: "Log in here to ask more detailed questions about projects, schoolwork, and academy life.",
-    href: "/qa/students",
-    label: "Open Forum",
+    title: "Q&A Hub",
+    body: "Use the unified Q&A hub to ask, answer, and review your history in one place.",
+    href: "/qa",
+    label: "Open Q&A Hub",
   },
   {
     title: "Academy Application",

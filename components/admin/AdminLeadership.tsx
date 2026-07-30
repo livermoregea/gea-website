@@ -5,16 +5,18 @@ import { createClient } from "@/lib/supabase/client";
 import { ROLES } from "@/lib/roles";
 import { hasSupabaseConfig } from "@/lib/supabase/config";
 
-type Member = { id: string; role: string; name: string; bio: string | null };
+type Member = { id: string; role: string; name: string; contact_email: string | null; bio: string | null };
 
 export default function AdminLeadership() {
   const [members, setMembers] = useState<Member[]>([]);
   const [role, setRole] = useState<string>(ROLES[1].slug);
   const [name, setName] = useState("");
+  const [contactEmail, setContactEmail] = useState("");
   const [bio, setBio] = useState("");
   const [loading, setLoading] = useState(true);
   const roleId = useId();
   const nameId = useId();
+  const contactEmailId = useId();
   const bioId = useId();
 
   async function load() {
@@ -39,14 +41,24 @@ export default function AdminLeadership() {
     if (!name.trim()) return;
     if (!hasSupabaseConfig()) {
       setName("");
+      setContactEmail("");
       setBio("");
       return;
     }
     const supabase = createClient();
     await supabase
       .from("leadership_members")
-      .upsert({ role, name: name.trim(), bio: bio.trim() || null }, { onConflict: "role" });
+      .upsert(
+        {
+          role,
+          name: name.trim(),
+          contact_email: contactEmail.trim() || null,
+          bio: bio.trim() || null,
+        },
+        { onConflict: "role" }
+      );
     setName("");
+    setContactEmail("");
     setBio("");
     load();
   }
@@ -85,6 +97,17 @@ export default function AdminLeadership() {
             className="mt-2 block w-full rounded-sm border border-forest/15 bg-paper px-3 py-2 text-sm"
           />
         </div>
+        <div>
+          <label htmlFor={contactEmailId} className="font-mono text-xs uppercase tracking-[0.15em] text-graphite/70">Contact Email</label>
+          <input
+            id={contactEmailId}
+            type="email"
+            value={contactEmail}
+            onChange={(e) => setContactEmail(e.target.value)}
+            className="mt-2 block w-full rounded-sm border border-forest/15 bg-paper px-3 py-2 text-sm"
+            placeholder="name@lvjusd.org"
+          />
+        </div>
         <div className="sm:col-span-2">
           <label htmlFor={bioId} className="font-mono text-xs uppercase tracking-[0.15em] text-graphite/70">Bio (optional)</label>
           <input
@@ -109,6 +132,7 @@ export default function AdminLeadership() {
             <div>
               <p className="font-mono text-[10px] uppercase tracking-[0.15em] text-gold">{m.role}</p>
               <p className="font-medium text-graphite">{m.name}</p>
+              {m.contact_email && <p className="text-xs text-graphite/60">{m.contact_email}</p>}
             </div>
             <button
               onClick={() => vacateSeat(m.id)}

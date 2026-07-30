@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
-import QuestionQueue from "@/components/QuestionQueue";
+import QAHub from "@/components/QAHub";
 import { hasSupabaseConfig } from "@/lib/supabase/config";
 
 export default async function DashboardPage() {
@@ -8,13 +8,13 @@ export default async function DashboardPage() {
   if (!hasSupabaseConfig()) {
     return (
       <div className="mx-auto max-w-3xl px-4 py-16 sm:px-6 md:py-20">
-        <p className="font-mono text-xs uppercase tracking-[0.3em] text-gold">Upperclassman Dashboard</p>
+        <p className="font-mono text-xs uppercase tracking-[0.3em] text-gold">Student Dashboard</p>
         <h1 className="mt-4 font-display text-2xl font-medium text-forest">Demo mode</h1>
-        <p className="mt-3 text-sm text-graphite/70">
+      <p className="mt-3 text-sm text-graphite/70">
           Supabase is not configured, so the dashboard is showing empty values only.
         </p>
         <div className="dim-divider my-8" />
-        <QuestionQueue answeredByName="Demo User" />
+        <QAHub authUserId={null} displayName={null} />
       </div>
     );
   }
@@ -36,18 +36,18 @@ export default async function DashboardPage() {
     );
   }
 
-  const { data: upperclassman } = await supabase
-    .from("upperclassmen")
-    .select("name")
+  const { data: profile } = await supabase
+    .from("student_profiles")
+    .select("full_name, display_username, graduating_class_year")
     .eq("auth_user_id", user.id)
     .maybeSingle();
 
-  if (!upperclassman) {
+  if (!profile) {
     return (
       <div className="mx-auto max-w-md px-4 py-16 text-center sm:px-6 md:py-24">
         <p className="text-sm text-graphite/70">
-          Your account isn&apos;t registered as an upperclassman answerer yet. Ask a GEA officer to
-          add you.
+          Your account doesn&apos;t have a student profile yet. Please create one from the student
+          login page.
         </p>
       </div>
     );
@@ -55,16 +55,25 @@ export default async function DashboardPage() {
 
   return (
     <div className="mx-auto max-w-3xl px-4 py-16 sm:px-6 md:py-20">
-      <p className="font-mono text-xs uppercase tracking-[0.3em] text-gold">Upperclassman Dashboard</p>
+      <p className="font-mono text-xs uppercase tracking-[0.3em] text-gold">Student Dashboard</p>
       <h1 className="mt-4 font-display text-2xl font-medium text-forest">
-        Welcome, {upperclassman.name.split(" ")[0]}
+        Welcome, {profile.display_username}
       </h1>
       <p className="mt-3 text-sm text-graphite/70">
-        Answer any of the approved questions below. Your answer will be reviewed by an admin
-        before it appears publicly.
+        Name: {profile.full_name}. Class of {profile.graduating_class_year}. This is your unified
+        student account for the site.
       </p>
       <div className="dim-divider my-8" />
-      <QuestionQueue answeredByName={upperclassman.name} />
+      <section id="qa" className="space-y-4">
+        <div>
+          <p className="font-mono text-xs uppercase tracking-[0.2em] text-gold">Private Q&amp;A Hub</p>
+          <h2 className="mt-2 font-display text-xl text-forest">Ask, answer, and track your activity</h2>
+          <p className="mt-2 text-sm text-graphite/70">
+            This is the signed-in area for asking questions, answering the queue, and viewing your own history.
+          </p>
+        </div>
+        <QAHub authUserId={user.id} displayName={profile.display_username} />
+      </section>
     </div>
   );
 }

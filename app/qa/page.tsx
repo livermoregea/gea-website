@@ -1,7 +1,4 @@
 import Link from "next/link";
-import { createClient } from "@/lib/supabase/server";
-import AskQuestionForm from "@/components/AskQuestionForm";
-import { hasSupabaseConfig } from "@/lib/supabase/config";
 
 export const revalidate = 0;
 
@@ -62,28 +59,15 @@ const faqs = [
 ];
 
 export default async function QAPage() {
-  const supabase = await createClient();
-
-  const { data: questions } = hasSupabaseConfig()
-    ? await supabase
-        .from("qa_questions")
-        .select(
-          "id, question, asked_by_name, created_at, qa_answers(id, answer, answered_by_name, created_at, status)"
-        )
-        .eq("status", "approved")
-        .order("created_at", { ascending: false })
-    : { data: [] };
-
   return (
     <div className="mx-auto max-w-5xl px-4 py-16 sm:px-6 md:py-20">
       <p className="font-mono text-xs uppercase tracking-[0.3em] text-gold">Student Q&amp;A</p>
       <h1 className="mt-4 font-display text-2xl font-medium text-forest sm:text-3xl md:text-4xl">
-        GEA FAQs and public questions
+        GEA questions and answers
       </h1>
       <p className="mt-4 max-w-3xl text-sm leading-relaxed text-graphite/80 sm:text-base">
-        If you&apos;re curious about what GEA is, how the pathway works, or whether it&apos;s a fit
-        for you, start with the FAQs below. For a more detailed student-only question space, use the
-        private login area.
+        This page is the public FAQ for GEA. The private ask, answer, and history tools live on the
+        signed-in dashboard after you log in.
       </p>
 
       <div className="mt-8 grid gap-4 md:grid-cols-2">
@@ -102,15 +86,21 @@ export default async function QAPage() {
           </Link>
         </div>
         <div className="rounded-sm bg-forest/[0.03] p-5 ring-1 ring-forest/5">
-          <p className="font-mono text-xs uppercase tracking-[0.2em] text-gold">GEA Students</p>
+          <p className="font-mono text-xs uppercase tracking-[0.2em] text-gold">Need an Account?</p>
           <p className="mt-2 text-sm text-graphite/70">
-            Log in here to ask more detailed questions about projects, academics, and school life.
+            Sign in or create a student account with your @lvjusd.org email to access the private Q&A hub.
           </p>
           <Link
-            href="/qa/students"
+            href="/login"
             className="mt-4 inline-flex min-h-11 items-center rounded-sm border border-forest/15 px-4 py-2.5 font-mono text-xs uppercase tracking-[0.15em] text-forest"
           >
-            Student Login
+            Student Sign In
+          </Link>
+          <Link
+            href="/teacher/login"
+            className="ml-3 mt-4 inline-flex min-h-11 items-center rounded-sm border border-forest/15 px-4 py-2.5 font-mono text-xs uppercase tracking-[0.15em] text-forest"
+          >
+            Teacher Sign In
           </Link>
         </div>
       </div>
@@ -137,64 +127,6 @@ export default async function QAPage() {
           ))}
         </div>
       </section>
-
-      <div className="dim-divider my-10" />
-
-      <section className="rounded-sm bg-forest/[0.03] p-6 ring-1 ring-forest/5">
-        <p className="font-mono text-xs uppercase tracking-[0.2em] text-gold">Public Questions</p>
-        <p className="mt-2 text-sm text-graphite/70">
-          Ask a general question below. If you&apos;re a GEA student and want a more detailed
-          question space, use the student login above.
-        </p>
-      </section>
-
-      <div className="mt-8">
-        <AskQuestionForm />
-      </div>
-
-      <div className="mt-14">
-        <h2 className="font-display text-xl font-medium text-forest sm:text-2xl">
-          Public Q&amp;A
-        </h2>
-        <p className="mt-2 text-sm text-graphite/70">
-          Questions are answered by GEA upperclassmen and reviewed by an admin before they&apos;re
-          posted publicly. If you&apos;re an upperclassman looking to answer questions,{" "}
-          <Link href="/login" className="text-forest underline decoration-gold underline-offset-4">
-            sign in here
-          </Link>
-          .
-        </p>
-      </div>
-
-      <div className="mt-8 space-y-8">
-        {(!questions || questions.length === 0) && (
-          <p className="text-sm text-graphite/50">No approved questions yet — be the first to ask.</p>
-        )}
-        {questions?.map((q: any) => {
-          const approvedAnswers = (q.qa_answers ?? []).filter((a: any) => a.status === "approved");
-          return (
-            <div key={q.id} className="rounded-sm bg-forest/[0.03] p-6 ring-1 ring-forest/5">
-              <p className="font-mono text-[11px] uppercase tracking-[0.2em] text-gold">
-                {q.asked_by_name}
-              </p>
-              <p className="mt-2 font-display text-lg text-forest">{q.question}</p>
-              <div className="mt-4 space-y-3 border-l-2 border-gold/50 pl-4">
-                {approvedAnswers.length === 0 && (
-                  <p className="text-sm italic text-graphite/40">Awaiting an answer from an upperclassman.</p>
-                )}
-                {approvedAnswers.map((a: any) => (
-                  <div key={a.id}>
-                    <p className="text-sm leading-relaxed text-graphite/80">{a.answer}</p>
-                    <p className="mt-1 font-mono text-[10px] uppercase tracking-[0.15em] text-graphite/40">
-                      — {a.answered_by_name}
-                    </p>
-                  </div>
-                ))}
-              </div>
-            </div>
-          );
-        })}
-      </div>
     </div>
   );
 }
