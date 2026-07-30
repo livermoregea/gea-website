@@ -5,19 +5,19 @@ import { SocialIcon, socialLinks } from "@/components/SocialIcons";
 const benefits = [
   {
     label: "Cohort Model",
-    body: "Because every student takes the PLTW engineering pathway, there is a much higher chance of staying with the same classmates for all four years while building support and mentorship over time.",
+    body: "Every student follows the PLTW engineering pathway, so your core classes stay with the same group for much of high school. That consistency builds support, familiarity, and mentorship over time.",
   },
   {
     label: "Industry Tools",
-    body: "Students work in the same tools used by real engineers: Onshape in 9th grade, VEX V5 / VEXcode VR in 10th grade, and Revit in 11th grade, rather than watered-down classroom versions.",
+    body: "Students use the same tools engineers use in the field: Onshape in 9th grade, VEX V5 and VEXcode VR in 10th grade, and Revit in 11th grade.",
   },
   {
     label: "Real Partners",
-    body: "Field trips, guest engineers, and mentorships connect coursework to actual sustainability and manufacturing work happening right now.",
+    body: "Field trips, guest engineers, and mentorships connect classwork to sustainability and manufacturing work happening right now.",
   },
   {
     label: "College-Ready Rigor",
-    body: "GEA does not restrict students from taking AP or honors classes. Every course is UC/CSU approved, and students can still build a full college-prep schedule alongside PLTW engineering credit.",
+    body: "GEA doesn’t block AP or honors classes. Every course is UC/CSU approved, so students can still build a full college-prep schedule alongside PLTW engineering credit.",
   },
 ];
 
@@ -38,7 +38,7 @@ function HeroCopy() {
         LHS Green Engineering Academy · Est. 2010
       </p>
       <h1 className="mt-5 max-w-3xl font-display text-3xl font-medium leading-[1.08] text-white drop-shadow-[0_2px_20px_rgba(0,0,0,0.35)] sm:text-4xl md:mt-6 md:text-6xl">
-        Engineering education built for where the job market is headed.
+        Engineering, design, and sustainability in one four-year pathway.
       </h1>
       <p className="mt-5 max-w-xl text-sm leading-relaxed text-gray-200 drop-shadow-[0_2px_12px_rgba(0,0,0,0.28)] sm:text-base md:mt-6 md:text-lg">
         STEM careers are the fastest-growing segment of the workforce, and the shift toward
@@ -55,13 +55,15 @@ function HeroCopy() {
           Explore the Curriculum
         </Link>
         <Link
-          href="/leadership"
+          href={academyApplicationUrl}
+          target="_blank"
+          rel="noreferrer"
           className="inline-flex min-h-11 w-full items-center justify-center rounded-sm border border-white/30 px-6 py-3 font-mono text-xs uppercase tracking-[0.15em] text-white transition hover:border-white hover:text-white sm:w-auto"
         >
-          Join the Academy Now!
+          Apply to GEA Now!
         </Link>
       </div>
-    </div>
+      </div>
   );
 }
 
@@ -105,9 +107,9 @@ export default function HomePage() {
             A four-year pathway, one cohort
           </h2>
           <p className="mt-3 max-w-2xl text-base leading-relaxed text-graphite/75 sm:text-lg">
-            Every GEA student takes the PLTW engineering pathway alongside their other classes, so
-            there is a strong chance of staying together as a cohort for all four years. Students
-            can still enroll in AP and honors courses and build a full college-prep schedule.
+            Every GEA student takes the PLTW engineering pathway alongside their other classes.
+            That keeps the cohort together for four years while leaving room for AP, honors, and a
+            full college-prep schedule.
           </p>
           <div className="mt-8 grid grid-cols-1 gap-4 md:mt-10 md:grid-cols-4 md:gap-6">
             {sequence.map((s, i) => (
@@ -139,9 +141,8 @@ export default function HomePage() {
             Want to join GEA?
           </h2>
           <p className="mx-auto mt-4 max-w-3xl text-base leading-relaxed text-paper/75 sm:text-lg">
-            If you&apos;d like to apply to the academy itself, use the official Google Form below.
-            Student leadership roles are listed separately, and more general questions can be
-            found on the Q&amp;A page.
+            Start with the application if you want to join the academy. Student leadership roles
+            live on a separate page, and general questions are answered in Q&amp;A.
           </p>
           <div className="mt-7 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:justify-center">
             <Link
@@ -172,8 +173,8 @@ export default function HomePage() {
                 Transfer and enrollment
               </p>
               <p className="mt-2 text-sm leading-relaxed sm:text-base">
-                If you need transfer information, use the LVJUSD enrollment page for the latest
-                details.
+                For transfer or enrollment details, check the LVJUSD enrollment page for the latest
+                information.
               </p>
               <Link
                 href="https://www.livermoreschools.org/departments/educational-services/student-services/enrollment-transfers"
@@ -190,7 +191,7 @@ export default function HomePage() {
                 Questions
               </p>
               <p className="mt-2 text-sm leading-relaxed sm:text-base">
-                Contact your academic counselor or the GEA coordinators:
+              Reach your academic counselor or the GEA coordinators:
               </p>
               <div className="mt-3 space-y-1 text-sm sm:text-base">
                 <p>

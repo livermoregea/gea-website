@@ -12,8 +12,8 @@ export default function Footer() {
               Livermore High School &middot; 600 Maple Street, Livermore, CA 94550
             </p>
             <p className="mt-4 max-w-xl text-sm leading-relaxed text-paper/55">
-              A California Partnership Academy focused on engineering, design, and real-world
-              pathways for Livermore High students.
+              A California Partnership Academy for Livermore High students interested in
+              engineering, design, and real-world problem solving.
             </p>
             <p className="mt-4 font-mono text-[11px] uppercase tracking-[0.2em] text-paper/45">
               GEA: livermoregea.org

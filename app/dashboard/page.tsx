@@ -10,8 +10,8 @@ export default async function DashboardPage() {
       <div className="mx-auto max-w-3xl px-4 py-16 sm:px-6 md:py-20">
         <p className="font-mono text-xs uppercase tracking-[0.3em] text-gold">Student Dashboard</p>
         <h1 className="mt-4 font-display text-2xl font-medium text-forest">Demo mode</h1>
-      <p className="mt-3 text-sm text-graphite/70">
-          Supabase is not configured, so the dashboard is showing empty values only.
+        <p className="mt-3 text-sm text-graphite/70">
+          Supabase isn&apos;t configured, so the dashboard is showing placeholder content.
         </p>
         <div className="dim-divider my-8" />
         <QAHub authUserId={null} displayName={null} />

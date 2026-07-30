@@ -9,17 +9,17 @@ const faqs = [
   {
     question: "What is the Green Engineering Academy?",
     answer:
-      "GEA is a four-year academy at Livermore High School where students take a shared pathway of classes together while learning engineering, sustainability, and design skills.",
+      "GEA is a four-year academy at Livermore High School. Students move through a shared engineering pathway together while building design, sustainability, and problem-solving skills.",
   },
   {
     question: "What does 'green engineering' mean?",
     answer:
-      "It means learning engineering with an emphasis on sustainability, energy, materials, and designing things that solve real-world problems responsibly.",
+      "It means learning engineering with an emphasis on sustainability, energy, materials, and responsible problem-solving.",
   },
   {
     question: "Do I have to want to become an engineer?",
     answer:
-      "No. Many students join because they want hands-on learning, teamwork, project management, and technical skills that help in many careers.",
+      "Not at all. Many students join for hands-on learning, teamwork, project management, and technical skills that help in many careers.",
   },
   {
     question: "Can I still take electives outside of GEA?",
@@ -49,7 +49,7 @@ const faqs = [
   {
     question: "What makes GEA different from a normal class?",
     answer:
-      "GEA includes cohort support, project-based learning, real engineering tools, field trips, guest speakers, and connections to careers and college pathways.",
+      "GEA combines cohort support, project-based learning, real engineering tools, field trips, guest speakers, and connections to careers and college pathways.",
   },
   {
     question: "What are the benefits of being a California Partnership Academy?",
@@ -66,15 +66,15 @@ export default async function QAPage() {
         GEA questions and answers
       </h1>
       <p className="mt-4 max-w-3xl text-sm leading-relaxed text-graphite/80 sm:text-base">
-        This page is the public FAQ for GEA. The private ask, answer, and history tools live on the
-        signed-in dashboard after you log in.
+        Start here for the most common questions about GEA. If you want to ask a question or keep
+        track of replies, log in to use the student dashboard.
       </p>
 
       <div className="mt-8 grid gap-4 md:grid-cols-2">
         <div className="rounded-sm bg-forest/[0.03] p-5 ring-1 ring-forest/5">
           <p className="font-mono text-xs uppercase tracking-[0.2em] text-gold">Apply to GEA</p>
           <p className="mt-2 text-sm text-graphite/70">
-            If you want to join the academy itself, use the official Google Form.
+            Ready to join the academy? Use the official Google Form.
           </p>
           <Link
             href={academyApplicationUrl}
@@ -86,21 +86,17 @@ export default async function QAPage() {
           </Link>
         </div>
         <div className="rounded-sm bg-forest/[0.03] p-5 ring-1 ring-forest/5">
-          <p className="font-mono text-xs uppercase tracking-[0.2em] text-gold">Need an Account?</p>
+          <p className="font-mono text-xs uppercase tracking-[0.2em] text-gold">
+            Have Student Specific Questions?
+          </p>
           <p className="mt-2 text-sm text-graphite/70">
-            Sign in or create a student account with your @lvjusd.org email to access the private Q&A hub.
+            Log in to ask a question, answer one, or review your history.
           </p>
           <Link
             href="/login"
             className="mt-4 inline-flex min-h-11 items-center rounded-sm border border-forest/15 px-4 py-2.5 font-mono text-xs uppercase tracking-[0.15em] text-forest"
           >
-            Student Sign In
-          </Link>
-          <Link
-            href="/teacher/login"
-            className="ml-3 mt-4 inline-flex min-h-11 items-center rounded-sm border border-forest/15 px-4 py-2.5 font-mono text-xs uppercase tracking-[0.15em] text-forest"
-          >
-            Teacher Sign In
+            Log In
           </Link>
         </div>
       </div>

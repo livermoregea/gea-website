@@ -34,7 +34,7 @@ export default function StudentAuthForm({ redirectTo }: { redirectTo: string }) 
     setLoginError(null);
 
     if (!hasSupabaseConfig()) {
-      setLoginError("Student sign-in is disabled until Supabase is configured.");
+      setLoginError("Sign-in is disabled until Supabase is configured.");
       return;
     }
 
@@ -51,12 +51,47 @@ export default function StudentAuthForm({ redirectTo }: { redirectTo: string }) 
     setLoading(false);
 
     if (signInError) {
-      setLoginError("That email or student ID number didn't match.");
+      setLoginError("Incorrect email or password.");
       return;
     }
 
-    router.push(redirectTo);
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) {
+      setLoginError("We signed you in, but couldn't resolve your account.");
+      setLoading(false);
+      return;
+    }
+
+    const [{ data: studentProfile }, { data: teacherProfile }, { data: adminProfile }] =
+      await Promise.all([
+        supabase.from("student_profiles").select("id").eq("auth_user_id", user.id).maybeSingle(),
+        supabase
+          .from("teacher_profiles")
+          .select("id")
+          .eq("auth_user_id", user.id)
+          .maybeSingle(),
+        supabase.from("admins").select("name").eq("auth_user_id", user.id).maybeSingle(),
+      ]);
+
     router.refresh();
+
+    if (adminProfile) {
+      router.push("/admin-portal-x7k9");
+      return;
+    }
+    if (teacherProfile) {
+      router.push("/teacher");
+      return;
+    }
+    if (studentProfile) {
+      router.push(redirectTo);
+      return;
+    }
+
+    setLoading(false);
+    setLoginError("We couldn't match that account to a student, teacher, or admin profile.");
   }
 
   async function signUp(e: React.FormEvent) {
@@ -147,7 +182,7 @@ export default function StudentAuthForm({ redirectTo }: { redirectTo: string }) 
         <form onSubmit={signIn} className="mt-6 space-y-5">
           <div>
             <label htmlFor={loginEmailId} className="font-mono text-xs uppercase tracking-[0.15em] text-graphite/70">
-              Student Email
+              Email
             </label>
             <input
               id={loginEmailId}
@@ -156,14 +191,13 @@ export default function StudentAuthForm({ redirectTo }: { redirectTo: string }) 
               value={loginEmail}
               onChange={(e) => setLoginEmail(e.target.value)}
               className="mt-2 w-full rounded-sm border border-forest/15 bg-paper px-4 py-3 text-sm outline-none focus:border-gold"
-              placeholder="name@lvjusd.org"
+              placeholder="Email"
             />
-            <p className="mt-1 text-xs text-graphite/50">Use the email address you gave us when you signed up.</p>
           </div>
 
           <div>
             <label htmlFor={loginPasswordId} className="font-mono text-xs uppercase tracking-[0.15em] text-graphite/70">
-              Student ID number
+              Password
             </label>
             <input
               id={loginPasswordId}
@@ -172,7 +206,7 @@ export default function StudentAuthForm({ redirectTo }: { redirectTo: string }) 
               value={loginPassword}
               onChange={(e) => setLoginPassword(e.target.value)}
               className="mt-2 w-full rounded-sm border border-forest/15 bg-paper px-4 py-3 text-sm outline-none focus:border-gold"
-              placeholder="Your student ID number"
+              placeholder="Password"
             />
           </div>
 
@@ -267,10 +301,10 @@ export default function StudentAuthForm({ redirectTo }: { redirectTo: string }) 
                 type="password"
                 value={signupStudentId}
                 onChange={(e) => setSignupStudentId(e.target.value)}
-                className="mt-2 w-full rounded-sm border border-forest/15 bg-paper px-4 py-3 text-sm outline-none focus:border-gold"
-                placeholder="Your student ID number"
-              />
-            </div>
+              className="mt-2 w-full rounded-sm border border-forest/15 bg-paper px-4 py-3 text-sm outline-none focus:border-gold"
+              placeholder="Your student ID number"
+            />
+          </div>
           </div>
 
           {signupError && (

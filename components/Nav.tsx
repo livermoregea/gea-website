@@ -65,7 +65,7 @@ export default function Nav() {
             rel="noreferrer"
             className="hidden min-h-11 items-center rounded-sm bg-forest px-4 py-2 font-mono text-xs uppercase tracking-[0.15em] text-gold transition hover:bg-forestdeep sm:inline-flex"
           >
-            Join the Academy Now
+            Apply to GEA Now!
           </Link>
           <button
             type="button"
@@ -101,7 +101,7 @@ export default function Nav() {
               onClick={() => setOpen(false)}
               className="rounded-sm bg-forest px-3 py-2 text-center font-mono text-xs uppercase tracking-[0.15em] text-gold"
             >
-              Join the Academy Now
+              Apply to GEA Now!
             </Link>
           </nav>
         )}

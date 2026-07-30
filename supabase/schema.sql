@@ -25,6 +25,17 @@ as $$
   select exists (select 1 from admins where auth_user_id = auth.uid());
 $$;
 
+create or replace function is_staff()
+returns boolean
+language sql
+security definer
+set search_path = public
+as $$
+  select
+    exists (select 1 from admins where auth_user_id = auth.uid())
+    or exists (select 1 from teacher_profiles where auth_user_id = auth.uid());
+$$;
+
 -- ---------------------------------------------------------
 -- UPPERCLASSMEN: students allowed to log in and answer Q&A.
 -- Add rows manually (name + school email + their Supabase
@@ -244,7 +255,7 @@ create policy "leadership_public_read" on leadership_members
   for select using (true);
 drop policy if exists "leadership_admin_write" on leadership_members;
 create policy "leadership_admin_write" on leadership_members
-  for all using (is_admin()) with check (is_admin());
+  for all using (is_staff()) with check (is_staff());
 
 -- Applications: anyone can submit one; only admins can read/update.
 -- (Public read is intentionally NOT allowed — applicant status and
@@ -255,34 +266,37 @@ create policy "applications_public_insert" on applications
   for insert with check (true);
 drop policy if exists "applications_admin_manage" on applications;
 create policy "applications_admin_manage" on applications
-  for select using (is_admin());
+  for select using (is_staff());
+drop policy if exists "applications_self_read" on applications;
+create policy "applications_self_read" on applications
+  for select using (auth_user_id = auth.uid());
 drop policy if exists "applications_admin_update" on applications;
 create policy "applications_admin_update" on applications
-  for update using (is_admin()) with check (is_admin());
+  for update using (is_staff()) with check (is_staff());
 
 drop policy if exists "student_profiles_self_read" on student_profiles;
 create policy "student_profiles_self_read" on student_profiles
-  for select using (auth_user_id = auth.uid() or is_admin());
+  for select using (auth_user_id = auth.uid() or is_staff());
 drop policy if exists "student_profiles_self_update" on student_profiles;
 create policy "student_profiles_self_update" on student_profiles
-  for update using (auth_user_id = auth.uid() or is_admin()) with check (auth_user_id = auth.uid() or is_admin());
+  for update using (auth_user_id = auth.uid() or is_staff()) with check (auth_user_id = auth.uid() or is_staff());
 drop policy if exists "student_profiles_admin_write" on student_profiles;
 create policy "student_profiles_admin_write" on student_profiles
-  for all using (is_admin()) with check (is_admin());
+  for all using (is_staff()) with check (is_staff());
 
 drop policy if exists "teacher_profiles_self_read" on teacher_profiles;
 create policy "teacher_profiles_self_read" on teacher_profiles
-  for select using (auth_user_id = auth.uid() or is_admin());
+  for select using (auth_user_id = auth.uid() or is_staff());
 drop policy if exists "teacher_profiles_self_update" on teacher_profiles;
 create policy "teacher_profiles_self_update" on teacher_profiles
-  for update using (auth_user_id = auth.uid() or is_admin()) with check (auth_user_id = auth.uid() or is_admin());
+  for update using (auth_user_id = auth.uid() or is_staff()) with check (auth_user_id = auth.uid() or is_staff());
 drop policy if exists "teacher_profiles_admin_write" on teacher_profiles;
 create policy "teacher_profiles_admin_write" on teacher_profiles
-  for all using (is_admin()) with check (is_admin());
+  for all using (is_staff()) with check (is_staff());
 
 drop policy if exists "teacher_invites_admin_manage" on teacher_invites;
 create policy "teacher_invites_admin_manage" on teacher_invites
-  for all using (is_admin()) with check (is_admin());
+  for all using (is_staff()) with check (is_staff());
 
 -- Interview slots: anyone can see open times; only admins manage them.
 drop policy if exists "slots_public_read" on interview_slots;
@@ -290,7 +304,7 @@ create policy "slots_public_read" on interview_slots
   for select using (true);
 drop policy if exists "slots_admin_write" on interview_slots;
 create policy "slots_admin_write" on interview_slots
-  for all using (is_admin()) with check (is_admin());
+  for all using (is_staff()) with check (is_staff());
 
 -- Q&A questions: anyone can ask; anyone can read approved ones;
 -- only admins can read pending ones or change status.
@@ -299,10 +313,10 @@ create policy "questions_public_insert" on qa_questions
   for insert with check (true);
 drop policy if exists "questions_read_approved_or_admin" on qa_questions;
 create policy "questions_read_approved_or_admin" on qa_questions
-  for select using (status = 'approved' or asked_by_auth_user_id = auth.uid() or is_admin());
+  for select using (status = 'approved' or asked_by_auth_user_id = auth.uid() or is_staff());
 drop policy if exists "questions_admin_update" on qa_questions;
 create policy "questions_admin_update" on qa_questions
-  for update using (is_admin()) with check (is_admin());
+  for update using (is_staff()) with check (is_staff());
 
 -- Q&A answers: only signed-in upperclassmen can submit answers;
 -- anyone can read approved ones; only admins moderate.
@@ -311,14 +325,14 @@ create policy "answers_upperclassman_insert" on qa_answers
   for insert with check (
     exists (select 1 from student_profiles s where s.auth_user_id = auth.uid())
     or exists (select 1 from teacher_profiles t where t.auth_user_id = auth.uid())
-    or is_admin()
+    or is_staff()
   );
 drop policy if exists "answers_read_approved_or_admin" on qa_answers;
 create policy "answers_read_approved_or_admin" on qa_answers
-  for select using (status = 'approved' or answered_by_auth_user_id = auth.uid() or is_admin());
+  for select using (status = 'approved' or answered_by_auth_user_id = auth.uid() or is_staff());
 drop policy if exists "answers_admin_update" on qa_answers;
 create policy "answers_admin_update" on qa_answers
-  for update using (is_admin()) with check (is_admin());
+  for update using (is_staff()) with check (is_staff());
 
 -- Upperclassmen: a user can check their own row; admins manage all.
 drop policy if exists "upperclassmen_self_read" on upperclassmen;

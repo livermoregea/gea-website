@@ -131,13 +131,7 @@ export default function QAHub({
             href="/login"
             className="inline-flex min-h-11 items-center rounded-sm bg-forest px-4 py-2.5 font-mono text-xs uppercase tracking-[0.15em] text-gold"
           >
-            Student Sign In
-          </Link>
-          <Link
-            href="/teacher/login"
-            className="inline-flex min-h-11 items-center rounded-sm border border-forest/15 px-4 py-2.5 font-mono text-xs uppercase tracking-[0.15em] text-forest"
-          >
-            Teacher Sign In
+            Log In
           </Link>
         </div>
       </section>

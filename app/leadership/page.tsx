@@ -12,13 +12,55 @@ type Member = {
   bio: string | null;
 };
 
+type Application = {
+  id: string;
+  role: string;
+  status: string;
+  created_at: string;
+};
+
+function formatStatus(status: string) {
+  switch (status) {
+    case "pending":
+      return "Pending review";
+    case "reviewing":
+      return "Under review";
+    case "invited":
+      return "Interview invite sent";
+    case "interview_booked":
+      return "Interview booked";
+    case "approved":
+      return "Approved";
+    case "rejected":
+      return "Rejected";
+    default:
+      return status;
+  }
+}
+
 export default async function LeadershipPage() {
   const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
   const { data: members } = hasSupabaseConfig()
     ? await supabase.from("leadership_members").select("*")
     : { data: [] };
+  const { data: applications } = hasSupabaseConfig() && user
+    ? await supabase
+        .from("applications")
+        .select("id, role, status, created_at")
+        .eq("auth_user_id", user.id)
+        .order("created_at", { ascending: false })
+    : { data: [] as Application[] };
 
   const memberByRole = new Map<string, Member>((members ?? []).map((m: Member) => [m.role, m]));
+  const applicationByRole = new Map<string, Application>();
+  for (const application of applications ?? []) {
+    if (!applicationByRole.has(application.role)) {
+      applicationByRole.set(application.role, application);
+    }
+  }
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-16 sm:px-6 md:py-20">
@@ -27,19 +69,57 @@ export default async function LeadershipPage() {
         GEA Leadership Board
       </h1>
       <p className="mt-4 max-w-2xl text-sm leading-relaxed text-graphite/80 sm:text-base">
-        GEA is run in part by its own students. Most seats on the leadership board are currently
-        open — click a role below to submit an application.
+        GEA is run in part by its own students. Most leadership seats are open, so you can click a
+        role below to apply.
       </p>
       <p className="mt-3 max-w-2xl text-sm leading-relaxed text-graphite/70 sm:text-base">
-        If you are looking to apply to join the academy itself, use the application form on the
-        homepage.
+        If you want to join the academy itself, use the application form on the homepage.
       </p>
+
+      {user ? (
+        applicationByRole.size > 0 ? (
+          <div className="mt-6 rounded-sm bg-forest/[0.04] p-5 ring-1 ring-forest/10">
+            <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-gold">
+              Your Applications
+            </p>
+            <p className="mt-2 text-sm text-graphite/70">
+              Your submissions are saved here. Click any role below to check the current status.
+            </p>
+          </div>
+        ) : (
+          <div className="mt-6 rounded-sm bg-forest/[0.04] p-5 ring-1 ring-forest/10">
+            <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-gold">
+              Signed In
+            </p>
+            <p className="mt-2 text-sm text-graphite/70">
+              You haven&apos;t submitted any leadership applications yet. Apply to a role, then come
+              back here to check its status.
+            </p>
+          </div>
+        )
+      ) : (
+        <div className="mt-6 rounded-sm bg-forest/[0.04] p-5 ring-1 ring-forest/10">
+          <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-gold">
+            Status Tracking
+          </p>
+          <p className="mt-2 text-sm text-graphite/70">
+            Sign in to see the status of your own leadership applications after you submit them.
+          </p>
+          <Link
+            href="/login"
+            className="mt-3 inline-flex rounded-sm bg-forest px-4 py-2 font-mono text-xs uppercase tracking-[0.15em] text-gold transition hover:bg-forestdeep"
+          >
+            Sign In
+          </Link>
+        </div>
+      )}
 
       <div className="dim-divider my-12" />
 
       <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
         {ROLES.map((role) => {
           const member = memberByRole.get(role.slug);
+          const application = applicationByRole.get(role.slug);
           const filled = Boolean(member);
 
           return (
@@ -79,12 +159,31 @@ export default async function LeadershipPage() {
               </div>
 
               <div className="mt-6">
-                {!filled && role.open ? (
+                {application ? (
+                  <details className="rounded-sm border border-forest/10 bg-paper/80 p-3">
+                    <summary className="cursor-pointer list-none font-mono text-xs uppercase tracking-[0.15em] text-forest">
+                      Check Application Status
+                    </summary>
+                    <div className="mt-3 space-y-2">
+                      <p className="font-mono text-[10px] uppercase tracking-[0.15em] text-graphite/40">
+                        Current status
+                      </p>
+                      <p className="text-sm font-medium text-graphite">{formatStatus(application.status)}</p>
+                      <p className="text-xs text-graphite/55">
+                        Submitted {new Intl.DateTimeFormat("en-US", {
+                          month: "short",
+                          day: "numeric",
+                          year: "numeric",
+                        }).format(new Date(application.created_at))}
+                      </p>
+                    </div>
+                  </details>
+                ) : !filled && role.open ? (
                   <Link
                     href={`/leadership/apply/${role.slug}`}
                     className="inline-block w-full rounded-sm bg-forest px-4 py-2.5 text-center font-mono text-xs uppercase tracking-[0.15em] text-gold transition hover:bg-forestdeep"
                   >
-                    I&apos;m Interested
+                    Apply
                   </Link>
                 ) : !filled ? (
                   <span className="inline-block w-full rounded-sm border border-forest/10 px-4 py-2.5 text-center font-mono text-xs uppercase tracking-[0.15em] text-graphite/40">

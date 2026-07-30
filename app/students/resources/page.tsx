@@ -3,26 +3,26 @@ import Link from "next/link";
 const resources = [
   {
     title: "GEA Overview",
-    body: "A quick refresher on what the academy is, how the cohort works, and what students can expect.",
+    body: "A quick refresher on the academy, how the cohort works, and what students can expect.",
     href: "/qa",
     label: "Read FAQs",
   },
   {
     title: "Q&A Hub",
-    body: "Use the unified Q&A hub to ask, answer, and review your history in one place.",
+    body: "Ask a question, answer the queue, and review your history from one place.",
     href: "/qa",
     label: "Open Q&A Hub",
   },
   {
     title: "Academy Application",
-    body: "For students who want to join the academy itself, the official application is on Google Forms.",
+    body: "Ready to join the academy? Use the official Google Form.",
     href: "https://docs.google.com/forms/d/e/1FAIpQLSdTDKvYr0IqeTOAl88It9BlaFNkUU359dHG5B6FBzN48W6yng/viewform",
     label: "Apply to GEA",
     external: true,
   },
   {
     title: "Curriculum",
-    body: "Review the four-year pathway and see how the engineering sequence fits into a full schedule.",
+    body: "See the four-year pathway and how the engineering sequence fits into a full schedule.",
     href: "/curriculum",
     label: "View Curriculum",
   },
@@ -36,8 +36,8 @@ export default function StudentResourcesPage() {
         Student resources
       </h1>
       <p className="mt-4 max-w-3xl text-sm leading-relaxed text-graphite/80 sm:text-base">
-        This page pulls together the main places GEA students may need, whether they&apos;re looking
-        for the public FAQs, the private forum, or the academy application.
+        Use this page as a quick hub for the main GEA links: FAQs, the student dashboard, the
+        application, and the curriculum.
       </p>
 
       <div className="mt-10 grid gap-4 md:grid-cols-2">

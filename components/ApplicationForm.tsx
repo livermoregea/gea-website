@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useId, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { isSchoolEmail } from "@/lib/roles";
@@ -106,6 +107,20 @@ export default function ApplicationForm({
           move forward, we&apos;ll email you at the school address you provided with a link to
           book an interview during lunch.
         </p>
+        {authUserId ? (
+          <p className="mt-3 text-sm text-graphite/70">
+            You can come back to the{" "}
+            <Link href="/leadership" className="text-forest underline decoration-gold underline-offset-4">
+              leadership page
+            </Link>{" "}
+            after signing in to check this application&apos;s status anytime.
+          </p>
+        ) : (
+          <p className="mt-3 text-sm text-graphite/70">
+            If you want the site to remember this application, sign in before applying next time so
+            we can show your status on the leadership page.
+          </p>
+        )}
       </div>
     );
   }

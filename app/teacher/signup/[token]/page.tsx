@@ -42,8 +42,8 @@ export default async function TeacherInviteSignupPage({
         <p className="mt-3 text-sm text-graphite/70">
           This invite has already been used or it expired. Please ask an admin for a new teacher link.
         </p>
-        <Link href="/teacher/login" className="mt-4 inline-flex text-sm text-forest underline decoration-gold underline-offset-4">
-          Go to teacher sign in
+        <Link href="/login" className="mt-4 inline-flex text-sm text-forest underline decoration-gold underline-offset-4">
+          Go to log in
         </Link>
       </div>
     );

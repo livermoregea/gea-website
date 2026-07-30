@@ -7,7 +7,7 @@ import { hasSupabaseConfig } from "@/lib/supabase/config";
 export async function POST(request: Request) {
   if (!hasSupabaseConfig()) {
     return NextResponse.json(
-      { error: "Interview invites are unavailable in demo mode." },
+      { error: "Interview draft generation is unavailable in demo mode." },
       { status: 503 }
     );
   }
@@ -21,12 +21,15 @@ export async function POST(request: Request) {
   if (!user) {
     return NextResponse.json({ error: "Not signed in." }, { status: 401 });
   }
-  const { data: adminRow } = await supabase
-    .from("admins")
-    .select("auth_user_id")
-    .eq("auth_user_id", user.id)
-    .maybeSingle();
-  if (!adminRow) {
+  const [{ data: adminRow }, { data: teacherRow }] = await Promise.all([
+    supabase.from("admins").select("auth_user_id").eq("auth_user_id", user.id).maybeSingle(),
+    supabase
+      .from("teacher_profiles")
+      .select("auth_user_id")
+      .eq("auth_user_id", user.id)
+      .maybeSingle(),
+  ]);
+  if (!adminRow && !teacherRow) {
     return NextResponse.json({ error: "Not authorized." }, { status: 403 });
   }
 
@@ -48,62 +51,37 @@ export async function POST(request: Request) {
   }
   if (!isSchoolEmail(application.school_email)) {
     return NextResponse.json(
-      { error: "Applicant email is not a verified school email — refusing to send." },
+      { error: "Applicant email is not a verified school email — refusing to generate draft." },
       { status: 400 }
     );
   }
 
   const token = application.interview_token ?? crypto.randomUUID();
-  const { error: updateError } = await admin
-    .from("applications")
-    .update({ interview_token: token, status: "invited", invite_sent_at: new Date().toISOString() })
-    .eq("id", applicationId);
+  if (!application.interview_token) {
+    const { error: updateError } = await admin
+      .from("applications")
+      .update({ interview_token: token })
+      .eq("id", applicationId);
 
-  if (updateError) {
-    return NextResponse.json({ error: "Could not update application." }, { status: 500 });
+    if (updateError) {
+      return NextResponse.json({ error: "Could not update application." }, { status: 500 });
+    }
   }
 
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
   const bookingLink = `${siteUrl}/interview/${token}`;
+  const firstName = application.name.split(" ")[0] || application.name;
+  const subject = `GEA Leadership Interview — ${application.role}`;
+  const body = `Hi ${firstName},
 
-  // 3. Send the email via Resend. Requires RESEND_API_KEY and a
-  //    verified sending domain — see README for setup.
-  const resendKey = process.env.RESEND_API_KEY;
-  if (!resendKey) {
-    return NextResponse.json(
-      {
-        error:
-          "RESEND_API_KEY is not configured, so no email was sent. The booking link is: " +
-          bookingLink,
-      },
-      { status: 500 }
-    );
-  }
+Thanks for applying for a GEA leadership position. We'd like to move forward with an interview
+during lunch. Please pick an available time using the link below:
 
-  const emailRes = await fetch("https://api.resend.com/emails", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${resendKey}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      from: process.env.RESEND_FROM_EMAIL ?? "GEA Leadership <noreply@yourdomain.org>",
-      to: application.school_email,
-      subject: `GEA Leadership Interview — ${application.role}`,
-      html: `
-        <p>Hi ${application.name.split(" ")[0]},</p>
-        <p>Thanks for applying for a GEA leadership position. We'd like to move forward with an
-        interview during lunch. Please pick an available time using the link below:</p>
-        <p><a href="${bookingLink}">${bookingLink}</a></p>
-        <p>This link is unique to you — please don't share it.</p>
-        <p>— GEA Leadership Team</p>
-      `,
-    }),
-  });
+${bookingLink}
 
-  if (!emailRes.ok) {
-    return NextResponse.json({ error: "Resend API rejected the email." }, { status: 502 });
-  }
+This link is unique to you — please don't share it.
 
-  return NextResponse.json({ ok: true, bookingLink });
+— GEA Leadership Team`;
+
+  return NextResponse.json({ ok: true, bookingLink, email: { subject, body } });
 }

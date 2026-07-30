@@ -25,11 +25,10 @@ export default function CurriculumPage() {
         The GEA curriculum
       </h1>
       <p className="mt-4 max-w-2xl text-sm leading-relaxed text-graphite/80 sm:text-base">
-        GEA is a California Partnership Academy that folds hands-on engineering coursework into a
-        standard, UC/CSU-approved college-prep schedule. Academic classes are threaded with green
+        GEA is a California Partnership Academy that blends hands-on engineering coursework into a
+        standard, UC/CSU-approved college-prep schedule. Academic classes connect to green
         technology, sustainability, and environmental themes, while Career Technical Education
-        courses run on the Project Lead the Way (PLTW) engineering curriculum — the same framework
-        used to prepare students for two- and four-year engineering and architecture programs.
+        courses follow the Project Lead the Way (PLTW) engineering curriculum.
       </p>
 
       <div className="dim-divider my-12" />
@@ -57,22 +56,22 @@ export default function CurriculumPage() {
         <div>
           <p className="font-mono text-xs uppercase tracking-[0.2em] text-gold">Software & Tools</p>
           <p className="mt-2 text-sm text-paper/70">
-            CAD modeling, structural analysis tools, and PLTW engineering software give students
-            hands-on fluency with the tools professional engineers use daily.
+            CAD modeling, structural analysis tools, and PLTW software give students hands-on
+            experience with the tools professional engineers use.
           </p>
         </div>
         <div>
           <p className="font-mono text-xs uppercase tracking-[0.2em] text-gold">Electives Still Fit</p>
           <p className="mt-2 text-sm text-paper/70">
-            Students choose freely from LHS electives — band, orchestra, world languages, and more
-            — alongside their GEA cohort courses.
+            Students can still choose from LHS electives like band, orchestra, world languages, and
+            more alongside their GEA cohort courses.
           </p>
         </div>
         <div>
           <p className="font-mono text-xs uppercase tracking-[0.2em] text-gold">No GPA Gate</p>
           <p className="mt-2 text-sm text-paper/70">
-            Every freshman starts with a clean transcript. Interest and willingness to engage with
-            the program matter more than a prior track record.
+            Every freshman starts on equal footing. Interest and willingness to engage matter more
+            than a prior track record.
           </p>
         </div>
       </div>

@@ -111,7 +111,8 @@ export default function InterviewBookingPage({
         <h1 className="mt-4 font-display text-xl text-forest sm:text-2xl">You&apos;re booked.</h1>
         <p className="mt-3 text-sm text-graphite/70 sm:text-base">
           Your interview for {role} is scheduled for <strong>{bookedLabel}</strong> during lunch.
-          See you then.
+          See you then. Be sure to check your email every once in a while for any important
+          updates, like last-minute scheduling changes.
         </p>
       </div>
     );

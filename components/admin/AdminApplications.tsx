@@ -16,30 +16,58 @@ type Application = {
   why_fit: string;
   proof_of_work: string | null;
   status: string;
+  booked_slot_id: string | null;
   created_at: string;
+};
+
+type InterviewSlot = {
+  id: string;
+  label: string;
+  slot_time: string;
+  application_id: string | null;
+  is_booked: boolean;
+};
+
+type InterviewDraft = {
+  bookingLink: string;
+  email: {
+    subject: string;
+    body: string;
+  };
 };
 
 const STATUSES = ["pending", "reviewing", "invited", "interview_booked", "approved", "rejected"];
 
 export default function AdminApplications() {
   const [apps, setApps] = useState<Application[]>([]);
+  const [slots, setSlots] = useState<InterviewSlot[]>([]);
   const [loading, setLoading] = useState(true);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
+  const [drafts, setDrafts] = useState<Record<string, InterviewDraft>>({});
+  const [copiedKey, setCopiedKey] = useState<string | null>(null);
 
   async function load() {
     setLoading(true);
     if (!hasSupabaseConfig()) {
       setApps([]);
+      setSlots([]);
       setLoading(false);
       return;
     }
     const supabase = createClient();
-    const { data } = await supabase
+    const [{ data: appData }, { data: slotData }] = await Promise.all([
+      supabase
       .from("applications")
       .select("*")
-      .order("created_at", { ascending: false });
-    setApps((data as Application[]) ?? []);
+      .order("created_at", { ascending: false }),
+      supabase
+        .from("interview_slots")
+        .select("id, label, slot_time, application_id, is_booked")
+        .order("slot_time", { ascending: true }),
+    ]);
+    setApps((appData as Application[]) ?? []);
+    setSlots((slotData as InterviewSlot[]) ?? []);
     setLoading(false);
   }
 
@@ -54,9 +82,9 @@ export default function AdminApplications() {
     load();
   }
 
-  async function sendInvite(id: string) {
+  async function generateInviteDraft(id: string) {
     if (!hasSupabaseConfig()) {
-      setMessage("Interview invites are disabled in demo mode.");
+      setMessage("Interview drafts are disabled in demo mode.");
       return;
     }
     setBusyId(id);
@@ -69,14 +97,38 @@ export default function AdminApplications() {
     const data = await res.json();
     setBusyId(null);
     if (!res.ok) {
-      setMessage(data.error ?? "Something went wrong sending the invite.");
+      setMessage(data.error ?? "Something went wrong generating the draft.");
     } else {
-      setMessage(`Interview invite sent. Booking link: ${data.bookingLink}`);
+      setDrafts((current) => ({
+        ...current,
+        [id]: data as InterviewDraft,
+      }));
+      setMessage("Interview draft generated. Copy the email below and send it manually.");
     }
     load();
   }
 
+  async function copyText(text: string, key: string) {
+    await navigator.clipboard.writeText(text);
+    setCopiedKey(key);
+    window.setTimeout(() => {
+      setCopiedKey((current) => (current === key ? null : current));
+    }, 1500);
+  }
+
   if (loading) return <p className="text-sm text-graphite/50">Loading applications...</p>;
+
+  const slotById = new Map(slots.map((slot) => [slot.id, slot]));
+
+  function formatSlotTime(slotTime: string) {
+    return new Intl.DateTimeFormat("en-US", {
+      weekday: "short",
+      month: "short",
+      day: "numeric",
+      hour: "numeric",
+      minute: "2-digit",
+    }).format(new Date(slotTime));
+  }
 
   return (
     <div className="space-y-6">
@@ -135,15 +187,113 @@ export default function AdminApplications() {
             )}
           </div>
 
-          <div className="mt-4">
-              <button
-                onClick={() => sendInvite(a.id)}
-                disabled={busyId === a.id}
-              className="rounded-sm bg-forest px-4 py-2 font-mono text-xs uppercase tracking-[0.15em] text-gold transition hover:bg-forestdeep disabled:opacity-50"
-              >
-                {busyId === a.id ? "Sending..." : "Send Interview Invite"}
-              </button>
+          <div className="mt-4 rounded-sm bg-paper/70 p-4 ring-1 ring-forest/10">
+            <p className="font-mono text-[10px] uppercase tracking-[0.15em] text-graphite/40">
+              Interview booking
+            </p>
+            {a.booked_slot_id ? (
+              (() => {
+                const bookedSlot = slotById.get(a.booked_slot_id);
+                return bookedSlot ? (
+                  <div className="mt-2 space-y-1">
+                    <p className="text-sm font-medium text-graphite">
+                      {a.name} booked {bookedSlot.label}
+                    </p>
+                    <p className="text-xs text-graphite/60">{formatSlotTime(bookedSlot.slot_time)}</p>
+                  </div>
+                ) : (
+                  <p className="mt-2 text-sm text-graphite/70">
+                    {a.name} has booked an interview, but the slot record is missing.
+                  </p>
+                );
+              })()
+            ) : (
+              <p className="mt-2 text-sm text-graphite/70">
+                {a.name} has not booked an interview yet.
+              </p>
+            )}
           </div>
+
+          <div className="mt-4">
+            <button
+              onClick={() => generateInviteDraft(a.id)}
+              disabled={busyId === a.id}
+              className="rounded-sm bg-forest px-4 py-2 font-mono text-xs uppercase tracking-[0.15em] text-gold transition hover:bg-forestdeep disabled:opacity-50"
+            >
+              {busyId === a.id ? "Generating..." : "Generate Interview Draft"}
+            </button>
+          </div>
+
+          {drafts[a.id] && (
+            <div className="mt-4 space-y-3 rounded-sm border border-forest/10 bg-paper/70 p-4">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <p className="font-mono text-[10px] uppercase tracking-[0.15em] text-graphite/40">
+                  Copy this email
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    onClick={() => copyText(drafts[a.id].email.subject, `${a.id}-subject`)}
+                    className="rounded-sm border border-forest/15 px-3 py-1.5 font-mono text-[11px] uppercase tracking-[0.12em] text-forest transition hover:bg-forest/5"
+                  >
+                    {copiedKey === `${a.id}-subject` ? "Copied subject" : "Copy subject"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      copyText(
+                        `Subject: ${drafts[a.id].email.subject}\n\n${drafts[a.id].email.body}`,
+                        `${a.id}-email`
+                      )
+                    }
+                    className="rounded-sm border border-forest/15 px-3 py-1.5 font-mono text-[11px] uppercase tracking-[0.12em] text-forest transition hover:bg-forest/5"
+                  >
+                    {copiedKey === `${a.id}-email` ? "Copied email" : "Copy email"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => copyText(drafts[a.id].bookingLink, `${a.id}-link`)}
+                    className="rounded-sm border border-forest/15 px-3 py-1.5 font-mono text-[11px] uppercase tracking-[0.12em] text-forest transition hover:bg-forest/5"
+                  >
+                    {copiedKey === `${a.id}-link` ? "Copied link" : "Copy link"}
+                  </button>
+                </div>
+              </div>
+              <div className="space-y-2 text-sm text-graphite/80">
+                <p>
+                  <span className="font-mono text-[10px] uppercase tracking-[0.15em] text-graphite/40">
+                    Subject
+                  </span>
+                  <br />
+                  {drafts[a.id].email.subject}
+                </p>
+                <p>
+                  <span className="font-mono text-[10px] uppercase tracking-[0.15em] text-graphite/40">
+                    Booking link
+                  </span>
+                  <br />
+                  <a
+                    href={drafts[a.id].bookingLink}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="break-all text-forest underline decoration-forest/30 underline-offset-2"
+                  >
+                    {drafts[a.id].bookingLink}
+                  </a>
+                </p>
+                <label className="block">
+                  <span className="font-mono text-[10px] uppercase tracking-[0.15em] text-graphite/40">
+                    Email body
+                  </span>
+                  <textarea
+                    readOnly
+                    value={drafts[a.id].email.body}
+                    className="mt-1 min-h-56 w-full rounded-sm border border-forest/10 bg-paper p-3 font-sans text-sm leading-6 text-graphite outline-none"
+                  />
+                </label>
+              </div>
+            </div>
+          )}
         </div>
       ))}
     </div>

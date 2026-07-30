@@ -10,12 +10,12 @@ moderated student Q&A.
 |---|---|---|
 | Home | `/` | Hero + academy overview, original copy |
 | Curriculum | `/curriculum` | Four-year course sequence |
-| Leadership | `/leadership` | President shown filled; every other seat shows "I'm Interested" until it's filled in Supabase |
+| Leadership | `/leadership` | President shown filled; every other seat shows "I'm Interested" until it's filled in Supabase. Signed-in students can check their application status from the same page |
 | Apply for a role | `/leadership/apply/[role]` | Public form → `applications` table. Publicist role requires a "proof of work" field |
 | Student Q&A | `/qa` | Public: ask a question; view approved Q&A |
 | Upperclassman sign-in | `/login` | For students allowed to answer Q&A |
 | Upperclassman dashboard | `/dashboard` | Answer approved questions (goes to "pending" for admin approval) |
-| **Admin portal (hidden)** | `/admin-portal-x7k9` | Not linked anywhere. Manage applications, send interview invites, open interview slots, moderate Q&A, fill/vacate leadership seats |
+| **Admin portal (hidden)** | `/admin-portal-x7k9` | Not linked anywhere. Officer and teacher accounts can manage applications, generate interview drafts, open interview slots, moderate Q&A, fill/vacate leadership seats |
 | Admin login | `/admin-portal-x7k9/login` | |
 | Interview booking | `/interview/[token]` | Sent only via the interview-invite email; unguessable per-applicant link |
 
@@ -33,14 +33,10 @@ Copy `.env.local.example` to `.env.local` and fill in:
 
 - `NEXT_PUBLIC_SUPABASE_URL` / `NEXT_PUBLIC_SUPABASE_ANON_KEY` — from Supabase.
 - `SUPABASE_SERVICE_ROLE_KEY` — **server only**, used exclusively in
-  `app/api/send-interview-invite/route.ts` to bypass RLS for the invite email flow. Never
+  `app/api/send-interview-invite/route.ts` to bypass RLS for the interview draft flow. Never
   reference this in a `"use client"` file.
 - `NEXT_PUBLIC_SITE_URL` — your deployed domain (or `http://localhost:3000` locally). Used to
   build the interview booking link.
-- `RESEND_API_KEY` / `RESEND_FROM_EMAIL` — sign up at [resend.com](https://resend.com), verify a
-  sending domain, and create an API key. Until this is set, "Send Interview Invite" in the admin
-  portal will show you the booking link directly instead of emailing it, so you can still test
-  the flow without an email provider.
 
 ## 3. Confirm the school email domain
 
@@ -118,5 +114,7 @@ URL so interview links in emails point to the live site.
   `get_application_by_token` and `book_interview_slot` Postgres functions, which return the
   minimum fields needed and validate the token server-side — so a stolen or guessed link can't be
   used to browse other applicants' data.
+- The leadership page lets signed-in students read their own application rows so they can check
+  the live status that admins set in the portal.
 - `SUPABASE_SERVICE_ROLE_KEY` must stay server-side only. It's used in one file
   (`app/api/send-interview-invite/route.ts`) and nowhere else.

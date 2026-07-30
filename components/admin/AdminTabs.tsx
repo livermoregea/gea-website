@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import QAHub from "@/components/QAHub";
 import AdminApplications from "@/components/admin/AdminApplications";
 import AdminSlots from "@/components/admin/AdminSlots";
 import AdminQA from "@/components/admin/AdminQA";
@@ -13,11 +14,18 @@ const TABS = [
   { key: "students", label: "Students" },
   { key: "slots", label: "Interview Slots" },
   { key: "qa", label: "Q&A Moderation" },
+  { key: "qa-hub", label: "Q&A Hub" },
   { key: "leadership", label: "Leadership Board" },
   { key: "teacher-invites", label: "Teacher Invites" },
 ] as const;
 
-export default function AdminTabs() {
+export default function AdminTabs({
+  authUserId,
+  displayName,
+}: {
+  authUserId: string;
+  displayName: string;
+}) {
   const [tab, setTab] = useState<(typeof TABS)[number]["key"]>("applications");
 
   return (
@@ -54,6 +62,9 @@ export default function AdminTabs() {
         </div>
         <div role="tabpanel" id="panel-qa" aria-labelledby="tab-qa" hidden={tab !== "qa"}>
           {tab === "qa" && <AdminQA />}
+        </div>
+        <div role="tabpanel" id="panel-qa-hub" aria-labelledby="tab-qa-hub" hidden={tab !== "qa-hub"}>
+          {tab === "qa-hub" && <QAHub authUserId={authUserId} displayName={displayName} />}
         </div>
         <div role="tabpanel" id="panel-leadership" aria-labelledby="tab-leadership" hidden={tab !== "leadership"}>
           {tab === "leadership" && <AdminLeadership />}

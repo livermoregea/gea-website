@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
-import AdminTabs from "@/components/admin/AdminTabs";
 import { hasSupabaseConfig } from "@/lib/supabase/config";
+import StaffPortal from "@/components/StaffPortal";
 
 export default async function AdminPortalPage() {
   const supabase = await createClient();
@@ -11,10 +11,8 @@ export default async function AdminPortalPage() {
         <p className="font-mono text-xs uppercase tracking-[0.3em] text-gold">Admin Portal</p>
         <h1 className="mt-3 font-display text-2xl font-medium text-forest">Demo mode</h1>
         <p className="mt-2 text-sm text-graphite/60">
-          Supabase is not configured, so the admin portal is showing empty values only.
+          Supabase isn&apos;t configured, so the admin portal is showing placeholder content.
         </p>
-        <div className="dim-divider my-8" />
-        <AdminTabs />
       </div>
     );
   }
@@ -39,31 +37,39 @@ export default async function AdminPortalPage() {
     );
   }
 
-  const { data: adminRow } = await supabase
+  const [{ data: adminRow }, { data: teacherRow }] = await Promise.all([
+    supabase
     .from("admins")
     .select("name")
     .eq("auth_user_id", user.id)
-    .maybeSingle();
+    .maybeSingle(),
+    supabase
+      .from("teacher_profiles")
+      .select("full_name, school_email")
+      .eq("auth_user_id", user.id)
+      .maybeSingle(),
+  ]);
 
-  if (!adminRow) {
+  if (!adminRow && !teacherRow) {
     return (
       <div className="mx-auto max-w-md px-4 py-16 text-center sm:px-6 md:py-24">
-        <p className="text-sm text-graphite/70">Your account doesn&apos;t have admin access.</p>
+        <p className="text-sm text-graphite/70">
+          Your account doesn&apos;t have staff access to this portal.
+        </p>
       </div>
     );
   }
 
+  const displayName = adminRow?.name ?? teacherRow?.full_name ?? user.email ?? "Staff";
+  const accessLabel = adminRow ? "Admin" : "Teacher";
+
   return (
-    <div className="mx-auto max-w-5xl px-4 py-16 sm:px-6">
-      <p className="font-mono text-xs uppercase tracking-[0.3em] text-gold">Admin Portal</p>
-      <h1 className="mt-3 font-display text-2xl font-medium text-forest">
-        Welcome, {adminRow.name.split(" ")[0]}
-      </h1>
-      <p className="mt-2 text-sm text-graphite/60">
-        This page is not linked anywhere on the public site — bookmark it.
-      </p>
-      <div className="dim-divider my-8" />
-      <AdminTabs />
-    </div>
+    <StaffPortal
+      title="Admin Portal"
+      accessLabel={accessLabel}
+      displayName={displayName.split(" ")[0]}
+      schoolEmail={teacherRow?.school_email ?? user.email ?? ""}
+      userId={user.id}
+    />
   );
 }

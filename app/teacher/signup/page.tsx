@@ -17,11 +17,8 @@ export default function TeacherSignupPage() {
       </p>
 
       <div className="mt-4 flex flex-wrap gap-3 text-sm">
-        <Link href="/teacher/login" className="text-forest underline decoration-gold underline-offset-4">
-          Teacher sign in
-        </Link>
         <Link href="/login" className="text-forest underline decoration-gold underline-offset-4">
-          Student sign in
+          Log in
         </Link>
       </div>
 
