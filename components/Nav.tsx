@@ -2,8 +2,11 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
+import type { Session } from "@supabase/supabase-js";
+import { createClient } from "@/lib/supabase/client";
+import { hasSupabaseConfig } from "@/lib/supabase/config";
 
 const links = [
   { href: "/", label: "Home" },
@@ -17,11 +20,69 @@ const academyApplicationUrl =
 
 export default function Nav() {
   const [open, setOpen] = useState(false);
+  const [accountOpen, setAccountOpen] = useState(false);
+  const [accountReady, setAccountReady] = useState(false);
+  const [isSignedIn, setIsSignedIn] = useState(false);
   const pathname = usePathname();
+  const router = useRouter();
+  const accountRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     setOpen(false);
   }, [pathname]);
+
+  useEffect(() => {
+    setAccountOpen(false);
+  }, [pathname]);
+
+  useEffect(() => {
+    if (!hasSupabaseConfig()) {
+      setAccountReady(true);
+      setIsSignedIn(false);
+      return;
+    }
+
+    const supabase = createClient();
+    let mounted = true;
+
+    supabase.auth.getUser().then(({ data }: { data: { user: unknown | null } }) => {
+      if (!mounted) return;
+      setIsSignedIn(Boolean(data.user));
+      setAccountReady(true);
+    });
+
+    const { data } = supabase.auth.onAuthStateChange((_event: string, session: Session | null) => {
+      if (!mounted) return;
+      setIsSignedIn(Boolean(session?.user));
+    });
+
+    return () => {
+      mounted = false;
+      data.subscription.unsubscribe();
+    };
+  }, []);
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (accountRef.current && !accountRef.current.contains(event.target as Node)) {
+        setAccountOpen(false);
+      }
+    }
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  async function handleSignOut() {
+    if (!hasSupabaseConfig()) return;
+    const supabase = createClient();
+    await supabase.auth.signOut();
+    setIsSignedIn(false);
+    setAccountOpen(false);
+    setOpen(false);
+    router.push("/");
+    router.refresh();
+  }
 
   return (
     <header className="sticky top-0 z-40 border-b border-forest/10 bg-paper/95 backdrop-blur">
@@ -59,14 +120,61 @@ export default function Nav() {
               </Link>
             ))}
           </nav>
-          <Link
-            href={academyApplicationUrl}
-            target="_blank"
-            rel="noreferrer"
-            className="hidden min-h-11 items-center rounded-sm bg-forest px-4 py-2 font-mono text-xs uppercase tracking-[0.15em] text-gold transition hover:bg-forestdeep sm:inline-flex"
-          >
-            Apply to GEA Now!
-          </Link>
+          <div className="hidden items-center gap-3 sm:flex">
+            <Link
+              href={academyApplicationUrl}
+              target="_blank"
+              rel="noreferrer"
+              className="min-h-11 items-center rounded-sm bg-forest px-4 py-2 font-mono text-xs uppercase tracking-[0.15em] text-gold transition hover:bg-forestdeep sm:inline-flex"
+            >
+              Apply to GEA Now!
+            </Link>
+            <div ref={accountRef} className="relative">
+              {accountReady && isSignedIn ? (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => setAccountOpen((value) => !value)}
+                    className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-forest/15 bg-paper text-forestdeep transition hover:border-forest/30 hover:bg-forest/[0.04]"
+                    aria-label="Account menu"
+                    aria-expanded={accountOpen}
+                  >
+                    <svg viewBox="0 0 24 24" className="h-5 w-5" aria-hidden="true">
+                      <path
+                        fill="currentColor"
+                        d="M12 12.2a4.6 4.6 0 1 0-4.6-4.6 4.6 4.6 0 0 0 4.6 4.6Zm0 2.1c-4.3 0-8 2.2-8 4.9a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1c0-2.7-3.7-4.9-8-4.9Z"
+                      />
+                    </svg>
+                  </button>
+                  {accountOpen && (
+                    <div className="absolute right-0 top-full z-50 mt-2 w-56 rounded-sm border border-forest/10 bg-paper p-2 shadow-lg shadow-forest/10">
+                      <Link
+                        href="/profile"
+                        onClick={() => setAccountOpen(false)}
+                        className="block rounded-sm px-3 py-2 font-mono text-xs uppercase tracking-[0.15em] text-forestdeep transition hover:bg-forest/[0.06]"
+                      >
+                        View Profile
+                      </Link>
+                      <button
+                        type="button"
+                        onClick={handleSignOut}
+                        className="block w-full rounded-sm px-3 py-2 text-left font-mono text-xs uppercase tracking-[0.15em] text-red-700 transition hover:bg-red-50"
+                      >
+                        Log Out
+                      </button>
+                    </div>
+                  )}
+                </>
+              ) : (
+                <Link
+                  href="/login"
+                  className="inline-flex h-11 items-center rounded-full border border-forest/15 px-4 font-mono text-xs uppercase tracking-[0.15em] text-forestdeep transition hover:border-forest/30 hover:bg-forest/[0.04]"
+                >
+                  Sign In
+                </Link>
+              )}
+            </div>
+          </div>
           <button
             type="button"
             className="inline-flex min-h-11 items-center rounded-sm border border-forest/15 px-4 font-mono text-xs uppercase tracking-[0.15em] text-forestdeep md:hidden"
@@ -103,6 +211,32 @@ export default function Nav() {
             >
               Apply to GEA Now!
             </Link>
+            {accountReady && isSignedIn ? (
+              <>
+                <Link
+                  href="/profile"
+                  onClick={() => setOpen(false)}
+                  className="rounded-sm px-3 py-2 font-mono text-xs uppercase tracking-[0.15em] text-forestdeep transition hover:bg-forest/[0.06]"
+                >
+                  View Profile
+                </Link>
+                <button
+                  type="button"
+                  onClick={handleSignOut}
+                  className="rounded-sm px-3 py-2 text-left font-mono text-xs uppercase tracking-[0.15em] text-red-700 transition hover:bg-red-50"
+                >
+                  Log Out
+                </button>
+              </>
+            ) : (
+              <Link
+                href="/login"
+                onClick={() => setOpen(false)}
+                className="rounded-sm px-3 py-2 font-mono text-xs uppercase tracking-[0.15em] text-forestdeep transition hover:bg-forest/[0.06]"
+              >
+                Sign In
+              </Link>
+            )}
           </nav>
         )}
       </div>

@@ -233,7 +233,7 @@ export default function QAHub({
               {myQuestions.map((q) => (
                 <div key={q.id} className="rounded-sm bg-paper p-4 ring-1 ring-forest/10">
                   <div className="flex flex-wrap items-center justify-between gap-3">
-                    <p className="font-medium text-forest">{q.question}</p>
+                    <p className="font-medium text-forest whitespace-pre-wrap">{q.question}</p>
                     <span className="rounded-full bg-forest/10 px-3 py-1 font-mono text-[10px] uppercase tracking-[0.15em] text-forest">
                       {q.status}
                     </span>
@@ -250,7 +250,7 @@ export default function QAHub({
                     ) : (
                       q.qa_answers.map((a) => (
                         <div key={a.id}>
-                          <p className="text-sm text-graphite/80">{a.answer}</p>
+                          <p className="text-sm text-graphite/80 whitespace-pre-wrap">{a.answer}</p>
                           <p className="mt-1 font-mono text-[10px] uppercase tracking-[0.15em] text-graphite/40">
                             {a.status} - {a.answered_by_name}
                           </p>
@@ -287,16 +287,16 @@ export default function QAHub({
           ) : (
             <div className="space-y-4">
               {myAnswers.map((a) => (
-                <div key={a.id} className="rounded-sm bg-paper p-4 ring-1 ring-forest/10">
+              <div key={a.id} className="rounded-sm bg-paper p-4 ring-1 ring-forest/10">
                   <div className="flex flex-wrap items-center justify-between gap-3">
-                    <p className="font-medium text-forest">
+                    <p className="font-medium text-forest whitespace-pre-wrap">
                       {(a.question as any)?.question ?? "Question no longer available"}
                     </p>
                     <span className="rounded-full bg-forest/10 px-3 py-1 font-mono text-[10px] uppercase tracking-[0.15em] text-forest">
                       {a.status}
                     </span>
                   </div>
-                  <p className="mt-2 text-sm text-graphite/80">{a.answer}</p>
+                  <p className="mt-2 text-sm text-graphite/80 whitespace-pre-wrap">{a.answer}</p>
                   <p className="mt-2 text-xs text-graphite/50">Answered {formatDate(a.created_at)}</p>
                   {a.status === "rejected" && a.rejection_reason && (
                     <p className="mt-2 rounded-sm bg-red-50 px-3 py-2 text-xs text-red-700 ring-1 ring-red-100">
@@ -324,14 +324,14 @@ export default function QAHub({
               return (
                 <div key={q.id} className="rounded-sm bg-paper p-5 ring-1 ring-forest/10">
                   <p className="font-mono text-[11px] uppercase tracking-[0.2em] text-gold">{q.asked_by_name}</p>
-                  <p className="mt-2 font-display text-lg text-forest">{q.question}</p>
+                  <p className="mt-2 font-display text-lg text-forest whitespace-pre-wrap">{q.question}</p>
                   <div className="mt-4 space-y-3 border-l-2 border-gold/50 pl-4">
                     {approvedAnswers.length === 0 ? (
                       <p className="text-sm italic text-graphite/40">Awaiting an answer.</p>
                     ) : (
                       approvedAnswers.map((a) => (
                         <div key={a.id}>
-                          <p className="text-sm leading-relaxed text-graphite/80">{a.answer}</p>
+                          <p className="text-sm leading-relaxed text-graphite/80 whitespace-pre-wrap">{a.answer}</p>
                           <p className="mt-1 font-mono text-[10px] uppercase tracking-[0.15em] text-graphite/40">
                             - {a.answered_by_name}
                           </p>

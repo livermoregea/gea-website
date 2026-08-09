@@ -2,6 +2,7 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { ROLES } from "@/lib/roles";
 import { hasSupabaseConfig } from "@/lib/supabase/config";
+import StudentAuthForm from "@/components/StudentAuthForm";
 
 export const revalidate = 0;
 
@@ -73,50 +74,63 @@ export default async function LeadershipPage() {
         role below to apply.
       </p>
       <p className="mt-3 max-w-2xl text-sm leading-relaxed text-graphite/70 sm:text-base">
-        If you want to join the academy itself, use the application form on the homepage.
+        You can apply with or without signing in. If you sign in first, your leadership
+        application will be linked to your account so you can track it later.
       </p>
 
       {user ? (
-        applicationByRole.size > 0 ? (
-          <div className="mt-6 rounded-sm bg-forest/[0.04] p-5 ring-1 ring-forest/10">
-            <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-gold">
-              Your Applications
-            </p>
-            <p className="mt-2 text-sm text-graphite/70">
-              Your submissions are saved here. Click any role below to check the current status.
-            </p>
-          </div>
-        ) : (
-          <div className="mt-6 rounded-sm bg-forest/[0.04] p-5 ring-1 ring-forest/10">
-            <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-gold">
-              Signed In
-            </p>
-            <p className="mt-2 text-sm text-graphite/70">
-              You haven&apos;t submitted any leadership applications yet. Apply to a role, then come
-              back here to check its status.
-            </p>
-          </div>
-        )
-      ) : (
         <div className="mt-6 rounded-sm bg-forest/[0.04] p-5 ring-1 ring-forest/10">
           <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-gold">
-            Status Tracking
+            Already Signed In
           </p>
           <p className="mt-2 text-sm text-graphite/70">
-            Sign in to see the status of your own leadership applications after you submit them.
+            You are already signed in. Any leadership application you submit from here will be
+            linked to your account, so you can check the process later on this page.
           </p>
-          <Link
-            href="/login"
-            className="mt-3 inline-flex rounded-sm bg-forest px-4 py-2 font-mono text-xs uppercase tracking-[0.15em] text-gold transition hover:bg-forestdeep"
-          >
-            Sign In
-          </Link>
+          {applicationByRole.size > 0 ? (
+            <p className="mt-2 text-sm text-graphite/70">
+              Your submitted applications are showing below. Click a role to review the current
+              status.
+            </p>
+          ) : (
+            <p className="mt-2 text-sm text-graphite/70">
+              You have not submitted any leadership applications yet. Pick a role below to start
+              one.
+            </p>
+          )}
+        </div>
+      ) : (
+        <div className="mt-6 grid gap-5 lg:grid-cols-[0.95fr_1.05fr]">
+          <div className="rounded-sm bg-forest/[0.04] p-5 ring-1 ring-forest/10">
+            <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-gold">
+              Apply Without Signing In
+            </p>
+            <p className="mt-2 text-sm text-graphite/70">
+              You can still apply below without an account. If you want your application tied to
+              your student profile, sign in here first.
+            </p>
+            <Link
+              href="#roles"
+              className="mt-3 inline-flex rounded-sm bg-forest px-4 py-2 font-mono text-xs uppercase tracking-[0.15em] text-gold transition hover:bg-forestdeep"
+            >
+              Browse Roles
+            </Link>
+          </div>
+          <div className="rounded-sm bg-forest/[0.04] p-5 ring-1 ring-forest/10">
+            <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-gold">Sign In Here</p>
+            <p className="mt-2 text-sm text-graphite/70">
+              Sign in on this page if you want your leadership application linked to your account.
+            </p>
+            <div className="mt-4">
+              <StudentAuthForm redirectTo="/leadership" />
+            </div>
+          </div>
         </div>
       )}
 
       <div className="dim-divider my-12" />
 
-      <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+      <div id="roles" className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
         {ROLES.map((role) => {
           const member = memberByRole.get(role.slug);
           const application = applicationByRole.get(role.slug);
@@ -183,7 +197,7 @@ export default async function LeadershipPage() {
                     href={`/leadership/apply/${role.slug}`}
                     className="inline-block w-full rounded-sm bg-forest px-4 py-2.5 text-center font-mono text-xs uppercase tracking-[0.15em] text-gold transition hover:bg-forestdeep"
                   >
-                    Apply
+                    {user ? "Apply with linked account" : "Apply without account"}
                   </Link>
                 ) : !filled ? (
                   <span className="inline-block w-full rounded-sm border border-forest/10 px-4 py-2.5 text-center font-mono text-xs uppercase tracking-[0.15em] text-graphite/40">

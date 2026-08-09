@@ -177,6 +177,31 @@ alter table applications add column if not exists graduating_class_year integer;
 alter table applications add column if not exists student_id_number text;
 
 -- ---------------------------------------------------------
+-- PROFILE CHANGE REQUESTS: user-submitted profile edits that
+-- must be reviewed by admins before being applied.
+-- ---------------------------------------------------------
+create table if not exists profile_change_requests (
+  id uuid primary key default gen_random_uuid(),
+  profile_type text not null check (profile_type in ('student', 'teacher')),
+  profile_id uuid not null,
+  auth_user_id uuid references auth.users(id) on delete set null,
+  requested_by_name text not null,
+  current_fields jsonb not null,
+  requested_fields jsonb not null,
+  status text not null default 'pending' check (status in ('pending', 'approved', 'rejected')),
+  rejection_reason text,
+  created_at timestamptz not null default now()
+);
+
+alter table profile_change_requests add column if not exists profile_type text not null default 'student';
+alter table profile_change_requests add column if not exists profile_id uuid;
+alter table profile_change_requests add column if not exists auth_user_id uuid references auth.users(id) on delete set null;
+alter table profile_change_requests add column if not exists requested_by_name text;
+alter table profile_change_requests add column if not exists current_fields jsonb;
+alter table profile_change_requests add column if not exists requested_fields jsonb;
+alter table profile_change_requests add column if not exists rejection_reason text;
+
+-- ---------------------------------------------------------
 -- INTERVIEW SLOTS: lunch-period interview times admins open up.
 -- ---------------------------------------------------------
 create table if not exists interview_slots (
@@ -210,6 +235,11 @@ $$;
 create table if not exists qa_questions (
   id uuid primary key default gen_random_uuid(),
   question text not null,
+  question_type text not null default 'general' check (question_type in ('general', 'math', 'word_problem')),
+  equation_lines text,
+  work_text text,
+  graph_notes text,
+  graph_link text,
   asked_by_name text not null default 'Anonymous Student',
   asked_by_auth_user_id uuid references auth.users(id) on delete set null,
   status text not null default 'pending' check (status in ('pending','approved','rejected')),
@@ -218,6 +248,11 @@ create table if not exists qa_questions (
 );
 
 alter table qa_questions add column if not exists asked_by_auth_user_id uuid references auth.users(id) on delete set null;
+alter table qa_questions add column if not exists question_type text not null default 'general';
+alter table qa_questions add column if not exists equation_lines text;
+alter table qa_questions add column if not exists work_text text;
+alter table qa_questions add column if not exists graph_notes text;
+alter table qa_questions add column if not exists graph_link text;
 alter table qa_questions add column if not exists rejection_reason text;
 
 create table if not exists qa_answers (
@@ -248,6 +283,7 @@ alter table student_profiles enable row level security;
 alter table teacher_profiles enable row level security;
 alter table teacher_invites enable row level security;
 alter table admins enable row level security;
+alter table profile_change_requests enable row level security;
 
 -- Leadership: anyone can view the board; only admins can edit.
 drop policy if exists "leadership_public_read" on leadership_members;
@@ -297,6 +333,16 @@ create policy "teacher_profiles_admin_write" on teacher_profiles
 drop policy if exists "teacher_invites_admin_manage" on teacher_invites;
 create policy "teacher_invites_admin_manage" on teacher_invites
   for all using (is_staff()) with check (is_staff());
+
+drop policy if exists "profile_change_requests_self_insert" on profile_change_requests;
+create policy "profile_change_requests_self_insert" on profile_change_requests
+  for insert with check (auth_user_id = auth.uid());
+drop policy if exists "profile_change_requests_self_read" on profile_change_requests;
+create policy "profile_change_requests_self_read" on profile_change_requests
+  for select using (auth_user_id = auth.uid() or is_staff());
+drop policy if exists "profile_change_requests_admin_update" on profile_change_requests;
+create policy "profile_change_requests_admin_update" on profile_change_requests
+  for update using (is_staff()) with check (is_staff());
 
 -- Interview slots: anyone can see open times; only admins manage them.
 drop policy if exists "slots_public_read" on interview_slots;

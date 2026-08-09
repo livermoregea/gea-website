@@ -7,11 +7,13 @@ import AdminSlots from "@/components/admin/AdminSlots";
 import AdminQA from "@/components/admin/AdminQA";
 import AdminLeadership from "@/components/admin/AdminLeadership";
 import AdminStudents from "@/components/admin/AdminStudents";
+import AdminProfileChanges from "@/components/admin/AdminProfileChanges";
 import AdminTeacherInvites from "@/components/admin/AdminTeacherInvites";
 
 const TABS = [
   { key: "applications", label: "Applications" },
   { key: "students", label: "Students" },
+  { key: "profile-changes", label: "Profile Changes" },
   { key: "slots", label: "Interview Slots" },
   { key: "qa", label: "Q&A Moderation" },
   { key: "qa-hub", label: "Q&A Hub" },
@@ -56,6 +58,14 @@ export default function AdminTabs({
         </div>
         <div role="tabpanel" id="panel-students" aria-labelledby="tab-students" hidden={tab !== "students"}>
           {tab === "students" && <AdminStudents />}
+        </div>
+        <div
+          role="tabpanel"
+          id="panel-profile-changes"
+          aria-labelledby="tab-profile-changes"
+          hidden={tab !== "profile-changes"}
+        >
+          {tab === "profile-changes" && <AdminProfileChanges />}
         </div>
         <div role="tabpanel" id="panel-slots" aria-labelledby="tab-slots" hidden={tab !== "slots"}>
           {tab === "slots" && <AdminSlots />}

@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { hasSupabaseConfig } from "@/lib/supabase/config";
 import AnswerForm from "@/components/AnswerForm";
+import QuestionContent from "@/components/QuestionContent";
 
 type Question = {
   id: string;
@@ -57,7 +58,7 @@ export default function QuestionQueue({
         answeredIds.includes(q.id) ? null : (
           <div key={q.id} className="rounded-sm bg-forest/[0.03] p-5 ring-1 ring-forest/5">
             <p className="font-mono text-[11px] uppercase tracking-[0.2em] text-gold">{q.asked_by_name}</p>
-            <p className="mt-2 font-display text-base text-forest">{q.question}</p>
+            <QuestionContent question={q.question} className="mt-2" />
             <AnswerForm
               questionId={q.id}
               answeredByName={answeredByName}

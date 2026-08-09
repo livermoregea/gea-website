@@ -57,6 +57,34 @@ export default async function ApplyPage({
         team on a rolling basis.
       </p>
 
+      {user ? (
+        <div className="mt-6 rounded-sm bg-forest/[0.04] p-5 ring-1 ring-forest/10">
+          <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-gold">
+            Already Signed In
+          </p>
+          <p className="mt-2 text-sm text-graphite/70">
+            You are already signed in, so this application will be linked to your account and you
+            can track its progress from the leadership page.
+          </p>
+        </div>
+      ) : (
+        <div className="mt-6 rounded-sm bg-forest/[0.04] p-5 ring-1 ring-forest/10">
+          <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-gold">
+            Optional Sign In
+          </p>
+          <p className="mt-2 text-sm text-graphite/70">
+            You can still submit this application without an account. If you want it linked to
+            your profile, use the sign-in form on the leadership page first.
+          </p>
+          <Link
+            href="/leadership"
+            className="mt-3 inline-flex rounded-sm bg-forest px-4 py-2 font-mono text-xs uppercase tracking-[0.15em] text-gold transition hover:bg-forestdeep"
+          >
+            Sign In on Leadership Page
+          </Link>
+        </div>
+      )}
+
       <div className="dim-divider my-10" />
 
       <ApplicationForm

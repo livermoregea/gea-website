@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { hasSupabaseConfig } from "@/lib/supabase/config";
+import QuestionContent from "@/components/QuestionContent";
 
 type Question = {
   id: string;
@@ -116,7 +117,7 @@ export default function AdminQA() {
               <p className="font-mono text-[10px] uppercase tracking-[0.15em] text-graphite/40">
                 {q.asked_by_name}
               </p>
-              <p className="mt-1 text-sm text-graphite">{q.question}</p>
+              <QuestionContent question={q.question} className="mt-1" />
               <textarea
                 value={questionRejectionReasons[q.id] ?? ""}
                 onChange={(e) =>
@@ -154,7 +155,7 @@ export default function AdminQA() {
               <p className="font-mono text-[10px] uppercase tracking-[0.15em] text-graphite/40">
                 {a.answered_by_name}
               </p>
-              <p className="mt-1 text-sm text-graphite">{a.answer}</p>
+              <p className="mt-1 text-sm text-graphite whitespace-pre-wrap">{a.answer}</p>
               <textarea
                 value={answerRejectionReasons[a.id] ?? ""}
                 onChange={(e) =>
