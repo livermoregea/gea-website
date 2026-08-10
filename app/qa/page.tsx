@@ -1,4 +1,7 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
+import { createClient } from "@/lib/supabase/server";
+import { hasSupabaseConfig } from "@/lib/supabase/config";
 
 export const revalidate = 0;
 
@@ -59,6 +62,17 @@ const faqs = [
 ];
 
 export default async function QAPage() {
+  if (hasSupabaseConfig()) {
+    const supabase = await createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (user) {
+      redirect("/dashboard#qa");
+    }
+  }
+
   return (
     <div className="mx-auto max-w-5xl px-4 py-16 sm:px-6 md:py-20">
       <p className="font-mono text-xs uppercase tracking-[0.3em] text-gold">Student Q&amp;A</p>
@@ -87,16 +101,16 @@ export default async function QAPage() {
         </div>
         <div className="rounded-sm bg-forest/[0.03] p-5 ring-1 ring-forest/5">
           <p className="font-mono text-xs uppercase tracking-[0.2em] text-gold">
-            Have Student Specific Questions?
+            Want to Join the Forum?
           </p>
           <p className="mt-2 text-sm text-graphite/70">
-            Log in to ask a question, answer one, or review your history.
+            Log in to browse posts, comment on threads, and vote on replies.
           </p>
           <Link
             href="/login"
             className="mt-4 inline-flex min-h-11 items-center rounded-sm border border-forest/15 px-4 py-2.5 font-mono text-xs uppercase tracking-[0.15em] text-forest"
           >
-            Log In
+            Open Forum
           </Link>
         </div>
       </div>

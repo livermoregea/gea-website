@@ -1,10 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import QAHub from "@/components/QAHub";
 import AdminApplications from "@/components/admin/AdminApplications";
+import AdminForum from "@/components/admin/AdminForum";
 import AdminSlots from "@/components/admin/AdminSlots";
-import AdminQA from "@/components/admin/AdminQA";
 import AdminLeadership from "@/components/admin/AdminLeadership";
 import AdminStudents from "@/components/admin/AdminStudents";
 import AdminProfileChanges from "@/components/admin/AdminProfileChanges";
@@ -15,8 +14,7 @@ const TABS = [
   { key: "students", label: "Students" },
   { key: "profile-changes", label: "Profile Changes" },
   { key: "slots", label: "Interview Slots" },
-  { key: "qa", label: "Q&A Moderation" },
-  { key: "qa-hub", label: "Q&A Hub" },
+  { key: "forum", label: "Forum Activity" },
   { key: "leadership", label: "Leadership Board" },
   { key: "teacher-invites", label: "Teacher Invites" },
 ] as const;
@@ -70,11 +68,8 @@ export default function AdminTabs({
         <div role="tabpanel" id="panel-slots" aria-labelledby="tab-slots" hidden={tab !== "slots"}>
           {tab === "slots" && <AdminSlots />}
         </div>
-        <div role="tabpanel" id="panel-qa" aria-labelledby="tab-qa" hidden={tab !== "qa"}>
-          {tab === "qa" && <AdminQA />}
-        </div>
-        <div role="tabpanel" id="panel-qa-hub" aria-labelledby="tab-qa-hub" hidden={tab !== "qa-hub"}>
-          {tab === "qa-hub" && <QAHub authUserId={authUserId} displayName={displayName} />}
+        <div role="tabpanel" id="panel-forum" aria-labelledby="tab-forum" hidden={tab !== "forum"}>
+          {tab === "forum" && <AdminForum />}
         </div>
         <div role="tabpanel" id="panel-leadership" aria-labelledby="tab-leadership" hidden={tab !== "leadership"}>
           {tab === "leadership" && <AdminLeadership />}

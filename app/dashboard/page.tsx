@@ -27,7 +27,7 @@ export default async function DashboardPage() {
     return (
       <div className="mx-auto max-w-md px-4 py-16 text-center sm:px-6 md:py-24">
         <p className="text-sm text-graphite/70">
-          You need to sign in to answer questions.{" "}
+          You need to sign in to access the forum.{" "}
           <Link href="/login" className="text-forest underline decoration-gold underline-offset-4">
             Sign in
           </Link>
@@ -54,7 +54,7 @@ export default async function DashboardPage() {
   }
 
   return (
-    <div className="mx-auto max-w-3xl px-4 py-16 sm:px-6 md:py-20">
+    <div className="mx-auto max-w-6xl px-4 py-16 sm:px-6 md:py-20">
       <p className="font-mono text-xs uppercase tracking-[0.3em] text-gold">Student Dashboard</p>
       <h1 className="mt-4 font-display text-2xl font-medium text-forest">
         Welcome, {profile.display_username}
@@ -66,10 +66,12 @@ export default async function DashboardPage() {
       <div className="dim-divider my-8" />
       <section id="qa" className="space-y-4">
         <div>
-          <p className="font-mono text-xs uppercase tracking-[0.2em] text-gold">Private Q&amp;A Hub</p>
-          <h2 className="mt-2 font-display text-xl text-forest">Ask, answer, and track your activity</h2>
+          <p className="font-mono text-xs uppercase tracking-[0.2em] text-gold">Student Forum</p>
+          <h2 className="mt-2 font-display text-xl text-forest">
+            Browse posts, comment, vote, and report spam
+          </h2>
           <p className="mt-2 text-sm text-graphite/70">
-            This is the signed-in area for asking questions, answering the queue, and viewing your own history.
+            This is the signed-in area for joining the discussion and keeping the thread moving.
           </p>
         </div>
         <QAHub authUserId={user.id} displayName={profile.display_username} />

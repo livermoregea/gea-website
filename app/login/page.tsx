@@ -1,8 +1,35 @@
+import { redirect } from "next/navigation";
 import StudentAuthForm from "@/components/StudentAuthForm";
+import { createClient } from "@/lib/supabase/server";
 import { hasSupabaseConfig } from "@/lib/supabase/config";
 
-export default function LoginPage() {
+export default async function LoginPage() {
   const demoMode = !hasSupabaseConfig();
+
+  if (!demoMode) {
+    const supabase = await createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (user) {
+      const [{ data: studentProfile }, { data: teacherProfile }, { data: adminProfile }] = await Promise.all([
+        supabase.from("student_profiles").select("id").eq("auth_user_id", user.id).maybeSingle(),
+        supabase.from("teacher_profiles").select("id").eq("auth_user_id", user.id).maybeSingle(),
+        supabase.from("admins").select("auth_user_id").eq("auth_user_id", user.id).maybeSingle(),
+      ]);
+
+      if (adminProfile) {
+        redirect("/admin-portal-x7k9");
+      }
+      if (teacherProfile) {
+        redirect("/teacher");
+      }
+      if (studentProfile) {
+        redirect("/dashboard#qa");
+      }
+    }
+  }
 
   return (
     <div className="mx-auto max-w-md px-4 py-16 sm:px-6 md:py-24">

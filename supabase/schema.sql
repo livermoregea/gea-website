@@ -236,6 +236,7 @@ create table if not exists qa_questions (
   id uuid primary key default gen_random_uuid(),
   question text not null,
   question_type text not null default 'general' check (question_type in ('general', 'math', 'word_problem')),
+  forum_board text not null default 'general' check (forum_board in ('general', 'academics', 'projects', 'events', 'advice', 'life')),
   equation_lines text,
   work_text text,
   graph_notes text,
@@ -249,11 +250,14 @@ create table if not exists qa_questions (
 
 alter table qa_questions add column if not exists asked_by_auth_user_id uuid references auth.users(id) on delete set null;
 alter table qa_questions add column if not exists question_type text not null default 'general';
+alter table qa_questions add column if not exists forum_board text not null default 'general';
 alter table qa_questions add column if not exists equation_lines text;
 alter table qa_questions add column if not exists work_text text;
 alter table qa_questions add column if not exists graph_notes text;
 alter table qa_questions add column if not exists graph_link text;
 alter table qa_questions add column if not exists rejection_reason text;
+
+create index if not exists qa_questions_forum_board_idx on qa_questions(forum_board);
 
 create table if not exists qa_answers (
   id uuid primary key default gen_random_uuid(),
@@ -261,13 +265,47 @@ create table if not exists qa_answers (
   answer text not null,
   answered_by_name text not null,
   answered_by_auth_user_id uuid references auth.users(id) on delete set null,
+  parent_answer_id uuid references qa_answers(id) on delete cascade,
   status text not null default 'pending' check (status in ('pending','approved','rejected')),
   rejection_reason text,
+  upvote_count integer not null default 0,
+  downvote_count integer not null default 0,
+  report_count integer not null default 0,
   created_at timestamptz not null default now()
 );
 
 alter table qa_answers add column if not exists answered_by_auth_user_id uuid references auth.users(id) on delete set null;
+alter table qa_answers add column if not exists parent_answer_id uuid references qa_answers(id) on delete cascade;
 alter table qa_answers add column if not exists rejection_reason text;
+alter table qa_answers add column if not exists upvote_count integer not null default 0;
+alter table qa_answers add column if not exists downvote_count integer not null default 0;
+alter table qa_answers add column if not exists report_count integer not null default 0;
+
+create table if not exists qa_answer_votes (
+  id uuid primary key default gen_random_uuid(),
+  answer_id uuid not null references qa_answers(id) on delete cascade,
+  voter_auth_user_id uuid not null references auth.users(id) on delete cascade,
+  value integer not null check (value in (-1, 1)),
+  created_at timestamptz not null default now(),
+  unique (answer_id, voter_auth_user_id)
+);
+
+alter table qa_answer_votes add column if not exists answer_id uuid not null references qa_answers(id) on delete cascade;
+alter table qa_answer_votes add column if not exists voter_auth_user_id uuid not null references auth.users(id) on delete cascade;
+alter table qa_answer_votes add column if not exists value integer not null check (value in (-1, 1));
+
+create table if not exists qa_answer_reports (
+  id uuid primary key default gen_random_uuid(),
+  answer_id uuid not null references qa_answers(id) on delete cascade,
+  reporter_auth_user_id uuid not null references auth.users(id) on delete cascade,
+  reason text not null default 'Community report',
+  created_at timestamptz not null default now(),
+  unique (answer_id, reporter_auth_user_id)
+);
+
+alter table qa_answer_reports add column if not exists answer_id uuid not null references qa_answers(id) on delete cascade;
+alter table qa_answer_reports add column if not exists reporter_auth_user_id uuid not null references auth.users(id) on delete cascade;
+alter table qa_answer_reports add column if not exists reason text not null default 'Community report';
 
 -- =========================================================
 -- ROW LEVEL SECURITY
@@ -278,6 +316,8 @@ alter table applications enable row level security;
 alter table interview_slots enable row level security;
 alter table qa_questions enable row level security;
 alter table qa_answers enable row level security;
+alter table qa_answer_votes enable row level security;
+alter table qa_answer_reports enable row level security;
 alter table upperclassmen enable row level security;
 alter table student_profiles enable row level security;
 alter table teacher_profiles enable row level security;
@@ -363,6 +403,9 @@ create policy "questions_read_approved_or_admin" on qa_questions
 drop policy if exists "questions_admin_update" on qa_questions;
 create policy "questions_admin_update" on qa_questions
   for update using (is_staff()) with check (is_staff());
+drop policy if exists "questions_admin_delete" on qa_questions;
+create policy "questions_admin_delete" on qa_questions
+  for delete using (is_staff());
 
 -- Q&A answers: only signed-in upperclassmen can submit answers;
 -- anyone can read approved ones; only admins moderate.
@@ -379,6 +422,32 @@ create policy "answers_read_approved_or_admin" on qa_answers
 drop policy if exists "answers_admin_update" on qa_answers;
 create policy "answers_admin_update" on qa_answers
   for update using (is_staff()) with check (is_staff());
+drop policy if exists "answers_admin_delete" on qa_answers;
+create policy "answers_admin_delete" on qa_answers
+  for delete using (is_staff());
+
+drop policy if exists "answer_votes_auth_select" on qa_answer_votes;
+create policy "answer_votes_auth_select" on qa_answer_votes
+  for select using (voter_auth_user_id = auth.uid() or is_staff());
+drop policy if exists "answer_votes_auth_insert" on qa_answer_votes;
+create policy "answer_votes_auth_insert" on qa_answer_votes
+  for insert with check (auth.uid() is not null);
+drop policy if exists "answer_votes_auth_update" on qa_answer_votes;
+create policy "answer_votes_auth_update" on qa_answer_votes
+  for update using (voter_auth_user_id = auth.uid() or is_staff()) with check (voter_auth_user_id = auth.uid() or is_staff());
+drop policy if exists "answer_votes_auth_delete" on qa_answer_votes;
+create policy "answer_votes_auth_delete" on qa_answer_votes
+  for delete using (voter_auth_user_id = auth.uid() or is_staff());
+
+drop policy if exists "answer_reports_auth_select" on qa_answer_reports;
+create policy "answer_reports_auth_select" on qa_answer_reports
+  for select using (reporter_auth_user_id = auth.uid() or is_staff());
+drop policy if exists "answer_reports_auth_insert" on qa_answer_reports;
+create policy "answer_reports_auth_insert" on qa_answer_reports
+  for insert with check (auth.uid() is not null);
+drop policy if exists "answer_reports_auth_delete" on qa_answer_reports;
+create policy "answer_reports_auth_delete" on qa_answer_reports
+  for delete using (reporter_auth_user_id = auth.uid() or is_staff());
 
 -- Upperclassmen: a user can check their own row; admins manage all.
 drop policy if exists "upperclassmen_self_read" on upperclassmen;
@@ -408,6 +477,143 @@ drop trigger if exists student_profiles_set_updated_at on student_profiles;
 create trigger student_profiles_set_updated_at
 before update on student_profiles
 for each row execute function set_student_profiles_updated_at();
+
+create or replace function qa_text_is_flagged(p_text text)
+returns boolean
+language plpgsql
+as $$
+declare
+  blocked_phrase text;
+  blocked_phrases text[] := array[
+    'buy now',
+    'free money',
+    'make money fast',
+    'crypto pump',
+    'casino',
+    'onlyfans',
+    'porn',
+    'nude'
+  ];
+begin
+  if p_text is null or btrim(p_text) = '' then
+    return false;
+  end if;
+
+  if p_text ~* 'https?://|www\.' then
+    return true;
+  end if;
+
+  foreach blocked_phrase in array blocked_phrases loop
+    if position(lower(blocked_phrase) in lower(p_text)) > 0 then
+      return true;
+    end if;
+  end loop;
+
+  return false;
+end;
+$$;
+
+create or replace function guard_qa_question_content()
+returns trigger
+language plpgsql
+as $$
+begin
+  if qa_text_is_flagged(new.question) then
+    raise exception 'This post looks like spam or unsafe content.';
+  end if;
+
+  return new;
+end;
+$$;
+
+drop trigger if exists qa_questions_guard_content on qa_questions;
+create trigger qa_questions_guard_content
+before insert or update on qa_questions
+for each row execute function guard_qa_question_content();
+
+create or replace function guard_qa_answer_content()
+returns trigger
+language plpgsql
+as $$
+begin
+  if qa_text_is_flagged(new.answer) then
+    raise exception 'This comment looks like spam or unsafe content.';
+  end if;
+
+  return new;
+end;
+$$;
+
+drop trigger if exists qa_answers_guard_content on qa_answers;
+create trigger qa_answers_guard_content
+before insert or update on qa_answers
+for each row execute function guard_qa_answer_content();
+
+create or replace function sync_qa_answer_vote_counts()
+returns trigger
+language plpgsql
+as $$
+declare
+  affected_answer_id uuid;
+begin
+  if tg_op = 'DELETE' then
+    affected_answer_id := old.answer_id;
+  else
+    affected_answer_id := new.answer_id;
+  end if;
+
+  update qa_answers
+  set upvote_count = coalesce((select count(*) from qa_answer_votes where answer_id = affected_answer_id and value = 1), 0),
+      downvote_count = coalesce((select count(*) from qa_answer_votes where answer_id = affected_answer_id and value = -1), 0)
+  where id = affected_answer_id;
+
+  if tg_op = 'UPDATE' and old.answer_id is distinct from new.answer_id then
+    update qa_answers
+    set upvote_count = coalesce((select count(*) from qa_answer_votes where answer_id = old.answer_id and value = 1), 0),
+        downvote_count = coalesce((select count(*) from qa_answer_votes where answer_id = old.answer_id and value = -1), 0)
+    where id = old.answer_id;
+  end if;
+
+  return coalesce(new, old);
+end;
+$$;
+
+drop trigger if exists qa_answer_votes_sync_counts on qa_answer_votes;
+create trigger qa_answer_votes_sync_counts
+after insert or update or delete on qa_answer_votes
+for each row execute function sync_qa_answer_vote_counts();
+
+create or replace function sync_qa_answer_report_counts()
+returns trigger
+language plpgsql
+as $$
+declare
+  affected_answer_id uuid;
+begin
+  if tg_op = 'DELETE' then
+    affected_answer_id := old.answer_id;
+  else
+    affected_answer_id := new.answer_id;
+  end if;
+
+  update qa_answers
+  set report_count = coalesce((select count(*) from qa_answer_reports where answer_id = affected_answer_id), 0)
+  where id = affected_answer_id;
+
+  if tg_op = 'UPDATE' and old.answer_id is distinct from new.answer_id then
+    update qa_answers
+    set report_count = coalesce((select count(*) from qa_answer_reports where answer_id = old.answer_id), 0)
+    where id = old.answer_id;
+  end if;
+
+  return coalesce(new, old);
+end;
+$$;
+
+drop trigger if exists qa_answer_reports_sync_counts on qa_answer_reports;
+create trigger qa_answer_reports_sync_counts
+after insert or update or delete on qa_answer_reports
+for each row execute function sync_qa_answer_report_counts();
 
 -- =========================================================
 -- RPC FUNCTIONS — the ONLY way the public interview page
