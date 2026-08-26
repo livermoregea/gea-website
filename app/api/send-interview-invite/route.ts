@@ -68,7 +68,7 @@ export async function POST(request: Request) {
     }
   }
 
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
+  const siteUrl = "https://livermoregea.org";
   const bookingLink = `${siteUrl}/interview/${token}`;
   const firstName = application.name.split(" ")[0] || application.name;
   const subject = `GEA Leadership Interview — ${application.role}`;
