@@ -7,7 +7,7 @@ export default function QuestionContent({
 }) {
   return (
     <div className={`space-y-3 ${className}`.trim()}>
-      <p className="font-display text-base text-forest whitespace-pre-wrap">
+      <p className="whitespace-pre-wrap text-base leading-relaxed text-forest">
         {question || "No question text provided."}
       </p>
     </div>

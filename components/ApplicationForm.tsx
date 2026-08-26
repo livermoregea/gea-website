@@ -227,8 +227,9 @@ export default function ApplicationForm({
         />
         <span>
           I understand that submitting this application does <strong>not</strong> guarantee me a
-          position. This is only an application — if selected, I will be contacted at the email
-          above to schedule an interview during lunch.
+          position. This is only an application, and I won&apos;t be able to edit it after
+          submitting. If I want to add anything later, I can mention it during the interview. If
+          selected, I will be contacted at the email above to schedule an interview during lunch.
         </span>
       </label>
 

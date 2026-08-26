@@ -158,26 +158,26 @@ function QuestionCard({
   const preview = post.question.length > 220 ? `${post.question.slice(0, 220).trimEnd()}...` : post.question;
 
   return (
-    <article className="overflow-hidden rounded-2xl border border-forest/10 bg-paper shadow-[0_12px_35px_rgba(18,53,36,0.08)]">
+    <article className="overflow-hidden rounded-sm border border-forest/10 bg-paper ring-1 ring-forest/5">
       <button
         type="button"
         onClick={onToggle}
         className="block w-full px-5 py-4 text-left transition hover:bg-forest/[0.02]"
       >
         <div className="flex items-start gap-3">
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-forest text-sm font-semibold text-gold">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-sm bg-forest text-sm font-semibold text-gold">
             {post.asked_by_name.slice(0, 1).toUpperCase()}
           </div>
           <div className="min-w-0 flex-1">
-            <div className="flex flex-wrap items-center gap-2 text-[11px] uppercase tracking-[0.16em] text-graphite/50">
-              <span className="rounded-full border border-gold/20 bg-gold/10 px-2.5 py-1 text-forest">
+            <div className="flex flex-wrap items-center gap-2 text-[10px] uppercase tracking-[0.18em] text-graphite/50">
+              <span className="rounded-sm border border-gold/20 bg-gold/10 px-2.5 py-1 text-forest">
                 {getForumBoardLabel(post.forum_board)}
               </span>
               <span>{post.asked_by_name}</span>
               <span>•</span>
               <span>{formatDate(post.created_at)}</span>
             </div>
-            <h3 className="mt-3 whitespace-pre-wrap text-xl font-semibold leading-tight text-forest sm:text-2xl">
+            <h3 className="mt-3 whitespace-pre-wrap font-display text-xl leading-tight text-forest sm:text-2xl">
               {post.question}
             </h3>
             {!expanded && (
@@ -186,8 +186,8 @@ function QuestionCard({
               </p>
             )}
             <div className="mt-4 flex flex-wrap items-center gap-3 text-xs text-graphite/50">
-              <span className="rounded-full bg-forest/[0.05] px-3 py-1">{commentCount} comments</span>
-              <span className="rounded-full bg-forest/[0.05] px-3 py-1">Open thread</span>
+              <span className="rounded-sm bg-forest/[0.05] px-3 py-1">{commentCount} comments</span>
+              <span className="rounded-sm bg-forest/[0.05] px-3 py-1">Open thread</span>
             </div>
           </div>
         </div>
@@ -195,48 +195,44 @@ function QuestionCard({
 
       {expanded && (
         <div className="border-t border-forest/10 px-5 py-5">
-          <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)]">
-            <div className="rounded-xl border border-forest/10 bg-forest/[0.03] p-4">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-gold">Add a comment</p>
-              <div className="mt-3">
-                <AnswerForm
-                  questionId={post.id}
-                  answeredByName={displayName}
-                  answeredByAuthUserId={authUserId}
-                  submitLabel="Post Comment"
-                  placeholder="Join the discussion..."
-                  onSubmitted={onRefresh}
-                />
-              </div>
+          <div className="space-y-5">
+            <div className="rounded-sm bg-forest/[0.03] p-4 ring-1 ring-forest/10">
+              <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-gold">Add a comment</p>
+              <AnswerForm
+                questionId={post.id}
+                answeredByName={displayName}
+                answeredByAuthUserId={authUserId}
+                submitLabel="Post Comment"
+                placeholder="Join the discussion..."
+                onSubmitted={onRefresh}
+              />
             </div>
 
-            <div className="space-y-4">
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-gold">Comments</p>
-                <p className="text-sm text-graphite/60">
-                  {comments.length} top-level comment{comments.length === 1 ? "" : "s"}
-                </p>
-              </div>
-
-              {comments.length === 0 ? (
-                <p className="text-sm text-graphite/50">No comments yet. Be the first to reply.</p>
-              ) : (
-                <div className="space-y-4">
-                  {comments.map((comment) => (
-                    <CommentCard
-                      key={comment.id}
-                      comment={comment}
-                      questionId={post.id}
-                      displayName={displayName}
-                      authUserId={authUserId}
-                      onVote={onVote}
-                      onReport={onReport}
-                      onRefresh={onRefresh}
-                    />
-                  ))}
-                </div>
-              )}
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-gold">Comments</p>
+              <p className="text-sm text-graphite/60">
+                {comments.length} top-level comment{comments.length === 1 ? "" : "s"}
+              </p>
             </div>
+
+            {comments.length === 0 ? (
+              <p className="text-sm text-graphite/50">No comments yet. Be the first to reply.</p>
+            ) : (
+              <div className="space-y-4">
+                {comments.map((comment) => (
+                  <CommentCard
+                    key={comment.id}
+                    comment={comment}
+                    questionId={post.id}
+                    displayName={displayName}
+                    authUserId={authUserId}
+                    onVote={onVote}
+                    onReport={onReport}
+                    onRefresh={onRefresh}
+                  />
+                ))}
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -267,7 +263,7 @@ function CommentCard({
 
   return (
     <div
-      className={`rounded-xl border border-forest/10 bg-paper p-4 ${
+      className={`rounded-sm border border-forest/10 bg-paper p-4 ${
         depth > 0 ? "border-l-2 border-l-gold/40" : ""
       }`}
       style={{ marginLeft: depth * 18 }}
@@ -277,7 +273,7 @@ function CommentCard({
           <p className="font-semibold text-forest">{comment.answered_by_name}</p>
           <p className="mt-1 text-xs text-graphite/50">Posted {formatDate(comment.created_at)}</p>
         </div>
-        <div className="rounded-full bg-forest/10 px-3 py-1 font-mono text-[10px] uppercase tracking-[0.15em] text-forest">
+        <div className="rounded-sm bg-forest/10 px-3 py-1 font-mono text-[10px] uppercase tracking-[0.15em] text-forest">
           Score {comment.score}
         </div>
       </div>
@@ -288,7 +284,7 @@ function CommentCard({
         <button
           type="button"
           onClick={() => onVote(comment.id, comment.myVote === 1 ? 0 : 1)}
-          className={`rounded-full px-3 py-1.5 font-mono text-[10px] uppercase tracking-[0.15em] transition ${
+          className={`rounded-sm px-3 py-1.5 font-mono text-[10px] uppercase tracking-[0.15em] transition ${
             comment.myVote === 1
               ? "bg-forest text-gold"
               : "bg-forest/[0.06] text-forest hover:bg-forest/10"
@@ -299,7 +295,7 @@ function CommentCard({
         <button
           type="button"
           onClick={() => onVote(comment.id, comment.myVote === -1 ? 0 : -1)}
-          className={`rounded-full px-3 py-1.5 font-mono text-[10px] uppercase tracking-[0.15em] transition ${
+          className={`rounded-sm px-3 py-1.5 font-mono text-[10px] uppercase tracking-[0.15em] transition ${
             comment.myVote === -1
               ? "bg-forest text-gold"
               : "bg-forest/[0.06] text-forest hover:bg-forest/10"
@@ -310,7 +306,7 @@ function CommentCard({
         <button
           type="button"
           onClick={() => setReplying((current) => !current)}
-          className="rounded-full bg-forest/[0.06] px-3 py-1.5 font-mono text-[10px] uppercase tracking-[0.15em] text-forest transition hover:bg-forest/10"
+          className="rounded-sm bg-forest/[0.06] px-3 py-1.5 font-mono text-[10px] uppercase tracking-[0.15em] text-forest transition hover:bg-forest/10"
         >
           {replying ? "Cancel Reply" : "Reply"}
         </button>
@@ -318,7 +314,7 @@ function CommentCard({
           type="button"
           onClick={() => onReport(comment.id)}
           disabled={comment.reportedByMe}
-          className="rounded-full bg-forest/[0.06] px-3 py-1.5 font-mono text-[10px] uppercase tracking-[0.15em] text-forest transition hover:bg-forest/10 disabled:cursor-not-allowed disabled:opacity-50"
+          className="rounded-sm bg-forest/[0.06] px-3 py-1.5 font-mono text-[10px] uppercase tracking-[0.15em] text-forest transition hover:bg-forest/10 disabled:cursor-not-allowed disabled:opacity-50"
         >
           {comment.reportedByMe ? "Reported" : `Report (${comment.report_count})`}
         </button>
@@ -635,7 +631,7 @@ export default function QAHub({
 
   if (!isSignedIn) {
     return (
-      <section className="rounded-2xl border border-forest/10 bg-paper p-6 shadow-[0_12px_35px_rgba(18,53,36,0.08)]">
+      <section className="rounded-sm bg-forest/[0.03] p-6 ring-1 ring-forest/10">
         <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-gold">Community Forum</p>
         <h2 className="mt-3 text-2xl font-semibold text-forest">Sign in to join the conversation</h2>
         <p className="mt-3 max-w-xl text-sm leading-relaxed text-graphite/70">
@@ -645,7 +641,7 @@ export default function QAHub({
         <div className="mt-5">
           <Link
             href="/login"
-            className="inline-flex min-h-11 items-center rounded-full bg-forest px-5 py-2.5 font-mono text-xs uppercase tracking-[0.15em] text-gold transition hover:bg-forestdeep"
+            className="inline-flex min-h-11 items-center rounded-sm bg-forest px-5 py-2.5 font-mono text-xs uppercase tracking-[0.15em] text-gold transition hover:bg-forestdeep"
           >
             Log In
           </Link>
@@ -655,188 +651,67 @@ export default function QAHub({
   }
 
   return (
-    <div className="space-y-8">
-      <section className="border-y border-forest/10 bg-paper/70">
-        <div className="flex flex-col gap-4 px-4 py-5 lg:flex-row lg:items-center lg:gap-5">
-          <div className="flex items-center gap-3 lg:w-56">
-            <div className="flex h-11 w-11 items-center justify-center rounded-full bg-forest text-lg font-black text-gold">
-              G
-            </div>
-            <div>
-              <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-gold">GEA Forum</p>
-              <p className="text-sm text-graphite/60">Ask, answer, and follow the discussion</p>
-            </div>
+    <div className="space-y-10">
+      <section className="rounded-sm bg-paper/85 px-5 py-6 ring-1 ring-forest/10 sm:px-6">
+        <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
+          <div className="max-w-3xl">
+            <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-gold">GEA Forum</p>
+            <h2 className="mt-3 font-display text-2xl font-medium text-forest sm:text-3xl">
+              Ask, answer, and follow the discussion
+            </h2>
+            <p className="mt-3 max-w-2xl text-sm leading-relaxed text-graphite/70 sm:text-base">
+              Use the forum to ask questions, browse posts, and keep up with answers from the same
+              page.
+            </p>
           </div>
 
-          <div className="flex-1">
-            <div className="mx-auto flex max-w-3xl items-center gap-3 rounded-full border border-forest/15 bg-paper px-4 py-3 shadow-sm">
-              <svg aria-hidden="true" viewBox="0 0 24 24" className="h-5 w-5 text-graphite/50">
-                <path
-                  fill="currentColor"
-                  d="M10.5 4a6.5 6.5 0 1 0 4.03 11.6l4.43 4.43 1.41-1.41-4.43-4.43A6.5 6.5 0 0 0 10.5 4Zm0 2a4.5 4.5 0 1 1 0 9 4.5 4.5 0 0 1 0-9Z"
-                />
-              </svg>
-              <input
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search anything..."
-                className="w-full bg-transparent text-sm text-graphite outline-none placeholder:text-graphite/45"
-              />
-              <span className="hidden rounded-full border border-forest/10 px-3 py-1 text-[11px] uppercase tracking-[0.15em] text-graphite/45 sm:inline-flex">
-                Search
-              </span>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-3 lg:w-56 lg:justify-end">
+          <div className="flex flex-wrap gap-2">
             <button
               type="button"
               onClick={() => setComposerOpen(true)}
-              className="inline-flex min-h-11 items-center rounded-full bg-forest px-5 py-2.5 font-mono text-xs uppercase tracking-[0.15em] text-gold transition hover:bg-forestdeep"
+              className="inline-flex min-h-11 items-center rounded-sm bg-forest px-5 py-2.5 font-mono text-xs uppercase tracking-[0.15em] text-gold transition hover:bg-forestdeep"
             >
-              Create
+              Create Post
             </button>
+            <a
+              href="#feed"
+              className="inline-flex min-h-11 items-center rounded-sm border border-forest/15 px-5 py-2.5 font-mono text-xs uppercase tracking-[0.15em] text-forest transition hover:bg-forest/[0.03]"
+            >
+              Browse Feed
+            </a>
           </div>
         </div>
       </section>
 
-      {composerOpen && (
-        <section
-          ref={composerRef}
-          id="create-post"
-          className="rounded-3xl border border-forest/10 bg-paper p-5 shadow-[0_10px_30px_rgba(18,53,36,0.06)]"
-        >
-          <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_290px]">
-            <div>
-              <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-gold">Write a new post</p>
-              <h2 className="mt-3 text-3xl font-semibold text-forest">Start a thread</h2>
-              <p className="mt-3 max-w-2xl text-sm leading-relaxed text-graphite/70">
-                Pick a board, write your post, and publish it into the forum without leaving the page.
-              </p>
-              <div className="mt-5">
-                <AskQuestionForm
-                  key={selectedBoard}
-                  defaultName={displayName ?? ""}
-                  authUserId={authUserId}
-                  defaultBoard={selectedBoard === "all" ? "general" : selectedBoard}
-                  onSubmitted={() => setRefreshTick((tick) => tick + 1)}
+      <section className="rounded-sm bg-forest/[0.03] px-5 py-5 ring-1 ring-forest/10 sm:px-6">
+        <div className="flex flex-col gap-5">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-center">
+            <div className="flex-1">
+              <label className="sr-only" htmlFor="qa-search">
+                Search posts
+              </label>
+              <div className="flex items-center gap-3 rounded-sm border border-forest/15 bg-paper px-4 py-3">
+                <svg aria-hidden="true" viewBox="0 0 24 24" className="h-5 w-5 text-graphite/50">
+                  <path
+                    fill="currentColor"
+                    d="M10.5 4a6.5 6.5 0 1 0 4.03 11.6l4.43 4.43 1.41-1.41-4.43-4.43A6.5 6.5 0 0 0 10.5 4Zm0 2a4.5 4.5 0 1 1 0 9 4.5 4.5 0 0 1 0-9Z"
+                  />
+                </svg>
+                <input
+                  id="qa-search"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Search posts, replies, or names..."
+                  className="w-full bg-transparent text-sm text-graphite outline-none placeholder:text-graphite/45"
                 />
               </div>
             </div>
 
-            <div className="space-y-4">
-              <section className="rounded-2xl border border-forest/10 bg-forest/[0.03] p-5">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-gold">Boards</p>
-                <h3 className="mt-3 text-lg font-semibold text-forest">Choose your community</h3>
-                <div className="mt-4 space-y-2">
-                  <button
-                    type="button"
-                    onClick={() => setSelectedBoard("all")}
-                    className={`w-full rounded-xl border px-4 py-3 text-left transition ${
-                      selectedBoard === "all"
-                        ? "border-gold/40 bg-gold/10 text-forest"
-                        : "border-forest/10 bg-paper text-forest hover:bg-forest/[0.03]"
-                    }`}
-                  >
-                    <span className="block font-semibold">All boards</span>
-                    <span className="mt-1 block text-xs text-graphite/50">Everything on the forum</span>
-                  </button>
-                  {FORUM_BOARDS.map((board) => (
-                    <button
-                      key={board.value}
-                      type="button"
-                      onClick={() => setSelectedBoard(board.value)}
-                      className={`w-full rounded-xl border px-4 py-3 text-left transition ${
-                        selectedBoard === board.value
-                          ? "border-gold/40 bg-gold/10 text-forest"
-                          : "border-forest/10 bg-paper text-forest hover:bg-forest/[0.03]"
-                      }`}
-                    >
-                      <span className="block font-semibold">{board.label}</span>
-                      <span className="mt-1 block text-xs text-graphite/50">{board.description}</span>
-                    </button>
-                  ))}
-                </div>
-              </section>
-
-              <section className="rounded-2xl border border-forest/10 bg-forest/[0.03] p-5">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-gold">Guidance</p>
-                <h3 className="mt-3 text-lg font-semibold text-forest">Keep it useful</h3>
-                <p className="mt-3 text-sm leading-relaxed text-graphite/70">
-                  Clear posts get better answers. Choose the right board, keep titles specific, and use the forum to
-                  share questions, updates, and solutions.
-                </p>
-              </section>
-            </div>
-          </div>
-        </section>
-      )}
-
-      <div className="grid gap-8 xl:grid-cols-[280px_minmax(0,1fr)_320px]">
-        <aside className="bg-transparent">
-          <div className="sticky top-4 space-y-6">
-            <section className="rounded-2xl border border-forest/10 bg-paper p-5">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-gold">Post / Create</p>
-              <h2 className="mt-3 text-xl font-semibold text-forest">Start a thread</h2>
-              <p className="mt-2 text-sm leading-relaxed text-graphite/70">
-                Open the composer above to draft a post with more breathing room.
-              </p>
-              <button
-                type="button"
-                onClick={() => setComposerOpen(true)}
-                className="mt-4 inline-flex min-h-11 items-center rounded-full bg-forest px-5 py-2.5 font-mono text-xs uppercase tracking-[0.15em] text-gold transition hover:bg-forestdeep"
-              >
-                Write a new post
-              </button>
-            </section>
-
-            <section className="rounded-2xl border border-forest/10 bg-paper p-5">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-gold">Communities</p>
-              <h2 className="mt-3 text-xl font-semibold text-forest">Boards</h2>
-              <div className="mt-4 space-y-2">
-                <button
-                  type="button"
-                  onClick={() => setSelectedBoard("all")}
-                  className={`w-full rounded-xl border px-4 py-3 text-left transition ${
-                    selectedBoard === "all"
-                      ? "border-gold/40 bg-gold/10 text-forest"
-                      : "border-forest/10 bg-paper text-forest hover:bg-forest/[0.03]"
-                  }`}
-                >
-                  <span className="block font-semibold">All boards</span>
-                  <span className="mt-1 block text-xs text-graphite/50">Everything on the forum</span>
-                </button>
-                {FORUM_BOARDS.map((board) => (
-                  <button
-                    key={board.value}
-                    type="button"
-                    onClick={() => setSelectedBoard(board.value)}
-                    className={`w-full rounded-xl border px-4 py-3 text-left transition ${
-                      selectedBoard === board.value
-                        ? "border-gold/40 bg-gold/10 text-forest"
-                        : "border-forest/10 bg-paper text-forest hover:bg-forest/[0.03]"
-                    }`}
-                  >
-                    <span className="block font-semibold">{board.label}</span>
-                    <span className="mt-1 block text-xs text-graphite/50">{board.description}</span>
-                  </button>
-                ))}
-              </div>
-            </section>
-          </div>
-        </aside>
-
-        <main className="min-w-0 space-y-4">
-          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-forest/10 pb-4">
-            <div>
-              <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-gold">Feed</p>
-              <h2 className="mt-2 text-2xl font-semibold text-forest">What everybody has posted</h2>
-            </div>
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap gap-2">
               <button
                 type="button"
                 onClick={() => setSortMode("best")}
-                className={`rounded-full px-4 py-2 text-xs uppercase tracking-[0.15em] transition ${
+                className={`min-h-11 rounded-sm px-4 py-2 font-mono text-xs uppercase tracking-[0.15em] transition ${
                   sortMode === "best"
                     ? "bg-forest text-gold"
                     : "bg-paper text-forest hover:bg-forest/[0.03]"
@@ -847,7 +722,7 @@ export default function QAHub({
               <button
                 type="button"
                 onClick={() => setSortMode("new")}
-                className={`rounded-full px-4 py-2 text-xs uppercase tracking-[0.15em] transition ${
+                className={`min-h-11 rounded-sm px-4 py-2 font-mono text-xs uppercase tracking-[0.15em] transition ${
                   sortMode === "new"
                     ? "bg-forest text-gold"
                     : "bg-paper text-forest hover:bg-forest/[0.03]"
@@ -858,95 +733,181 @@ export default function QAHub({
             </div>
           </div>
 
-          {mutationError && (
-            <p className="rounded-2xl border border-forest/10 bg-paper px-4 py-3 text-sm text-graphite/70">
-              {mutationError}
-            </p>
-          )}
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={() => setSelectedBoard("all")}
+              className={`rounded-sm border px-4 py-2 font-mono text-[11px] uppercase tracking-[0.12em] transition ${
+                selectedBoard === "all"
+                  ? "border-gold/40 bg-gold/10 text-forest"
+                  : "border-forest/10 bg-paper text-forest hover:bg-forest/[0.03]"
+              }`}
+            >
+              All boards
+            </button>
+            {FORUM_BOARDS.map((board) => (
+              <button
+                key={board.value}
+                type="button"
+                onClick={() => setSelectedBoard(board.value)}
+                className={`rounded-sm border px-4 py-2 font-mono text-[11px] uppercase tracking-[0.12em] transition ${
+                  selectedBoard === board.value
+                    ? "border-gold/40 bg-gold/10 text-forest"
+                    : "border-forest/10 bg-paper text-forest hover:bg-forest/[0.03]"
+                }`}
+              >
+                {board.label}
+              </button>
+            ))}
+          </div>
+        </div>
+      </section>
 
-          <div className="space-y-4">
-            {loading ? (
-              <p className="text-sm text-graphite/50">Loading posts...</p>
-            ) : visiblePosts.length === 0 ? (
-              <div className="rounded-2xl border border-forest/10 bg-paper p-5 text-sm text-graphite/60">
-                No posts match that board or search yet.
-              </div>
+      {composerOpen && (
+        <section
+          ref={composerRef}
+          id="create-post"
+          className="rounded-sm bg-paper px-5 py-6 ring-1 ring-forest/10 sm:px-6"
+        >
+          <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
+            <div className="max-w-3xl">
+              <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-gold">
+                Write a new post
+              </p>
+              <h3 className="mt-3 font-display text-2xl font-medium text-forest">Start a thread</h3>
+              <p className="mt-3 max-w-2xl text-sm leading-relaxed text-graphite/70 sm:text-base">
+                Pick a board, write your post, and publish it to the forum without leaving the page.
+              </p>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setComposerOpen(false)}
+              className="inline-flex min-h-11 items-center rounded-sm border border-forest/15 px-4 py-2.5 font-mono text-xs uppercase tracking-[0.15em] text-forest transition hover:bg-forest/[0.03]"
+            >
+              Close
+            </button>
+          </div>
+          <div className="mt-5">
+            <AskQuestionForm
+              key={selectedBoard}
+              defaultName={displayName ?? ""}
+              authUserId={authUserId}
+              defaultBoard={selectedBoard === "all" ? "general" : selectedBoard}
+              onSubmitted={() => setRefreshTick((tick) => tick + 1)}
+            />
+          </div>
+        </section>
+      )}
+
+      {mutationError && (
+        <p className="rounded-sm bg-forest/[0.05] p-4 text-sm text-graphite/75 ring-1 ring-forest/10">
+          {mutationError}
+        </p>
+      )}
+
+      <section id="feed" className="space-y-5">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-gold">Feed</p>
+            <h2 className="mt-2 font-display text-2xl font-medium text-forest sm:text-3xl">
+              What everybody has posted
+            </h2>
+          </div>
+          <div className="rounded-sm bg-forest/[0.03] px-4 py-3 ring-1 ring-forest/10">
+            <p className="text-[10px] uppercase tracking-[0.15em] text-graphite/40">Showing</p>
+            <p className="mt-1 text-sm text-graphite/70">
+              {visiblePosts.length} post{visiblePosts.length === 1 ? "" : "s"}
+            </p>
+          </div>
+        </div>
+
+        <div className="space-y-4">
+          {loading ? (
+            <p className="text-sm text-graphite/50">Loading posts...</p>
+          ) : visiblePosts.length === 0 ? (
+            <div className="rounded-sm bg-paper p-5 text-sm text-graphite/60 ring-1 ring-forest/10">
+              No posts match that board or search yet.
+            </div>
+          ) : (
+            visiblePosts.map((post) => (
+              <QuestionCard
+                key={post.id}
+                post={post}
+                expanded={selectedPost?.id === post.id}
+                displayName={displayName ?? "GEA Student"}
+                authUserId={authUserId}
+                voteMap={voteMap}
+                reportedSet={reportedSet}
+                onToggle={() => setSelectedPostId((current) => (current === post.id ? null : post.id))}
+                onVote={handleVote}
+                onReport={handleReport}
+                onRefresh={() => setRefreshTick((tick) => tick + 1)}
+              />
+            ))
+          )}
+        </div>
+      </section>
+
+      <section className="grid gap-4 lg:grid-cols-2">
+        <div className="rounded-sm bg-paper p-5 ring-1 ring-forest/10">
+          <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-gold">Your History</p>
+          <h2 className="mt-3 font-display text-xl text-forest">Posts, replies, votes</h2>
+          <div className="mt-4 grid grid-cols-3 gap-3">
+            <div className="rounded-sm bg-forest/[0.03] p-3 ring-1 ring-forest/10">
+              <p className="text-[10px] uppercase tracking-[0.15em] text-graphite/45">Posts</p>
+              <p className="mt-2 text-2xl font-semibold text-forest">{myQuestions.length}</p>
+            </div>
+            <div className="rounded-sm bg-forest/[0.03] p-3 ring-1 ring-forest/10">
+              <p className="text-[10px] uppercase tracking-[0.15em] text-graphite/45">Replies</p>
+              <p className="mt-2 text-2xl font-semibold text-forest">{myAnswers.length}</p>
+            </div>
+            <div className="rounded-sm bg-forest/[0.03] p-3 ring-1 ring-forest/10">
+              <p className="text-[10px] uppercase tracking-[0.15em] text-graphite/45">Votes</p>
+              <p className="mt-2 text-2xl font-semibold text-forest">{myVotes.length}</p>
+            </div>
+          </div>
+        </div>
+
+        <div className="rounded-sm bg-paper p-5 ring-1 ring-forest/10">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-gold">
+                Recent Activity
+              </p>
+              <h2 className="mt-3 font-display text-xl text-forest">Your latest moves</h2>
+            </div>
+            <button
+              type="button"
+              onClick={() => setComposerOpen(true)}
+              className="text-sm text-forest underline decoration-gold/40 underline-offset-4"
+            >
+              Create
+            </button>
+          </div>
+
+          <div className="mt-4 space-y-3">
+            {recentActivity.length === 0 ? (
+              <p className="text-sm text-graphite/50">No recent activity yet.</p>
             ) : (
-              visiblePosts.map((post) => (
-                <QuestionCard
-                  key={post.id}
-                  post={post}
-                  expanded={selectedPost?.id === post.id}
-                  displayName={displayName ?? "GEA Student"}
-                  authUserId={authUserId}
-                  voteMap={voteMap}
-                  reportedSet={reportedSet}
-                  onToggle={() => setSelectedPostId((current) => (current === post.id ? null : post.id))}
-                  onVote={handleVote}
-                  onReport={handleReport}
-                  onRefresh={() => setRefreshTick((tick) => tick + 1)}
-                />
+              recentActivity.slice(0, 10).map((item) => (
+                <div key={item.key} className="rounded-sm border border-forest/10 bg-forest/[0.03] p-4">
+                  <div className="flex items-start justify-between gap-3">
+                    <p className="text-[10px] uppercase tracking-[0.15em] text-graphite/40">
+                      {item.type}
+                    </p>
+                    <p className="text-xs text-graphite/50">{formatDate(item.created_at)}</p>
+                  </div>
+                  <p className="mt-2 font-medium text-forest">{item.label}</p>
+                  <p className="mt-1 whitespace-pre-wrap text-sm leading-relaxed text-graphite/70">
+                    {item.detail}
+                  </p>
+                </div>
               ))
             )}
           </div>
-        </main>
-
-        <aside className="bg-transparent">
-          <div className="sticky top-4 space-y-6">
-            <section className="rounded-2xl border border-forest/10 bg-paper p-5">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-gold">Your History</p>
-              <h2 className="mt-3 text-xl font-semibold text-forest">Posts, replies, votes</h2>
-              <div className="mt-4 grid grid-cols-3 gap-2">
-                <div className="rounded-xl bg-paper p-3 ring-1 ring-forest/10">
-                  <p className="text-[10px] uppercase tracking-[0.15em] text-graphite/50">Posts</p>
-                  <p className="mt-2 text-2xl font-semibold text-forest">{myQuestions.length}</p>
-                </div>
-                <div className="rounded-xl bg-paper p-3 ring-1 ring-forest/10">
-                  <p className="text-[10px] uppercase tracking-[0.15em] text-graphite/50">Replies</p>
-                  <p className="mt-2 text-2xl font-semibold text-forest">{myAnswers.length}</p>
-                </div>
-                <div className="rounded-xl bg-paper p-3 ring-1 ring-forest/10">
-                  <p className="text-[10px] uppercase tracking-[0.15em] text-graphite/50">Votes</p>
-                  <p className="mt-2 text-2xl font-semibold text-forest">{myVotes.length}</p>
-                </div>
-              </div>
-            </section>
-
-            <section className="rounded-2xl border border-forest/10 bg-paper p-5">
-              <div className="flex items-center justify-between gap-3">
-                <div>
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-gold">Recent Activity</p>
-                  <h2 className="mt-2 text-xl font-semibold text-forest">Your latest moves</h2>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setComposerOpen(true)}
-                  className="text-sm text-forest underline decoration-gold/40 underline-offset-4"
-                >
-                  Create
-                </button>
-              </div>
-
-              <div className="mt-4 space-y-3">
-                {recentActivity.length === 0 ? (
-                  <p className="text-sm text-graphite/50">No recent activity yet.</p>
-                ) : (
-                  recentActivity.slice(0, 10).map((item) => (
-                    <div key={item.key} className="rounded-xl border border-forest/10 bg-paper p-4">
-                      <div className="flex items-start justify-between gap-3">
-                        <p className="text-[10px] uppercase tracking-[0.15em] text-graphite/40">{item.type}</p>
-                        <p className="text-xs text-graphite/50">{formatDate(item.created_at)}</p>
-                      </div>
-                      <p className="mt-2 font-medium text-forest">{item.label}</p>
-                      <p className="mt-1 whitespace-pre-wrap text-sm leading-relaxed text-graphite/70">{item.detail}</p>
-                    </div>
-                  ))
-                )}
-              </div>
-            </section>
-          </div>
-        </aside>
-      </div>
+        </div>
+      </section>
     </div>
   );
 }

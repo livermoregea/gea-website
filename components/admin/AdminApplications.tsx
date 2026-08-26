@@ -16,6 +16,8 @@ type Application = {
   why_fit: string;
   proof_of_work: string | null;
   status: string;
+  interview_token: string | null;
+  invite_sent_at: string | null;
   booked_slot_id: string | null;
   created_at: string;
 };
@@ -37,6 +39,24 @@ type InterviewDraft = {
 };
 
 const STATUSES = ["pending", "reviewing", "invited", "interview_booked", "approved", "rejected"];
+const CSV_HEADERS = [
+  "id",
+  "role",
+  "name",
+  "display_username",
+  "graduating_class_year",
+  "student_id_number",
+  "school_email",
+  "status",
+  "why_apply",
+  "why_fit",
+  "proof_of_work",
+  "booked_slot_label",
+  "booked_slot_time",
+  "created_at",
+  "invite_sent_at",
+  "interview_token",
+] as const;
 
 export default function AdminApplications() {
   const [apps, setApps] = useState<Application[]>([]);
@@ -116,6 +136,54 @@ export default function AdminApplications() {
     }, 1500);
   }
 
+  function escapeCsvValue(value: string | number | null | undefined) {
+    const stringValue = value == null ? "" : String(value);
+    return `"${stringValue.replaceAll('"', '""')}"`;
+  }
+
+  function buildApplicationsCsv() {
+    const rows = apps.map((app) => {
+      const bookedSlot = app.booked_slot_id ? slotById.get(app.booked_slot_id) : null;
+      return [
+        app.id,
+        app.role,
+        app.name,
+        app.display_username,
+        app.graduating_class_year,
+        app.student_id_number,
+        app.school_email,
+        app.status,
+        app.why_apply,
+        app.why_fit,
+        app.proof_of_work,
+        bookedSlot?.label ?? "",
+        bookedSlot?.slot_time ?? "",
+        app.created_at,
+        app.invite_sent_at,
+        app.interview_token,
+      ];
+    });
+
+    return [
+      CSV_HEADERS.map(escapeCsvValue).join(","),
+      ...rows.map((row) => row.map(escapeCsvValue).join(",")),
+    ].join("\n");
+  }
+
+  function downloadApplicationsCsv() {
+    const csv = buildApplicationsCsv();
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    const dateStamp = new Intl.DateTimeFormat("en-CA").format(new Date());
+
+    link.href = url;
+    link.download = `applications-export-${dateStamp}.csv`;
+    link.click();
+
+    URL.revokeObjectURL(url);
+  }
+
   if (loading) return <p className="text-sm text-graphite/50">Loading applications...</p>;
 
   const slotById = new Map(slots.map((slot) => [slot.id, slot]));
@@ -132,6 +200,23 @@ export default function AdminApplications() {
 
   return (
     <div className="space-y-6">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <p className="font-mono text-xs uppercase tracking-[0.2em] text-gold">Applications</p>
+          <h3 className="mt-1 font-display text-2xl text-forest">Review and export</h3>
+          <p className="mt-1 text-sm text-graphite/60">
+            Export the current application list as CSV for spreadsheets or record keeping.
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={downloadApplicationsCsv}
+          disabled={apps.length === 0}
+          className="rounded-sm bg-forest px-4 py-2 font-mono text-xs uppercase tracking-[0.15em] text-gold transition hover:bg-forestdeep disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          Export CSV
+        </button>
+      </div>
       {message && (
         <p className="break-all rounded-sm bg-forest/[0.05] p-4 text-xs text-graphite/80 ring-1 ring-forest/10" role="alert">
           {message}

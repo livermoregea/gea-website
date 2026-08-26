@@ -55,22 +55,24 @@ export default async function DashboardPage() {
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-16 sm:px-6 md:py-20">
-      <p className="font-mono text-xs uppercase tracking-[0.3em] text-gold">Student Dashboard</p>
-      <h1 className="mt-4 font-display text-2xl font-medium text-forest">
-        Welcome, {profile.display_username}
-      </h1>
-      <p className="mt-3 text-sm text-graphite/70">
-        Name: {profile.full_name}. Class of {profile.graduating_class_year}. This is your unified
-        student account for the site.
-      </p>
+      <div className="max-w-3xl">
+        <p className="font-mono text-xs uppercase tracking-[0.3em] text-gold">Student Dashboard</p>
+        <h1 className="mt-4 font-display text-2xl font-medium text-forest">
+          Welcome, {profile.display_username}
+        </h1>
+        <p className="mt-3 text-sm leading-relaxed text-graphite/70">
+          Name: {profile.full_name}. Class of {profile.graduating_class_year}. This is your
+          unified student account for the site.
+        </p>
+      </div>
       <div className="dim-divider my-8" />
-      <section id="qa" className="space-y-4">
+      <section id="qa" className="space-y-6">
         <div>
           <p className="font-mono text-xs uppercase tracking-[0.2em] text-gold">Student Forum</p>
           <h2 className="mt-2 font-display text-xl text-forest">
-            Browse posts, comment, vote, and report spam
+            Browse posts, comment, vote, and report
           </h2>
-          <p className="mt-2 text-sm text-graphite/70">
+          <p className="mt-2 max-w-2xl text-sm leading-relaxed text-graphite/70">
             This is the signed-in area for joining the discussion and keeping the thread moving.
           </p>
         </div>

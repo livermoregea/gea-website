@@ -74,63 +74,79 @@ export default async function QAPage() {
   }
 
   return (
-    <div className="mx-auto max-w-5xl px-4 py-16 sm:px-6 md:py-20">
-      <p className="font-mono text-xs uppercase tracking-[0.3em] text-gold">Student Q&amp;A</p>
-      <h1 className="mt-4 font-display text-2xl font-medium text-forest sm:text-3xl md:text-4xl">
-        GEA questions and answers
-      </h1>
-      <p className="mt-4 max-w-3xl text-sm leading-relaxed text-graphite/80 sm:text-base">
-        Start here for the most common questions about GEA. If you want to ask a question or keep
-        track of replies, log in to use the student dashboard.
-      </p>
+    <div className="mx-auto max-w-6xl px-4 py-16 sm:px-6 md:py-20">
+      <div className="max-w-3xl">
+        <p className="font-mono text-xs uppercase tracking-[0.3em] text-gold">Student Q&amp;A</p>
+        <h1 className="mt-4 font-display text-2xl font-medium text-forest sm:text-3xl md:text-4xl">
+          GEA questions and answers
+        </h1>
+        <p className="mt-4 text-sm leading-relaxed text-graphite/80 sm:text-base">
+          Start here for the most common questions about GEA. If you want to ask a question or
+          keep track of replies, log in to use the student dashboard.
+        </p>
+      </div>
 
-      <div className="mt-8 grid gap-4 md:grid-cols-2">
-        <div className="rounded-sm bg-forest/[0.03] p-5 ring-1 ring-forest/5">
-          <p className="font-mono text-xs uppercase tracking-[0.2em] text-gold">Apply to GEA</p>
-          <p className="mt-2 text-sm text-graphite/70">
-            Ready to join the academy? Use the official Google Form.
-          </p>
-          <Link
-            href={academyApplicationUrl}
-            target="_blank"
-            rel="noreferrer"
-            className="mt-4 inline-flex min-h-11 items-center rounded-sm bg-forest px-4 py-2.5 font-mono text-xs uppercase tracking-[0.15em] text-gold"
-          >
-            Open Application Form
-          </Link>
-        </div>
-        <div className="rounded-sm bg-forest/[0.03] p-5 ring-1 ring-forest/5">
-          <p className="font-mono text-xs uppercase tracking-[0.2em] text-gold">
-            Want to Join the Forum?
-          </p>
-          <p className="mt-2 text-sm text-graphite/70">
-            Log in to browse posts, comment on threads, and vote on replies.
-          </p>
-          <Link
-            href="/login"
-            className="mt-4 inline-flex min-h-11 items-center rounded-sm border border-forest/15 px-4 py-2.5 font-mono text-xs uppercase tracking-[0.15em] text-forest"
-          >
-            Open Forum
-          </Link>
+      <div className="mt-10 rounded-sm bg-forest/[0.03] px-5 py-6 ring-1 ring-forest/5 sm:px-6 sm:py-7">
+        <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
+          <div className="max-w-2xl">
+            <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-gold">
+              Helpful links
+            </p>
+            <p className="mt-2 text-sm leading-relaxed text-graphite/70 sm:text-base">
+              Use the application link if you&apos;re ready to join, or sign in to use the forum
+              and keep your Q&amp;A activity in one place.
+            </p>
+          </div>
+
+          <div className="flex flex-col gap-3 sm:flex-row">
+            <Link
+              href={academyApplicationUrl}
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex min-h-11 items-center justify-center rounded-sm bg-forest px-4 py-2.5 font-mono text-xs uppercase tracking-[0.15em] text-gold transition hover:bg-forestdeep"
+            >
+              Open Application Form
+            </Link>
+            <Link
+              href="/login"
+              className="inline-flex min-h-11 items-center justify-center rounded-sm border border-forest/15 px-4 py-2.5 font-mono text-xs uppercase tracking-[0.15em] text-forest transition hover:bg-forest/[0.03]"
+            >
+              Open Forum
+            </Link>
+          </div>
         </div>
       </div>
 
-      <section className="mt-12">
-        <h2 className="font-display text-xl font-medium text-forest sm:text-2xl">
-          GEA Frequently Asked Questions
-        </h2>
+      <div className="dim-divider my-12" />
+
+      <section className="max-w-4xl">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-gold">FAQ</p>
+            <h2 className="mt-2 font-display text-xl font-medium text-forest sm:text-2xl">
+              Frequently asked questions
+            </h2>
+          </div>
+          <p className="max-w-xl text-sm leading-relaxed text-graphite/60">
+            The questions below cover the basics. If you need a deeper answer, the forum is the
+            best place to ask and follow up.
+          </p>
+        </div>
+
         <div className="mt-6 space-y-4">
           {faqs.map((faq, index) => (
             <details
               key={faq.question}
-              className="group rounded-sm bg-forest/[0.03] ring-1 ring-forest/5"
+              className="group rounded-sm border border-forest/10 bg-paper/80 shadow-[0_8px_24px_rgba(18,53,36,0.04)]"
               open={index === 0}
             >
-              <summary className="flex cursor-pointer list-none items-center justify-between gap-4 px-5 py-4 font-medium text-forest marker:hidden">
-                <span className="text-sm sm:text-base">{faq.question}</span>
-                <span className="text-xl leading-none text-gold transition group-open:rotate-45">+</span>
+              <summary className="flex cursor-pointer list-none items-start justify-between gap-4 px-5 py-4 font-medium text-forest marker:hidden sm:px-6 sm:py-5">
+                <span className="text-sm leading-relaxed sm:text-base">{faq.question}</span>
+                <span className="mt-0.5 text-lg leading-none text-gold transition group-open:rotate-45">
+                  +
+                </span>
               </summary>
-              <div className="px-5 pb-5 text-sm leading-relaxed text-graphite/75 sm:text-base">
+              <div className="px-5 pb-5 text-sm leading-relaxed text-graphite/75 sm:px-6 sm:text-base">
                 {faq.answer}
               </div>
             </details>

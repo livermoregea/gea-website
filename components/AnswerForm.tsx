@@ -72,7 +72,7 @@ export default function AnswerForm({
         onChange={(e) => setAnswer(e.target.value)}
         rows={3}
         placeholder={placeholder}
-        className="w-full rounded-xl border border-forest/15 bg-paper px-4 py-3 text-sm text-graphite outline-none placeholder:text-graphite/40 focus:border-gold"
+        className="w-full rounded-sm border border-forest/15 bg-paper px-4 py-3 text-sm text-graphite outline-none placeholder:text-graphite/40 focus:border-gold"
       />
       {error && (
         <p className="text-sm text-red-700" role="alert">
@@ -82,7 +82,7 @@ export default function AnswerForm({
       <button
         type="submit"
         disabled={submitting}
-        className="rounded-full bg-forest px-4 py-2.5 font-mono text-xs uppercase tracking-[0.15em] text-gold transition hover:bg-forestdeep disabled:opacity-50"
+        className="rounded-sm bg-forest px-4 py-2.5 font-mono text-xs uppercase tracking-[0.15em] text-gold transition hover:bg-forestdeep disabled:opacity-50"
       >
         {submitting ? "Posting..." : submitLabel}
       </button>

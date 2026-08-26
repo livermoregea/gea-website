@@ -56,6 +56,10 @@ export default async function ApplyPage({
         Fill out the form below to apply. Applications are reviewed by the current GEA officer
         team on a rolling basis.
       </p>
+      <p className="mt-2 text-sm leading-relaxed text-graphite/60 sm:text-base">
+        Once you submit, you won&apos;t be able to edit the application directly. If you want to
+        add anything later, you can mention it during your interview.
+      </p>
 
       {user ? (
         <div className="mt-6 rounded-sm bg-forest/[0.04] p-5 ring-1 ring-forest/10">
