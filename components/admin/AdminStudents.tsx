@@ -52,7 +52,10 @@ export default function AdminStudents() {
       return;
     }
     const supabase = createClient();
-    const [{ data: studentData }, { data: requestData }] = await Promise.all([
+    const [
+      { data: studentData, error: studentError },
+      { data: requestData, error: requestError },
+    ] = await Promise.all([
       supabase.from("student_profiles").select("*").order("created_at", { ascending: false }),
       supabase
         .from("student_account_requests")
@@ -60,6 +63,9 @@ export default function AdminStudents() {
         .eq("status", "pending")
         .order("created_at", { ascending: true }),
     ]);
+    if (studentError || requestError) {
+      setMessage(studentError?.message ?? requestError?.message ?? "Could not load student requests.");
+    }
     setStudents((studentData as StudentProfile[]) ?? []);
     setRequests((requestData as StudentRequest[]) ?? []);
     setLoading(false);

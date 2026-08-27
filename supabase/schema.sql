@@ -433,6 +433,7 @@ alter table qa_answer_votes enable row level security;
 alter table qa_answer_reports enable row level security;
 alter table upperclassmen enable row level security;
 alter table student_profiles enable row level security;
+alter table student_account_requests enable row level security;
 alter table teacher_profiles enable row level security;
 alter table teacher_invites enable row level security;
 alter table admins enable row level security;
@@ -472,6 +473,16 @@ create policy "student_profiles_self_update" on student_profiles
 drop policy if exists "student_profiles_admin_write" on student_profiles;
 create policy "student_profiles_admin_write" on student_profiles
   for all using (is_staff()) with check (is_staff());
+
+drop policy if exists "student_account_requests_staff_read" on student_account_requests;
+create policy "student_account_requests_staff_read" on student_account_requests
+  for select using (is_staff());
+drop policy if exists "student_account_requests_self_read" on student_account_requests;
+create policy "student_account_requests_self_read" on student_account_requests
+  for select using (lower(school_email) = lower(coalesce((auth.jwt() ->> 'email'), '')));
+drop policy if exists "student_account_requests_staff_update" on student_account_requests;
+create policy "student_account_requests_staff_update" on student_account_requests
+  for update using (is_staff()) with check (is_staff());
 
 drop policy if exists "teacher_profiles_self_read" on teacher_profiles;
 create policy "teacher_profiles_self_read" on teacher_profiles
