@@ -1,8 +1,7 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
-import { ROLES } from "@/lib/roles";
+import { PUBLIC_ROLES } from "@/lib/roles";
 import { hasSupabaseConfig } from "@/lib/supabase/config";
-import StudentAuthForm from "@/components/StudentAuthForm";
 
 export const revalidate = 0;
 
@@ -74,7 +73,7 @@ export default async function LeadershipPage() {
         Leadership roles and applications.
       </p>
       <p className="mt-3 max-w-2xl text-sm leading-relaxed text-graphite/70 sm:text-base">
-        Sign in to associate applications with your account.
+        Scroll down to apply!
       </p>
 
       {user ? (
@@ -95,42 +94,12 @@ export default async function LeadershipPage() {
             </p>
           )}
         </div>
-      ) : (
-        <div className="mt-6 rounded-sm border border-dashed border-forest/15 bg-forest/[0.03] px-4 py-4 sm:px-5">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-            <div className="max-w-2xl">
-              <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-gold">
-                Optional Sign In
-              </p>
-              <p className="mt-2 text-sm leading-relaxed text-graphite/70">
-                Sign in to associate your application with your account.
-              </p>
-            </div>
-            <Link
-              href="#roles"
-              className="inline-flex min-h-11 items-center justify-center rounded-sm bg-forest px-4 py-2 font-mono text-xs uppercase tracking-[0.15em] text-gold transition hover:bg-forestdeep"
-            >
-              Start Applying
-            </Link>
-          </div>
-          <details className="mt-4 rounded-sm bg-paper/80 p-4 ring-1 ring-forest/10">
-            <summary className="cursor-pointer list-none font-mono text-xs uppercase tracking-[0.15em] text-forest">
-              Sign in or create account
-            </summary>
-            <p className="mt-2 text-sm leading-relaxed text-graphite/65">
-              Use this form to sign in or create your student account.
-            </p>
-            <div className="mt-4">
-              <StudentAuthForm redirectTo="/leadership" />
-            </div>
-          </details>
-        </div>
-      )}
+      ) : null}
 
       <div className="dim-divider my-12" />
 
       <div id="roles" className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-        {ROLES.map((role) => {
+        {PUBLIC_ROLES.map((role) => {
           const member = memberByRole.get(role.slug);
           const application = applicationByRole.get(role.slug);
           const filled = Boolean(member);
@@ -206,7 +175,7 @@ export default async function LeadershipPage() {
                     href={`/leadership/apply/${role.slug}`}
                     className="inline-block w-full rounded-sm bg-forest px-4 py-2.5 text-center font-mono text-xs uppercase tracking-[0.15em] text-gold transition hover:bg-forestdeep"
                   >
-                    {user ? "Apply with linked account" : "Apply without account"}
+                    Apply now!
                   </Link>
                 ) : !filled ? (
                   <span className="inline-block w-full rounded-sm border border-forest/10 px-4 py-2.5 text-center font-mono text-xs uppercase tracking-[0.15em] text-graphite/40">

@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
-import { getRole } from "@/lib/roles";
+import { PUBLIC_ROLES } from "@/lib/roles";
 import ApplicationForm from "@/components/ApplicationForm";
 import { hasSupabaseConfig } from "@/lib/supabase/config";
 
@@ -65,7 +65,7 @@ export default async function ApplyPage({
   params: Promise<{ role: string }>;
 }) {
   const { role: roleSlug } = await params;
-  const role = getRole(roleSlug);
+  const role = PUBLIC_ROLES.find((r) => r.slug === roleSlug);
   const supabase = await createClient();
   const user = hasSupabaseConfig() ? (await supabase.auth.getUser()).data.user : null;
 

@@ -11,6 +11,8 @@ export const ROLES = [
   { slug: "rep-9", label: "9th Grade Representative", open: true },
 ] as const;
 
+export const PUBLIC_ROLES = ROLES.filter((role) => role.slug !== "rep-11");
+
 export type RoleSlug = (typeof ROLES)[number]["slug"];
 
 export function getRole(slug: string) {
