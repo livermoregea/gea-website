@@ -3,11 +3,11 @@
 import Link from "next/link";
 import { useId, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
-import { isSchoolEmail } from "@/lib/roles";
+import { getRoleEligibilityLabel, isEligibleForRole, isSchoolEmail, type RoleSlug } from "@/lib/roles";
 import { hasSupabaseConfig } from "@/lib/supabase/config";
 
 type Props = {
-  roleSlug: string;
+  roleSlug: RoleSlug;
   roleLabel: string;
   requiresProof: boolean;
   profile?: {
@@ -67,6 +67,10 @@ export default function ApplicationForm({
     const graduatingYearValue = Number.parseInt(graduatingYear.trim(), 10);
     if (!Number.isInteger(graduatingYearValue) || graduatingYearValue < 2000) {
       setError("Please enter a valid graduating class year.");
+      return;
+    }
+    if (!isEligibleForRole(roleSlug, graduatingYearValue)) {
+      setError(getRoleEligibilityLabel(roleSlug) ?? "You are not eligible for this position.");
       return;
     }
     if (!studentIdNumber.trim()) {
@@ -214,6 +218,11 @@ export default function ApplicationForm({
         <p className="mt-1 text-xs text-graphite/50">
           Please enter the year your class graduates from Livermore High School.
         </p>
+        {getRoleEligibilityLabel(roleSlug) ? (
+          <p className="mt-1 text-xs uppercase tracking-[0.12em] text-forest/70">
+            {getRoleEligibilityLabel(roleSlug)}
+          </p>
+        ) : null}
       </div>
 
       <div>

@@ -480,7 +480,15 @@ create policy "leadership_admin_write" on leadership_members
 -- RPC functions below, never a direct table read.)
 drop policy if exists "applications_public_insert" on applications;
 create policy "applications_public_insert" on applications
-  for insert with check (true);
+  for insert with check (
+    case
+      when role in ('vice-president', 'secretary', 'publicist', 'treasurer') then graduating_class_year <= extract(year from now())::int + 2
+      when role = 'rep-11' then graduating_class_year = extract(year from now())::int + 2
+      when role = 'rep-10' then graduating_class_year = extract(year from now())::int + 3
+      when role = 'rep-9' then graduating_class_year = extract(year from now())::int + 4
+      else false
+    end
+  );
 drop policy if exists "applications_admin_manage" on applications;
 create policy "applications_admin_manage" on applications
   for select using (is_staff());

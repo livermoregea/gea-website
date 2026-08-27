@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
-import { PUBLIC_ROLES } from "@/lib/roles";
+import { PUBLIC_ROLES, getRoleEligibilityLabel } from "@/lib/roles";
 import ApplicationForm from "@/components/ApplicationForm";
 import { hasSupabaseConfig } from "@/lib/supabase/config";
 
@@ -108,6 +108,11 @@ export default async function ApplyPage({
           Role Summary
         </p>
         <h2 className="mt-2 font-display text-xl text-forest">{role.label}</h2>
+        {getRoleEligibilityLabel(role.slug) ? (
+          <p className="mt-2 text-xs uppercase tracking-[0.12em] text-graphite/55">
+            {getRoleEligibilityLabel(role.slug)}
+          </p>
+        ) : null}
         <ul className="mt-4 space-y-2 text-sm leading-relaxed text-graphite/75">
           {getResponsibilities(role.slug).map((item) => (
             <li key={item} className="flex gap-3">

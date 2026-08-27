@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
-import { PUBLIC_ROLES } from "@/lib/roles";
+import { PUBLIC_ROLES, getRoleEligibilityLabel } from "@/lib/roles";
 import { hasSupabaseConfig } from "@/lib/supabase/config";
 
 export const revalidate = 0;
@@ -64,41 +64,38 @@ export default async function LeadershipPage() {
   }
 
   return (
-    <div className="mx-auto max-w-6xl px-4 py-16 sm:px-6 md:py-20">
+    <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6 md:py-12">
       <p className="font-mono text-xs uppercase tracking-[0.3em] text-gold">Student Leadership</p>
-      <h1 className="mt-4 font-display text-2xl font-medium text-forest sm:text-3xl md:text-4xl">
+      <h1 className="mt-2 font-display text-2xl font-medium text-forest sm:text-3xl md:text-4xl">
         GEA Leadership Board
       </h1>
-      <p className="mt-4 max-w-2xl text-sm leading-relaxed text-graphite/80 sm:text-base">
-        Leadership roles and applications.
-      </p>
-      <p className="mt-3 max-w-2xl text-sm leading-relaxed text-graphite/70 sm:text-base">
-        Scroll down to apply!
+      <p className="mt-3 max-w-2xl text-sm leading-relaxed text-graphite/75 sm:text-base">
+        View the leadership board and apply for open roles below.
       </p>
 
       {user ? (
-        <div className="mt-6 rounded-sm bg-forest/[0.04] p-5 ring-1 ring-forest/10">
-            <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-gold">
-              Signed In
-            </p>
-          <p className="mt-2 text-sm text-graphite/70">
+        <div className="mt-4 rounded-sm bg-forest/[0.04] p-4 ring-1 ring-forest/10">
+          <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-gold">
+            Signed In
+          </p>
+          <p className="mt-1 text-sm text-graphite/70">
             Applications are linked to your account.
           </p>
           {applicationByRole.size > 0 ? (
-            <p className="mt-2 text-sm text-graphite/70">
+            <p className="mt-1 text-sm text-graphite/70">
               Submitted applications are shown below.
             </p>
           ) : (
-            <p className="mt-2 text-sm text-graphite/70">
+            <p className="mt-1 text-sm text-graphite/70">
               No submitted applications yet.
             </p>
           )}
         </div>
       ) : null}
 
-      <div className="dim-divider my-12" />
+      <div className="dim-divider my-8" />
 
-      <div id="roles" className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+      <div id="roles" className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
         {PUBLIC_ROLES.map((role) => {
           const member = memberByRole.get(role.slug);
           const application = applicationByRole.get(role.slug);
@@ -111,24 +108,29 @@ export default async function LeadershipPage() {
             >
               {member?.photo_url ? (
                 <div className="border-b border-forest/10 bg-paper/70">
-                  <div className="flex aspect-[4/3] items-center justify-center overflow-hidden bg-forest/[0.02]">
+                  <div className="flex aspect-[5/4] items-center justify-center overflow-hidden bg-forest/[0.02]">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img src={member.photo_url} alt={member.name} className="h-full w-full object-cover" />
                   </div>
                 </div>
               ) : null}
 
-              <div className="flex flex-1 flex-col justify-between p-6">
+              <div className="flex flex-1 flex-col justify-between p-4">
                 <div>
-                  <p className="font-mono text-[11px] uppercase tracking-[0.2em] text-gold">
+                  <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-gold">
                     {filled ? "Seat Filled" : "Seat Open"}
                   </p>
-                  <h2 className="mt-2 font-display text-lg text-forest">{role.label}</h2>
+                  <h2 className="mt-1 font-display text-base text-forest">{role.label}</h2>
+                  {getRoleEligibilityLabel(role.slug) ? (
+                    <p className="mt-1 text-[10px] uppercase tracking-[0.12em] text-graphite/50">
+                      {getRoleEligibilityLabel(role.slug)}
+                    </p>
+                  ) : null}
                   {member ? (
-                    <div className="mt-4">
+                    <div className="mt-3">
                       <p className="text-sm font-medium text-graphite">{member.name}</p>
                       {member.contact_email && (
-                        <p className="mt-1 text-xs text-graphite/70">
+                        <p className="mt-1 text-[11px] text-graphite/70">
                           Contact:{" "}
                           <a
                             href={`mailto:${member.contact_email}`}
@@ -139,29 +141,29 @@ export default async function LeadershipPage() {
                         </p>
                       )}
                       {member.bio && (
-                        <p className="mt-1 text-xs leading-relaxed text-graphite/70">{member.bio}</p>
+                        <p className="mt-1 text-[11px] leading-relaxed text-graphite/70">{member.bio}</p>
                       )}
                     </div>
                   ) : (
-                    <p className="mt-4 text-xs leading-relaxed text-graphite/60">
+                    <p className="mt-3 text-[11px] leading-relaxed text-graphite/60">
                       This position isn&apos;t currently held by a student. If you&apos;re interested,
                       you can apply below.
                     </p>
                   )}
                 </div>
 
-                <div className="mt-6">
+                <div className="mt-4">
                 {application ? (
-                  <details className="rounded-sm border border-forest/10 bg-paper/80 p-3">
-                    <summary className="cursor-pointer list-none font-mono text-xs uppercase tracking-[0.15em] text-forest">
+                  <details className="rounded-sm border border-forest/10 bg-paper/80 p-2.5">
+                    <summary className="cursor-pointer list-none font-mono text-[10px] uppercase tracking-[0.15em] text-forest">
                       Check Application Status
                     </summary>
-                    <div className="mt-3 space-y-2">
-                      <p className="font-mono text-[10px] uppercase tracking-[0.15em] text-graphite/40">
+                    <div className="mt-2 space-y-1.5">
+                      <p className="font-mono text-[9px] uppercase tracking-[0.15em] text-graphite/40">
                         Current status
                       </p>
-                      <p className="text-sm font-medium text-graphite">{formatStatus(application.status)}</p>
-                      <p className="text-xs text-graphite/55">
+                      <p className="text-xs font-medium text-graphite">{formatStatus(application.status)}</p>
+                      <p className="text-[11px] text-graphite/55">
                         Submitted {new Intl.DateTimeFormat("en-US", {
                           month: "short",
                           day: "numeric",
@@ -173,12 +175,12 @@ export default async function LeadershipPage() {
                 ) : !filled && role.open ? (
                   <Link
                     href={`/leadership/apply/${role.slug}`}
-                    className="inline-block w-full rounded-sm bg-forest px-4 py-2.5 text-center font-mono text-xs uppercase tracking-[0.15em] text-gold transition hover:bg-forestdeep"
+                    className="inline-block w-full rounded-sm bg-forest px-4 py-2 text-center font-mono text-[10px] uppercase tracking-[0.15em] text-gold transition hover:bg-forestdeep"
                   >
                     Apply now!
                   </Link>
                 ) : !filled ? (
-                  <span className="inline-block w-full rounded-sm border border-forest/10 px-4 py-2.5 text-center font-mono text-xs uppercase tracking-[0.15em] text-graphite/40">
+                  <span className="inline-block w-full rounded-sm border border-forest/10 px-4 py-2 text-center font-mono text-[10px] uppercase tracking-[0.15em] text-graphite/40">
                     Not Accepting Applications
                   </span>
                 ) : null}
