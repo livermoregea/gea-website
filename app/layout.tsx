@@ -6,7 +6,7 @@ import "katex/dist/katex.min.css";
 import "./globals.css";
 import Nav from "@/components/Nav";
 import Footer from "@/components/Footer";
-import WelcomePopup from "@/components/WelcomePopup";
+import SiteAnnouncements from "@/components/SiteAnnouncements";
 
 const display = Space_Grotesk({
   subsets: ["latin"],
@@ -46,8 +46,8 @@ export default function RootLayout({
           Skip to content
         </a>
         <Nav />
+        <SiteAnnouncements />
         <main id="content" className="min-h-screen">
-          <WelcomePopup />
           {children}
         </main>
         <Footer />

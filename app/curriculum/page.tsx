@@ -5,7 +5,7 @@ const years = [
   },
   {
     grade: "10th Grade",
-    core: ["Biology or Chemistry", "Geometry or higher math", "English 10 (regular or honors)", "World History", "PLTW Principles of Engineering, Honors"],
+    core: ["Biology or Chemistry", "Geometry or higher math", "English 10", "World History", "PLTW Principles of Engineering, Honors"],
   },
   {
     grade: "11th Grade",

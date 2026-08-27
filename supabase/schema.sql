@@ -264,6 +264,32 @@ alter table profile_change_requests add column if not exists requested_fields js
 alter table profile_change_requests add column if not exists rejection_reason text;
 
 -- ---------------------------------------------------------
+-- WEBSITE ANNOUNCEMENTS: admin-managed popup and banner
+-- content that can be shown site-wide or just on the home page.
+-- ---------------------------------------------------------
+create table if not exists website_announcements (
+  id uuid primary key default gen_random_uuid(),
+  kind text not null unique check (kind in ('popup', 'banner')),
+  is_enabled boolean not null default false,
+  scope text not null default 'site' check (scope in ('site', 'home')),
+  title text not null default '',
+  body text not null default '',
+  buttons jsonb not null default '[]'::jsonb,
+  allow_dont_show_again boolean not null default true,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+alter table website_announcements add column if not exists kind text not null default 'popup';
+alter table website_announcements add column if not exists is_enabled boolean not null default false;
+alter table website_announcements add column if not exists scope text not null default 'site';
+alter table website_announcements add column if not exists title text not null default '';
+alter table website_announcements add column if not exists body text not null default '';
+alter table website_announcements add column if not exists buttons jsonb not null default '[]'::jsonb;
+alter table website_announcements add column if not exists allow_dont_show_again boolean not null default true;
+alter table website_announcements add column if not exists updated_at timestamptz not null default now();
+
+-- ---------------------------------------------------------
 -- INTERVIEW SLOTS: lunch-period interview times admins open up.
 -- ---------------------------------------------------------
 create table if not exists interview_slots (
@@ -438,6 +464,7 @@ alter table teacher_profiles enable row level security;
 alter table teacher_invites enable row level security;
 alter table admins enable row level security;
 alter table profile_change_requests enable row level security;
+alter table website_announcements enable row level security;
 
 -- Leadership: anyone can view the board; only admins can edit.
 drop policy if exists "leadership_public_read" on leadership_members;
@@ -507,6 +534,28 @@ create policy "profile_change_requests_self_read" on profile_change_requests
 drop policy if exists "profile_change_requests_admin_update" on profile_change_requests;
 create policy "profile_change_requests_admin_update" on profile_change_requests
   for update using (is_staff()) with check (is_staff());
+
+drop policy if exists "website_announcements_public_read" on website_announcements;
+create policy "website_announcements_public_read" on website_announcements
+  for select using (is_enabled = true or is_staff());
+drop policy if exists "website_announcements_staff_write" on website_announcements;
+create policy "website_announcements_staff_write" on website_announcements
+  for all using (is_staff()) with check (is_staff());
+
+create or replace function set_website_announcements_updated_at()
+returns trigger
+language plpgsql
+as $$
+begin
+  new.updated_at = now();
+  return new;
+end;
+$$;
+
+drop trigger if exists website_announcements_set_updated_at on website_announcements;
+create trigger website_announcements_set_updated_at
+before update on website_announcements
+for each row execute function set_website_announcements_updated_at();
 
 -- Interview slots: anyone can see open times; only admins manage them.
 drop policy if exists "slots_public_read" on interview_slots;

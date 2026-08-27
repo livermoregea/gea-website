@@ -10,10 +10,12 @@ import AdminLeadership from "@/components/admin/AdminLeadership";
 import AdminStudents from "@/components/admin/AdminStudents";
 import AdminProfileChanges from "@/components/admin/AdminProfileChanges";
 import AdminTeacherInvites from "@/components/admin/AdminTeacherInvites";
+import AdminWebsite from "@/components/admin/AdminWebsite";
 
 const TABS = [
   { key: "applications", label: "Applications" },
   { key: "students", label: "Students" },
+  { key: "website", label: "Website" },
   { key: "profile-changes", label: "Profile Changes" },
   { key: "slots", label: "Interview Slots" },
   { key: "forum", label: "Forum Activity" },
@@ -27,6 +29,7 @@ type TabAlertCounts = Record<TabKey, number>;
 const EMPTY_ALERTS: TabAlertCounts = {
   applications: 0,
   students: 0,
+  website: 0,
   "profile-changes": 0,
   slots: 0,
   forum: 0,
@@ -56,6 +59,7 @@ export default function AdminTabs({
       const [
         applications,
         studentRequests,
+        websiteAnnouncements,
         profileChanges,
         pendingQuestions,
         pendingAnswers,
@@ -65,6 +69,10 @@ export default function AdminTabs({
           .from("student_account_requests")
           .select("id", { count: "exact", head: true })
           .eq("status", "pending"),
+        supabase
+          .from("website_announcements")
+          .select("id", { count: "exact", head: true })
+          .eq("is_enabled", true),
         supabase
           .from("profile_change_requests")
           .select("id", { count: "exact", head: true })
@@ -76,6 +84,7 @@ export default function AdminTabs({
       setAlertCounts({
         applications: applications.count ?? 0,
         students: studentRequests.count ?? 0,
+        website: websiteAnnouncements.count ?? 0,
         "profile-changes": profileChanges.count ?? 0,
         slots: 0,
         forum: (pendingQuestions.count ?? 0) + (pendingAnswers.count ?? 0),
@@ -163,6 +172,9 @@ export default function AdminTabs({
           </div>
           <div role="tabpanel" id="panel-students" aria-labelledby="tab-students" hidden={tab !== "students"}>
             {tab === "students" && <AdminStudents />}
+          </div>
+          <div role="tabpanel" id="panel-website" aria-labelledby="tab-website" hidden={tab !== "website"}>
+            {tab === "website" && <AdminWebsite />}
           </div>
           <div
             role="tabpanel"

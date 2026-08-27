@@ -81,47 +81,25 @@ export default async function QAPage() {
           GEA questions and answers
         </h1>
         <p className="mt-4 text-sm leading-relaxed text-graphite/80 sm:text-base">
-          Frequently asked questions and forum access.
+          Learn about GEA and visit the application form if you are interested in joining the academy.
         </p>
       </div>
 
       <div className="mt-10 rounded-sm bg-forest/[0.03] px-5 py-6 ring-1 ring-forest/5 sm:px-6 sm:py-7">
-        <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
-          <div className="max-w-2xl">
-            <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-gold">
-              Links
-            </p>
-            <p className="mt-2 text-sm leading-relaxed text-graphite/70 sm:text-base">
-              Application access and student sign-in.
-            </p>
-          </div>
-
-          <div className="flex flex-col gap-3 sm:flex-row">
-            <Link
-              href={academyApplicationUrl}
-              target="_blank"
-              rel="noreferrer"
-              className="inline-flex min-h-11 items-center justify-center rounded-sm bg-forest px-4 py-2.5 font-mono text-xs uppercase tracking-[0.15em] text-gold transition hover:bg-forestdeep"
-            >
-              Open Application Form
-            </Link>
-            <Link
-              href="/login"
-              className="inline-flex min-h-11 items-center justify-center rounded-sm border border-forest/15 px-4 py-2.5 font-mono text-xs uppercase tracking-[0.15em] text-forest transition hover:bg-forest/[0.03]"
-            >
-              Sign In
-            </Link>
-          </div>
-        </div>
-      </div>
-
-      <div className="mt-10 rounded-sm bg-paper px-5 py-6 ring-1 ring-forest/10 sm:px-6">
-        <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-gold">Forum</p>
-        <h2 className="mt-3 font-display text-2xl text-forest">Sign in to view the forum</h2>
-        <p className="mt-3 max-w-3xl text-sm leading-relaxed text-graphite/70">
-          The forum is only visible to approved student accounts. Sign in or create an account to
-          view posts, reply, and vote.
+        <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-gold">Apply</p>
+        <h2 className="mt-2 font-display text-xl text-forest">Interested in GEA?</h2>
+        <p className="mt-3 max-w-2xl text-sm leading-relaxed text-graphite/70 sm:text-base">
+          Start with the academy application. This page is for learning about the program and
+          getting to the application form.
         </p>
+        <Link
+          href={academyApplicationUrl}
+          target="_blank"
+          rel="noreferrer"
+          className="mt-5 inline-flex min-h-11 items-center justify-center rounded-sm bg-forest px-4 py-2.5 font-mono text-xs uppercase tracking-[0.15em] text-gold transition hover:bg-forestdeep"
+        >
+          Open Application Form
+        </Link>
       </div>
 
       <div className="dim-divider my-12" />
@@ -179,6 +157,22 @@ export default async function QAPage() {
           </p>
         </div>
       </section>
+
+      <div className="mt-12 rounded-sm bg-forest/[0.03] px-5 py-6 ring-1 ring-forest/5 sm:px-6 sm:py-7">
+        <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-gold">Apply</p>
+        <h2 className="mt-2 font-display text-xl text-forest">Ready to join GEA?</h2>
+        <p className="mt-3 max-w-2xl text-sm leading-relaxed text-graphite/70 sm:text-base">
+          If you’re interested in the academy, the application form is the next step.
+        </p>
+        <Link
+          href={academyApplicationUrl}
+          target="_blank"
+          rel="noreferrer"
+          className="mt-5 inline-flex min-h-11 items-center justify-center rounded-sm bg-forest px-4 py-2.5 font-mono text-xs uppercase tracking-[0.15em] text-gold transition hover:bg-forestdeep"
+        >
+          Open Application Form
+        </Link>
+      </div>
     </div>
   );
 }
