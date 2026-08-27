@@ -152,7 +152,7 @@ create table if not exists leadership_members (
   id uuid primary key default gen_random_uuid(),
   role text not null unique check (role in (
     'president','vice-president','secretary','publicist','treasurer',
-    'rep-11','rep-10','rep-9'
+    'rep-10','rep-9'
   )),
   name text not null,
   contact_email text,
@@ -483,7 +483,6 @@ create policy "applications_public_insert" on applications
   for insert with check (
     case
       when role in ('vice-president', 'secretary', 'publicist', 'treasurer') then graduating_class_year <= extract(year from now())::int + 2
-      when role = 'rep-11' then graduating_class_year = extract(year from now())::int + 2
       when role = 'rep-10' then graduating_class_year = extract(year from now())::int + 3
       when role = 'rep-9' then graduating_class_year = extract(year from now())::int + 4
       else false

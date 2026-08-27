@@ -41,10 +41,6 @@ const ROLE_RESPONSIBILITIES: Record<string, string[]> = {
     "Keep track of money coming in and going out so the club stays organized.",
     "Help make sure spending decisions are clear to the officer team.",
   ],
-  "rep-11": [
-    "Represent the 11th grade and bring student input to the officer team.",
-    "Share ideas, communicate concerns, and support class-specific events or needs.",
-  ],
   "rep-10": [
     "Represent the 10th grade and bring student input to the officer team.",
     "Share ideas, communicate concerns, and support class-specific events or needs.",
