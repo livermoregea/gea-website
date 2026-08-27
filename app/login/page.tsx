@@ -13,8 +13,13 @@ export default async function LoginPage() {
     } = await supabase.auth.getUser();
 
     if (user) {
-      const [{ data: studentProfile }, { data: teacherProfile }, { data: adminProfile }] = await Promise.all([
+      const [{ data: studentProfile }, { data: studentRequest }, { data: teacherProfile }, { data: adminProfile }] = await Promise.all([
         supabase.from("student_profiles").select("id").eq("auth_user_id", user.id).maybeSingle(),
+        supabase
+          .from("student_account_requests")
+          .select("status")
+          .eq("school_email", user.email?.toLowerCase() ?? "")
+          .maybeSingle(),
         supabase.from("teacher_profiles").select("id").eq("auth_user_id", user.id).maybeSingle(),
         supabase.from("admins").select("auth_user_id").eq("auth_user_id", user.id).maybeSingle(),
       ]);
@@ -25,7 +30,7 @@ export default async function LoginPage() {
       if (teacherProfile) {
         redirect("/teacher");
       }
-      if (studentProfile) {
+      if (studentProfile || studentRequest?.status === "pending") {
         redirect("/dashboard#qa");
       }
     }

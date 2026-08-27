@@ -18,6 +18,7 @@ export default function StudentAuthForm({ redirectTo }: { redirectTo: string }) 
   const [signupClassYear, setSignupClassYear] = useState("");
   const [signupStudentId, setSignupStudentId] = useState("");
   const [signupError, setSignupError] = useState<string | null>(null);
+  const [signupSuccess, setSignupSuccess] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const router = useRouter();
 
@@ -64,9 +65,14 @@ export default function StudentAuthForm({ redirectTo }: { redirectTo: string }) 
       return;
     }
 
-    const [{ data: studentProfile }, { data: teacherProfile }, { data: adminProfile }] =
+    const [{ data: studentProfile }, { data: studentRequest }, { data: teacherProfile }, { data: adminProfile }] =
       await Promise.all([
         supabase.from("student_profiles").select("id").eq("auth_user_id", user.id).maybeSingle(),
+        supabase
+          .from("student_account_requests")
+          .select("status")
+          .eq("school_email", user.email?.toLowerCase() ?? "")
+          .maybeSingle(),
         supabase
           .from("teacher_profiles")
           .select("id")
@@ -89,6 +95,10 @@ export default function StudentAuthForm({ redirectTo }: { redirectTo: string }) 
       router.push(redirectTo);
       return;
     }
+    if (studentRequest?.status === "pending") {
+      router.push(redirectTo);
+      return;
+    }
 
     setLoading(false);
     setLoginError("We couldn't match that account to a student, teacher, or admin profile.");
@@ -97,6 +107,7 @@ export default function StudentAuthForm({ redirectTo }: { redirectTo: string }) 
   async function signUp(e: React.FormEvent) {
     e.preventDefault();
     setSignupError(null);
+    setSignupSuccess(null);
 
     if (!hasSupabaseConfig()) {
       setSignupError("Student signup is disabled until Supabase is configured.");
@@ -139,20 +150,13 @@ export default function StudentAuthForm({ redirectTo }: { redirectTo: string }) 
       return;
     }
 
-    const supabase = createClient();
-    const { error: signInError } = await supabase.auth.signInWithPassword({
-      email: data.authEmail,
-      password: studentIdNumber,
-    });
     setLoading(false);
-
-    if (signInError) {
-      setSignupError("Your account was created, but we couldn't sign you in. Please try again.");
-      return;
-    }
-
-    router.push(redirectTo);
-    router.refresh();
+    setSignupSuccess(data.message ?? "Your request has been submitted for admin approval.");
+    setSignupName("");
+    setSignupUsername("");
+    setSignupEmail("");
+    setSignupClassYear("");
+    setSignupStudentId("");
   }
 
   return (
@@ -310,6 +314,11 @@ export default function StudentAuthForm({ redirectTo }: { redirectTo: string }) 
           {signupError && (
             <p className="text-sm text-red-700" role="alert">
               {signupError}
+            </p>
+          )}
+          {signupSuccess && (
+            <p className="rounded-sm bg-forest/[0.04] px-4 py-3 text-sm text-forest" role="status">
+              {signupSuccess} You can sign in now, but the forum stays read-only until approval.
             </p>
           )}
 

@@ -44,31 +44,26 @@ export default function Footer() {
 
             <div className="rounded-sm border border-paper/12 bg-paper/5 px-4 py-4">
               <p className="font-mono text-[11px] uppercase tracking-[0.2em] text-paper/50">
-                Questions
+                Contact Us
               </p>
               <p className="mt-2 text-sm leading-relaxed text-paper/70">
-                Reach your academic counselor or the GEA coordinators:
+                Find GEA coordinator emails, the official counseling-services page, the GEA email,
+                and social links on one page.
               </p>
-              <div className="mt-3 space-y-2 text-sm text-paper/75">
-                <p>
-                  Karen Fletcher:{" "}
-                  <a
-                    href="mailto:kfletcher@lvjusd.org"
-                    className="underline decoration-paper/25 underline-offset-4"
-                  >
-                    kfletcher@lvjusd.org
-                  </a>
-                </p>
-                <p>
-                  Dorothy Morallos:{" "}
-                  <a
-                    href="mailto:dmorallos@lvjusd.org"
-                    className="underline decoration-paper/25 underline-offset-4"
-                  >
-                    dmorallos@lvjusd.org
-                  </a>
-                </p>
-              </div>
+              <Link
+                href="/contact"
+                className="mt-4 inline-flex rounded-sm border border-paper/20 px-4 py-2 font-mono text-[11px] uppercase tracking-[0.18em] text-paper transition hover:border-gold hover:text-gold"
+              >
+                Open Contact Page
+              </Link>
+              <p className="mt-4">
+                <Link
+                  href="/privacy"
+                  className="font-mono text-[11px] uppercase tracking-[0.18em] text-gold underline decoration-paper/25 underline-offset-4"
+                >
+                  Student Privacy
+                </Link>
+              </p>
             </div>
           </div>
         </div>

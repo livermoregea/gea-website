@@ -11,6 +11,7 @@ type Member = {
   name: string;
   contact_email: string | null;
   bio: string | null;
+  photo_url: string | null;
 };
 
 type Application = {
@@ -70,61 +71,59 @@ export default async function LeadershipPage() {
         GEA Leadership Board
       </h1>
       <p className="mt-4 max-w-2xl text-sm leading-relaxed text-graphite/80 sm:text-base">
-        GEA is run in part by its own students. Most leadership seats are open, so you can click a
-        role below to apply.
+        Leadership roles and applications.
       </p>
       <p className="mt-3 max-w-2xl text-sm leading-relaxed text-graphite/70 sm:text-base">
-        You can apply with or without signing in. If you sign in first, your leadership
-        application will be linked to your account so you can track it later.
+        Sign in to associate applications with your account.
       </p>
 
       {user ? (
         <div className="mt-6 rounded-sm bg-forest/[0.04] p-5 ring-1 ring-forest/10">
-          <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-gold">
-            Already Signed In
-          </p>
+            <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-gold">
+              Signed In
+            </p>
           <p className="mt-2 text-sm text-graphite/70">
-            You are already signed in. Any leadership application you submit from here will be
-            linked to your account, so you can check the process later on this page.
+            Applications are linked to your account.
           </p>
           {applicationByRole.size > 0 ? (
             <p className="mt-2 text-sm text-graphite/70">
-              Your submitted applications are showing below. Click a role to review the current
-              status.
+              Submitted applications are shown below.
             </p>
           ) : (
             <p className="mt-2 text-sm text-graphite/70">
-              You have not submitted any leadership applications yet. Pick a role below to start
-              one.
+              No submitted applications yet.
             </p>
           )}
         </div>
       ) : (
-        <div className="mt-6 grid gap-5 lg:grid-cols-[0.95fr_1.05fr]">
-          <div className="rounded-sm bg-forest/[0.04] p-5 ring-1 ring-forest/10">
-            <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-gold">
-              Apply Without Signing In
-            </p>
-            <p className="mt-2 text-sm text-graphite/70">
-              You can still apply below without an account. If you want your application tied to
-              your student profile, sign in here first.
-            </p>
+        <div className="mt-6 rounded-sm border border-dashed border-forest/15 bg-forest/[0.03] px-4 py-4 sm:px-5">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+            <div className="max-w-2xl">
+              <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-gold">
+                Optional Sign In
+              </p>
+              <p className="mt-2 text-sm leading-relaxed text-graphite/70">
+                Sign in to associate your application with your account.
+              </p>
+            </div>
             <Link
               href="#roles"
-              className="mt-3 inline-flex rounded-sm bg-forest px-4 py-2 font-mono text-xs uppercase tracking-[0.15em] text-gold transition hover:bg-forestdeep"
+              className="inline-flex min-h-11 items-center justify-center rounded-sm bg-forest px-4 py-2 font-mono text-xs uppercase tracking-[0.15em] text-gold transition hover:bg-forestdeep"
             >
-              Browse Roles
+              Start Applying
             </Link>
           </div>
-          <div className="rounded-sm bg-forest/[0.04] p-5 ring-1 ring-forest/10">
-            <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-gold">Sign In Here</p>
-            <p className="mt-2 text-sm text-graphite/70">
-              Sign in on this page if you want your leadership application linked to your account.
+          <details className="mt-4 rounded-sm bg-paper/80 p-4 ring-1 ring-forest/10">
+            <summary className="cursor-pointer list-none font-mono text-xs uppercase tracking-[0.15em] text-forest">
+              Sign in or create account
+            </summary>
+            <p className="mt-2 text-sm leading-relaxed text-graphite/65">
+              Use this form to sign in or create your student account.
             </p>
             <div className="mt-4">
               <StudentAuthForm redirectTo="/leadership" />
             </div>
-          </div>
+          </details>
         </div>
       )}
 
@@ -139,40 +138,50 @@ export default async function LeadershipPage() {
           return (
             <div
               key={role.slug}
-              className="flex flex-col justify-between rounded-sm bg-forest/[0.03] p-6 ring-1 ring-forest/5"
+              className="flex flex-col overflow-hidden rounded-sm bg-forest/[0.03] ring-1 ring-forest/5"
             >
-              <div>
-                <p className="font-mono text-[11px] uppercase tracking-[0.2em] text-gold">
-                  {filled ? "Seat Filled" : "Seat Open"}
-                </p>
-                <h2 className="mt-2 font-display text-lg text-forest">{role.label}</h2>
-                {member ? (
-                  <div className="mt-4">
-                    <p className="text-sm font-medium text-graphite">{member.name}</p>
-                    {member.contact_email && (
-                      <p className="mt-1 text-xs text-graphite/70">
-                        Contact:{" "}
-                        <a
-                          href={`mailto:${member.contact_email}`}
-                          className="text-forest underline decoration-gold underline-offset-4"
-                        >
-                          {member.contact_email}
-                        </a>
-                      </p>
-                    )}
-                    {member.bio && (
-                      <p className="mt-1 text-xs leading-relaxed text-graphite/70">{member.bio}</p>
-                    )}
+              {member?.photo_url ? (
+                <div className="border-b border-forest/10 bg-paper/70">
+                  <div className="flex aspect-[4/3] items-center justify-center overflow-hidden bg-forest/[0.02]">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={member.photo_url} alt={member.name} className="h-full w-full object-cover" />
                   </div>
-                ) : (
-                  <p className="mt-4 text-xs leading-relaxed text-graphite/60">
-                    This position isn&apos;t currently held by a student. If you&apos;re interested,
-                    you can apply below.
-                  </p>
-                )}
-              </div>
+                </div>
+              ) : null}
 
-              <div className="mt-6">
+              <div className="flex flex-1 flex-col justify-between p-6">
+                <div>
+                  <p className="font-mono text-[11px] uppercase tracking-[0.2em] text-gold">
+                    {filled ? "Seat Filled" : "Seat Open"}
+                  </p>
+                  <h2 className="mt-2 font-display text-lg text-forest">{role.label}</h2>
+                  {member ? (
+                    <div className="mt-4">
+                      <p className="text-sm font-medium text-graphite">{member.name}</p>
+                      {member.contact_email && (
+                        <p className="mt-1 text-xs text-graphite/70">
+                          Contact:{" "}
+                          <a
+                            href={`mailto:${member.contact_email}`}
+                            className="text-forest underline decoration-gold underline-offset-4"
+                          >
+                            {member.contact_email}
+                          </a>
+                        </p>
+                      )}
+                      {member.bio && (
+                        <p className="mt-1 text-xs leading-relaxed text-graphite/70">{member.bio}</p>
+                      )}
+                    </div>
+                  ) : (
+                    <p className="mt-4 text-xs leading-relaxed text-graphite/60">
+                      This position isn&apos;t currently held by a student. If you&apos;re interested,
+                      you can apply below.
+                    </p>
+                  )}
+                </div>
+
+                <div className="mt-6">
                 {application ? (
                   <details className="rounded-sm border border-forest/10 bg-paper/80 p-3">
                     <summary className="cursor-pointer list-none font-mono text-xs uppercase tracking-[0.15em] text-forest">
@@ -204,6 +213,7 @@ export default async function LeadershipPage() {
                     Not Accepting Applications
                   </span>
                 ) : null}
+                </div>
               </div>
             </div>
           );

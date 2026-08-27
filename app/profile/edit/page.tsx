@@ -73,8 +73,7 @@ export default async function EditProfilePage() {
       <p className="font-mono text-xs uppercase tracking-[0.3em] text-gold">Profile Requests</p>
       <h1 className="mt-4 font-display text-2xl font-medium text-forest">Request profile changes</h1>
       <p className="mt-3 text-sm text-graphite/70">
-        Submit profile changes here. An admin will review and approve them before your profile is
-        updated.
+        Submit profile changes for review.
       </p>
 
       <div className="dim-divider my-8" />

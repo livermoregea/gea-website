@@ -73,6 +73,27 @@ create index if not exists student_profiles_display_username_idx on student_prof
 create index if not exists student_profiles_full_name_idx on student_profiles(full_name);
 
 -- ---------------------------------------------------------
+-- STUDENT ACCOUNT REQUESTS: pending GEA student signups that
+-- require admin approval before the real account is created.
+-- ---------------------------------------------------------
+create table if not exists student_account_requests (
+  id uuid primary key default gen_random_uuid(),
+  full_name text not null,
+  display_username text not null unique,
+  school_email text not null unique,
+  graduating_class_year integer not null,
+  student_id_number text not null,
+  status text not null default 'pending' check (status in ('pending', 'approved', 'rejected')),
+  reviewed_at timestamptz,
+  reviewed_by_auth_user_id uuid references auth.users(id) on delete set null,
+  rejection_reason text,
+  created_at timestamptz not null default now()
+);
+
+create index if not exists student_account_requests_status_idx on student_account_requests(status);
+create index if not exists student_account_requests_school_email_idx on student_account_requests(school_email);
+
+-- ---------------------------------------------------------
 -- TEACHER PROFILES: private teacher accounts created with a
 -- sign-up code, so staff can access the teacher portal.
 -- ---------------------------------------------------------
@@ -141,6 +162,47 @@ create table if not exists leadership_members (
 );
 
 alter table leadership_members add column if not exists contact_email text;
+
+-- ---------------------------------------------------------
+-- STORAGE: leadership photos uploaded directly from the admin
+-- portal and rendered publicly on /leadership.
+-- ---------------------------------------------------------
+insert into storage.buckets (id, name, public)
+values ('leadership-photos', 'leadership-photos', true)
+on conflict (id) do update
+set name = excluded.name,
+    public = excluded.public;
+
+do $$
+begin
+  if not exists (
+    select 1
+    from pg_policies
+    where schemaname = 'storage'
+      and tablename = 'objects'
+      and policyname = 'leadership_photos_public_read'
+  ) then
+    create policy leadership_photos_public_read
+      on storage.objects
+      for select
+      using (bucket_id = 'leadership-photos');
+  end if;
+
+  if not exists (
+    select 1
+    from pg_policies
+    where schemaname = 'storage'
+      and tablename = 'objects'
+      and policyname = 'leadership_photos_staff_write'
+  ) then
+    create policy leadership_photos_staff_write
+      on storage.objects
+      for all
+      using (bucket_id = 'leadership-photos' and is_staff())
+      with check (bucket_id = 'leadership-photos' and is_staff());
+  end if;
+end
+$$;
 
 -- Example seed for the President seat — edit the name, then run:
 -- insert into leadership_members (role, name, bio)
@@ -245,6 +307,9 @@ create table if not exists qa_questions (
   asked_by_auth_user_id uuid references auth.users(id) on delete set null,
   status text not null default 'pending' check (status in ('pending','approved','rejected')),
   rejection_reason text,
+  upvote_count integer not null default 0,
+  downvote_count integer not null default 0,
+  report_count integer not null default 0,
   created_at timestamptz not null default now()
 );
 
@@ -256,8 +321,39 @@ alter table qa_questions add column if not exists work_text text;
 alter table qa_questions add column if not exists graph_notes text;
 alter table qa_questions add column if not exists graph_link text;
 alter table qa_questions add column if not exists rejection_reason text;
+alter table qa_questions add column if not exists upvote_count integer not null default 0;
+alter table qa_questions add column if not exists downvote_count integer not null default 0;
+alter table qa_questions add column if not exists report_count integer not null default 0;
 
 create index if not exists qa_questions_forum_board_idx on qa_questions(forum_board);
+
+create table if not exists qa_question_votes (
+  id uuid primary key default gen_random_uuid(),
+  question_id uuid not null references qa_questions(id) on delete cascade,
+  voter_auth_user_id uuid not null references auth.users(id) on delete cascade,
+  value integer not null check (value in (-1, 1)),
+  created_at timestamptz not null default now(),
+  unique (question_id, voter_auth_user_id)
+);
+
+alter table qa_question_votes add column if not exists question_id uuid not null references qa_questions(id) on delete cascade;
+alter table qa_question_votes add column if not exists voter_auth_user_id uuid not null references auth.users(id) on delete cascade;
+alter table qa_question_votes add column if not exists value integer not null check (value in (-1, 1));
+
+create table if not exists qa_question_reports (
+  id uuid primary key default gen_random_uuid(),
+  question_id uuid not null references qa_questions(id) on delete cascade,
+  reporter_auth_user_id uuid references auth.users(id) on delete cascade,
+  reporter_key text not null default '',
+  reason text not null default 'Community report',
+  created_at timestamptz not null default now(),
+  unique (question_id, reporter_key)
+);
+
+alter table qa_question_reports add column if not exists question_id uuid not null references qa_questions(id) on delete cascade;
+alter table qa_question_reports add column if not exists reporter_auth_user_id uuid references auth.users(id) on delete cascade;
+alter table qa_question_reports add column if not exists reporter_key text not null default '';
+alter table qa_question_reports add column if not exists reason text not null default 'Community report';
 
 create table if not exists qa_answers (
   id uuid primary key default gen_random_uuid(),
@@ -297,15 +393,30 @@ alter table qa_answer_votes add column if not exists value integer not null chec
 create table if not exists qa_answer_reports (
   id uuid primary key default gen_random_uuid(),
   answer_id uuid not null references qa_answers(id) on delete cascade,
-  reporter_auth_user_id uuid not null references auth.users(id) on delete cascade,
+  reporter_auth_user_id uuid references auth.users(id) on delete cascade,
+  reporter_key text not null default '',
   reason text not null default 'Community report',
   created_at timestamptz not null default now(),
-  unique (answer_id, reporter_auth_user_id)
+  unique (answer_id, reporter_key)
 );
 
 alter table qa_answer_reports add column if not exists answer_id uuid not null references qa_answers(id) on delete cascade;
-alter table qa_answer_reports add column if not exists reporter_auth_user_id uuid not null references auth.users(id) on delete cascade;
+alter table qa_answer_reports alter column reporter_auth_user_id drop not null;
+alter table qa_answer_reports add column if not exists reporter_key text not null default '';
 alter table qa_answer_reports add column if not exists reason text not null default 'Community report';
+
+update qa_question_reports
+set reporter_key = coalesce(nullif(reporter_key, ''), reporter_auth_user_id::text, gen_random_uuid()::text)
+where reporter_key = '' or reporter_key is null;
+
+update qa_answer_reports
+set reporter_key = coalesce(nullif(reporter_key, ''), reporter_auth_user_id::text, gen_random_uuid()::text)
+where reporter_key = '' or reporter_key is null;
+
+create unique index if not exists qa_question_reports_target_reporter_idx
+  on qa_question_reports(question_id, reporter_key);
+create unique index if not exists qa_answer_reports_target_reporter_idx
+  on qa_answer_reports(answer_id, reporter_key);
 
 -- =========================================================
 -- ROW LEVEL SECURITY
@@ -315,6 +426,8 @@ alter table leadership_members enable row level security;
 alter table applications enable row level security;
 alter table interview_slots enable row level security;
 alter table qa_questions enable row level security;
+alter table qa_question_votes enable row level security;
+alter table qa_question_reports enable row level security;
 alter table qa_answers enable row level security;
 alter table qa_answer_votes enable row level security;
 alter table qa_answer_reports enable row level security;
@@ -406,6 +519,29 @@ create policy "questions_admin_update" on qa_questions
 drop policy if exists "questions_admin_delete" on qa_questions;
 create policy "questions_admin_delete" on qa_questions
   for delete using (is_staff());
+
+drop policy if exists "question_votes_auth_select" on qa_question_votes;
+create policy "question_votes_auth_select" on qa_question_votes
+  for select using (voter_auth_user_id = auth.uid() or is_staff());
+drop policy if exists "question_votes_auth_insert" on qa_question_votes;
+create policy "question_votes_auth_insert" on qa_question_votes
+  for insert with check (auth.uid() is not null);
+drop policy if exists "question_votes_auth_update" on qa_question_votes;
+create policy "question_votes_auth_update" on qa_question_votes
+  for update using (voter_auth_user_id = auth.uid() or is_staff()) with check (voter_auth_user_id = auth.uid() or is_staff());
+drop policy if exists "question_votes_auth_delete" on qa_question_votes;
+create policy "question_votes_auth_delete" on qa_question_votes
+  for delete using (voter_auth_user_id = auth.uid() or is_staff());
+
+drop policy if exists "question_reports_auth_select" on qa_question_reports;
+create policy "question_reports_auth_select" on qa_question_reports
+  for select using (reporter_auth_user_id = auth.uid() or is_staff());
+drop policy if exists "question_reports_auth_insert" on qa_question_reports;
+create policy "question_reports_auth_insert" on qa_question_reports
+  for insert with check (auth.uid() is not null);
+drop policy if exists "question_reports_auth_delete" on qa_question_reports;
+create policy "question_reports_auth_delete" on qa_question_reports
+  for delete using (reporter_auth_user_id = auth.uid() or is_staff());
 
 -- Q&A answers: only signed-in upperclassmen can submit answers;
 -- anyone can read approved ones; only admins moderate.
@@ -531,6 +667,40 @@ create trigger qa_questions_guard_content
 before insert or update on qa_questions
 for each row execute function guard_qa_question_content();
 
+create or replace function sync_qa_question_vote_counts()
+returns trigger
+language plpgsql
+as $$
+declare
+  affected_question_id uuid;
+begin
+  if tg_op = 'DELETE' then
+    affected_question_id := old.question_id;
+  else
+    affected_question_id := new.question_id;
+  end if;
+
+  update qa_questions
+  set upvote_count = coalesce((select count(*) from qa_question_votes where question_id = affected_question_id and value = 1), 0),
+      downvote_count = coalesce((select count(*) from qa_question_votes where question_id = affected_question_id and value = -1), 0)
+  where id = affected_question_id;
+
+  if tg_op = 'UPDATE' and old.question_id is distinct from new.question_id then
+    update qa_questions
+    set upvote_count = coalesce((select count(*) from qa_question_votes where question_id = old.question_id and value = 1), 0),
+        downvote_count = coalesce((select count(*) from qa_question_votes where question_id = old.question_id and value = -1), 0)
+    where id = old.question_id;
+  end if;
+
+  return coalesce(new, old);
+end;
+$$;
+
+drop trigger if exists qa_question_votes_sync_counts on qa_question_votes;
+create trigger qa_question_votes_sync_counts
+after insert or update or delete on qa_question_votes
+for each row execute function sync_qa_question_vote_counts();
+
 create or replace function guard_qa_answer_content()
 returns trigger
 language plpgsql
@@ -614,6 +784,38 @@ drop trigger if exists qa_answer_reports_sync_counts on qa_answer_reports;
 create trigger qa_answer_reports_sync_counts
 after insert or update or delete on qa_answer_reports
 for each row execute function sync_qa_answer_report_counts();
+
+create or replace function sync_qa_question_report_counts()
+returns trigger
+language plpgsql
+as $$
+declare
+  affected_question_id uuid;
+begin
+  if tg_op = 'DELETE' then
+    affected_question_id := old.question_id;
+  else
+    affected_question_id := new.question_id;
+  end if;
+
+  update qa_questions
+  set report_count = coalesce((select count(*) from qa_question_reports where question_id = affected_question_id), 0)
+  where id = affected_question_id;
+
+  if tg_op = 'UPDATE' and old.question_id is distinct from new.question_id then
+    update qa_questions
+    set report_count = coalesce((select count(*) from qa_question_reports where question_id = old.question_id), 0)
+    where id = old.question_id;
+  end if;
+
+  return coalesce(new, old);
+end;
+$$;
+
+drop trigger if exists qa_question_reports_sync_counts on qa_question_reports;
+create trigger qa_question_reports_sync_counts
+after insert or update or delete on qa_question_reports
+for each row execute function sync_qa_question_report_counts();
 
 -- =========================================================
 -- RPC FUNCTIONS — the ONLY way the public interview page

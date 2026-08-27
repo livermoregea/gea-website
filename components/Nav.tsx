@@ -13,6 +13,7 @@ const links = [
   { href: "/curriculum", label: "Curriculum" },
   { href: "/leadership", label: "Leadership" },
   { href: "/qa", label: "Q&A" },
+  { href: "/contact", label: "Contact" },
 ];
 
 const academyApplicationUrl =

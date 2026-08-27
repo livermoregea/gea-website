@@ -9,13 +9,13 @@ const resources = [
   },
   {
     title: "Q&A Hub",
-    body: "Ask a question, answer the queue, and review your history from one place.",
+    body: "GEA forum and student questions.",
     href: "/qa",
     label: "Open Q&A Hub",
   },
   {
     title: "Academy Application",
-    body: "Ready to join the academy? Use the official Google Form.",
+    body: "Official GEA application form.",
     href: "https://docs.google.com/forms/d/e/1FAIpQLSdTDKvYr0IqeTOAl88It9BlaFNkUU359dHG5B6FBzN48W6yng/viewform",
     label: "Apply to GEA",
     external: true,
@@ -36,8 +36,7 @@ export default function StudentResourcesPage() {
         Student resources
       </h1>
       <p className="mt-4 max-w-3xl text-sm leading-relaxed text-graphite/80 sm:text-base">
-        Use this page as a quick hub for the main GEA links: FAQs, the student dashboard, the
-        application, and the curriculum.
+        Main GEA links for students.
       </p>
 
       <div className="mt-10 grid gap-4 md:grid-cols-2">

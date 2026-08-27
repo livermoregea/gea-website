@@ -11,6 +11,9 @@ type ForumQuestion = {
   asked_by_name: string;
   asked_by_auth_user_id: string | null;
   created_at: string;
+  upvote_count: number;
+  downvote_count: number;
+  report_count: number;
 };
 
 type ForumAnswer = {
@@ -34,10 +37,27 @@ type VoteRow = {
   created_at: string;
 };
 
+type QuestionVoteRow = {
+  id: string;
+  question_id: string;
+  voter_auth_user_id: string;
+  value: number;
+  created_at: string;
+};
+
 type ReportRow = {
   id: string;
   answer_id: string;
   reporter_auth_user_id: string;
+  reason: string;
+  created_at: string;
+};
+
+type QuestionReportRow = {
+  id: string;
+  question_id: string;
+  reporter_auth_user_id: string | null;
+  reporter_key: string;
   reason: string;
   created_at: string;
 };
@@ -157,7 +177,9 @@ export default function AdminForum() {
   const [questions, setQuestions] = useState<ForumQuestion[]>([]);
   const [answers, setAnswers] = useState<ForumAnswer[]>([]);
   const [votes, setVotes] = useState<VoteRow[]>([]);
+  const [questionVotes, setQuestionVotes] = useState<QuestionVoteRow[]>([]);
   const [reports, setReports] = useState<ReportRow[]>([]);
+  const [questionReports, setQuestionReports] = useState<QuestionReportRow[]>([]);
   const [studentProfiles, setStudentProfiles] = useState<ProfileRow[]>([]);
   const [teacherProfiles, setTeacherProfiles] = useState<ProfileRow[]>([]);
   const [adminIds, setAdminIds] = useState<string[]>([]);
@@ -173,7 +195,9 @@ export default function AdminForum() {
       setQuestions([]);
       setAnswers([]);
       setVotes([]);
+      setQuestionVotes([]);
       setReports([]);
+      setQuestionReports([]);
       setStudentProfiles([]);
       setTeacherProfiles([]);
       setAdminIds([]);
@@ -186,31 +210,50 @@ export default function AdminForum() {
       { data: questionData, error: questionError },
       { data: answerData, error: answerError },
       { data: voteData, error: voteError },
+      { data: questionVoteData, error: questionVoteError },
       { data: reportData, error: reportError },
+      { data: questionReportData, error: questionReportError },
       { data: studentData, error: studentError },
       { data: teacherData, error: teacherError },
       { data: adminData, error: adminError },
     ] = await Promise.all([
-      supabase.from("qa_questions").select("id, question, asked_by_name, asked_by_auth_user_id, created_at").order("created_at", { ascending: false }),
+      supabase
+        .from("qa_questions")
+        .select("id, question, asked_by_name, asked_by_auth_user_id, created_at, upvote_count, downvote_count, report_count")
+        .order("created_at", { ascending: false }),
       supabase
         .from("qa_answers")
         .select("id, question_id, answer, answered_by_name, answered_by_auth_user_id, parent_answer_id, created_at, upvote_count, downvote_count, report_count")
         .order("created_at", { ascending: false }),
       supabase.from("qa_answer_votes").select("id, answer_id, voter_auth_user_id, value, created_at").order("created_at", { ascending: false }),
+      supabase.from("qa_question_votes").select("id, question_id, voter_auth_user_id, value, created_at").order("created_at", { ascending: false }),
       supabase.from("qa_answer_reports").select("id, answer_id, reporter_auth_user_id, reason, created_at").order("created_at", { ascending: false }),
+      supabase.from("qa_question_reports").select("id, question_id, reporter_auth_user_id, reporter_key, reason, created_at").order("created_at", { ascending: false }),
       supabase.from("student_profiles").select("auth_user_id, full_name, display_username"),
       supabase.from("teacher_profiles").select("auth_user_id, full_name"),
       supabase.from("admins").select("auth_user_id"),
     ]);
 
-    if (questionError || answerError || voteError || reportError || studentError || teacherError || adminError) {
+    if (
+      questionError ||
+      answerError ||
+      voteError ||
+      questionVoteError ||
+      reportError ||
+      questionReportError ||
+      studentError ||
+      teacherError ||
+      adminError
+    ) {
       setMessage("We couldn’t load all forum activity right now.");
     }
 
     setQuestions((questionData as ForumQuestion[]) ?? []);
     setAnswers((answerData as ForumAnswer[]) ?? []);
     setVotes((voteData as VoteRow[]) ?? []);
+    setQuestionVotes((questionVoteData as QuestionVoteRow[]) ?? []);
     setReports((reportData as ReportRow[]) ?? []);
+    setQuestionReports((questionReportData as QuestionReportRow[]) ?? []);
     setStudentProfiles((studentData as ProfileRow[]) ?? []);
     setTeacherProfiles((teacherData as ProfileRow[]) ?? []);
     setAdminIds(((adminData as { auth_user_id: string }[]) ?? []).map((row) => row.auth_user_id));
@@ -243,6 +286,17 @@ export default function AdminForum() {
       label: `${question.asked_by_name} posted a question`,
       detail: question.question,
     }));
+
+    const questionVoteItems = questionVotes.map((vote) => {
+      const target = questions.find((question) => question.id === vote.question_id);
+      return {
+        key: `question-vote-${vote.id}`,
+        type: "vote" as const,
+        created_at: vote.created_at,
+        label: `${resolveName(vote.voter_auth_user_id)} ${vote.value === 1 ? "upvoted" : "downvoted"} a post`,
+        detail: target ? `"${target.question}"` : "Question target no longer exists",
+      };
+    });
 
     const answerItems = answers.map((answer) => {
       const parentQuestion = questions.find((question) => question.id === answer.question_id);
@@ -281,10 +335,21 @@ export default function AdminForum() {
       };
     });
 
-    return [...postItems, ...answerItems, ...voteItems, ...reportItems].sort(
+    const questionReportItems = questionReports.map((report) => {
+      const target = questions.find((question) => question.id === report.question_id);
+      return {
+        key: `question-report-${report.id}`,
+        type: "report" as const,
+        created_at: report.created_at,
+        label: `${report.reporter_auth_user_id ? resolveName(report.reporter_auth_user_id) : "Guest"} reported a post`,
+        detail: target ? `"${target.question}"` : "Report target no longer exists",
+      };
+    });
+
+    return [...postItems, ...questionVoteItems, ...answerItems, ...voteItems, ...reportItems, ...questionReportItems].sort(
       (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
     );
-  }, [answers, questions, reports, resolveName, votes]);
+  }, [answers, questionReports, questionVotes, questions, reports, resolveName, votes]);
 
   async function deleteQuestion(id: string, label: string) {
     if (!hasSupabaseConfig()) return;
@@ -351,10 +416,8 @@ export default function AdminForum() {
       <div className="grid gap-6 xl:grid-cols-[320px_minmax(0,1fr)]">
         <aside className="space-y-3">
           <div className="rounded-sm bg-forest/[0.03] p-4 ring-1 ring-forest/5">
-            <p className="font-mono text-xs uppercase tracking-[0.2em] text-gold">Forum Feed</p>
-            <p className="mt-2 text-sm text-graphite/70">
-              Every post in the forum, newest first. Select one to inspect its thread.
-            </p>
+            <p className="font-mono text-xs uppercase tracking-[0.2em] text-gold">Posts</p>
+            <p className="mt-2 text-sm text-graphite/70">Newest posts first. Select one to view it.</p>
           </div>
 
           {questions.length === 0 ? (
@@ -394,7 +457,7 @@ export default function AdminForum() {
         <main className="space-y-6">
           {!selectedQuestion ? (
             <div className="rounded-sm bg-paper p-5 ring-1 ring-forest/10">
-              <p className="text-sm text-graphite/50">Select a forum post to inspect it.</p>
+              <p className="text-sm text-graphite/50">Select a post to view it.</p>
             </div>
           ) : (
             <div className="space-y-6 rounded-sm bg-paper p-5 ring-1 ring-forest/10">
@@ -411,13 +474,13 @@ export default function AdminForum() {
                   onClick={() => deleteQuestion(selectedQuestion.id, selectedQuestion.question)}
                   className="rounded-full bg-red-50 px-3 py-1.5 font-mono text-[10px] uppercase tracking-[0.15em] text-red-700 transition hover:bg-red-100"
                 >
-                  Delete Post
+                  Delete post
                 </button>
               </div>
 
               <section>
                 <div className="flex flex-wrap items-center justify-between gap-3">
-                  <p className="font-mono text-xs uppercase tracking-[0.2em] text-gold">Thread</p>
+                  <p className="font-mono text-xs uppercase tracking-[0.2em] text-gold">Comments</p>
                   <p className="text-sm text-graphite/60">
                     {answersForSelectedQuestion.length} top-level comment
                     {answersForSelectedQuestion.length === 1 ? "" : "s"}
@@ -445,8 +508,8 @@ export default function AdminForum() {
       <section className="rounded-sm bg-forest/[0.03] p-6 ring-1 ring-forest/5">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <p className="font-mono text-xs uppercase tracking-[0.2em] text-gold">Activity Log</p>
-            <h2 className="mt-2 font-display text-xl text-forest">Who did what</h2>
+            <p className="font-mono text-xs uppercase tracking-[0.2em] text-gold">Activity</p>
+            <h2 className="mt-2 font-display text-xl text-forest">Recent activity</h2>
           </div>
           <p className="text-sm text-graphite/60">Latest {activityItems.length} activity items</p>
         </div>

@@ -95,60 +95,64 @@ export default function AdminTeacherInvites() {
   }
 
   return (
-    <div className="grid gap-8 lg:grid-cols-[0.95fr_1.05fr]">
-      <form onSubmit={createInvite} className="space-y-4 rounded-sm bg-forest/[0.03] p-5 ring-1 ring-forest/5">
-        <p className="font-mono text-xs uppercase tracking-[0.2em] text-gold">Teacher Invites</p>
-        <p className="text-sm text-graphite/60">
-          Generate a private one-time signup link for a specific teacher. The link expires after the
-          window you choose or after it is used.
-        </p>
-        <div>
-          <label htmlFor={nameId} className="font-mono text-xs uppercase tracking-[0.15em] text-graphite/70">
-            Teacher Name
-          </label>
-          <input
-            id={nameId}
-            value={teacherName}
-            onChange={(e) => setTeacherName(e.target.value)}
-            className="mt-2 w-full rounded-sm border border-forest/15 bg-paper px-3 py-2 text-sm"
-            placeholder="Teacher full name"
-          />
+    <div className="space-y-6">
+      <section className="rounded-sm bg-paper p-5 ring-1 ring-forest/10">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <p className="font-mono text-xs uppercase tracking-[0.2em] text-gold">Teacher Invites</p>
+            <h3 className="mt-2 font-display text-2xl text-forest">Invite queue</h3>
+          </div>
+          <p className="text-sm text-graphite/60">{invites.length} invite{invites.length === 1 ? "" : "s"}</p>
         </div>
-        <div>
-          <label htmlFor={emailId} className="font-mono text-xs uppercase tracking-[0.15em] text-graphite/70">
-            Teacher Email
-          </label>
-          <input
-            id={emailId}
-            type="email"
-            value={teacherEmail}
-            onChange={(e) => setTeacherEmail(e.target.value)}
-            className="mt-2 w-full rounded-sm border border-forest/15 bg-paper px-3 py-2 text-sm"
-            placeholder="name@lvjusd.org"
-          />
-        </div>
-        <div>
-          <label htmlFor={expiryId} className="font-mono text-xs uppercase tracking-[0.15em] text-graphite/70">
-            Expire After Days
-          </label>
-          <input
-            id={expiryId}
-            inputMode="numeric"
-            value={expiryDays}
-            onChange={(e) => setExpiryDays(e.target.value)}
-            className="mt-2 w-full rounded-sm border border-forest/15 bg-paper px-3 py-2 text-sm"
-            placeholder="7"
-          />
-        </div>
-        {message && <p className="text-sm text-graphite/70">{message}</p>}
-        <button
-          type="submit"
-          disabled={saving}
-          className="w-full rounded-sm bg-forest px-4 py-2.5 font-mono text-xs uppercase tracking-[0.15em] text-gold transition hover:bg-forestdeep disabled:opacity-50"
-        >
-          {saving ? "Generating..." : "Generate Invite Link"}
-        </button>
-      </form>
+        <form onSubmit={createInvite} className="mt-5 grid gap-3 lg:grid-cols-[1.05fr_1.05fr_0.55fr_auto]">
+          <div>
+            <label htmlFor={nameId} className="font-mono text-xs uppercase tracking-[0.15em] text-graphite/70">
+              Teacher Name
+            </label>
+            <input
+              id={nameId}
+              value={teacherName}
+              onChange={(e) => setTeacherName(e.target.value)}
+              className="mt-2 w-full rounded-sm border border-forest/15 bg-paper px-3 py-2 text-sm"
+              placeholder="Teacher full name"
+            />
+          </div>
+          <div>
+            <label htmlFor={emailId} className="font-mono text-xs uppercase tracking-[0.15em] text-graphite/70">
+              Teacher Email
+            </label>
+            <input
+              id={emailId}
+              type="email"
+              value={teacherEmail}
+              onChange={(e) => setTeacherEmail(e.target.value)}
+              className="mt-2 w-full rounded-sm border border-forest/15 bg-paper px-3 py-2 text-sm"
+              placeholder="name@lvjusd.org"
+            />
+          </div>
+          <div>
+            <label htmlFor={expiryId} className="font-mono text-xs uppercase tracking-[0.15em] text-graphite/70">
+              Expire Days
+            </label>
+            <input
+              id={expiryId}
+              inputMode="numeric"
+              value={expiryDays}
+              onChange={(e) => setExpiryDays(e.target.value)}
+              className="mt-2 w-full rounded-sm border border-forest/15 bg-paper px-3 py-2 text-sm"
+              placeholder="7"
+            />
+          </div>
+          <button
+            type="submit"
+            disabled={saving}
+            className="rounded-sm bg-forest px-4 py-2.5 font-mono text-xs uppercase tracking-[0.15em] text-gold transition hover:bg-forestdeep disabled:opacity-50"
+          >
+            {saving ? "Generating..." : "Generate"}
+          </button>
+        </form>
+        {message && <p className="mt-4 text-sm text-graphite/70">{message}</p>}
+      </section>
 
       <div className="space-y-3">
         {loading && <p className="text-sm text-graphite/50">Loading invites...</p>}
@@ -158,8 +162,8 @@ export default function AdminTeacherInvites() {
           const used = Boolean(invite.used_at);
           const status = used ? "used" : expired ? "expired" : "active";
           return (
-            <div key={invite.id} className="rounded-sm bg-forest/[0.03] p-4 ring-1 ring-forest/5">
-              <div className="flex flex-wrap items-start justify-between gap-3">
+            <div key={invite.id} className="rounded-sm bg-forest/[0.03] p-4 ring-1 ring-forest/10">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div>
                   <p className="font-display text-lg text-forest">{invite.teacher_name}</p>
                   <p className="text-sm text-graphite/60">{invite.teacher_email}</p>

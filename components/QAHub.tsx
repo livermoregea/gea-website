@@ -30,15 +30,27 @@ type ForumPost = {
   forum_board: string;
   status: string;
   rejection_reason: string | null;
+  upvote_count: number;
+  downvote_count: number;
+  report_count: number;
   qa_answers: ForumComment[];
 };
 
-type VoteRow = {
+type QuestionVoteRow = {
+  question_id: string;
+  value: number;
+};
+
+type AnswerVoteRow = {
   answer_id: string;
   value: number;
 };
 
-type ReportRow = {
+type QuestionReportRow = {
+  question_id: string;
+};
+
+type AnswerReportRow = {
   answer_id: string;
 };
 
@@ -78,6 +90,10 @@ type ThreadComment = ForumComment & {
 
 type SortMode = "best" | "new";
 
+const REPORTER_KEY_STORAGE = "gea_forum_reporter_key";
+const REPORTED_QUESTION_STORAGE = "gea_forum_reported_questions";
+const REPORTED_ANSWER_STORAGE = "gea_forum_reported_answers";
+
 function formatDate(value: string) {
   return new Date(value).toLocaleString([], {
     month: "short",
@@ -85,6 +101,27 @@ function formatDate(value: string) {
     hour: "numeric",
     minute: "2-digit",
   });
+}
+
+function readStoredIds(key: string) {
+  if (typeof window === "undefined") return new Set<string>();
+  try {
+    const raw = window.localStorage.getItem(key);
+    if (!raw) return new Set<string>();
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return new Set<string>();
+    return new Set(parsed.filter((value) => typeof value === "string"));
+  } catch {
+    return new Set<string>();
+  }
+}
+
+function writeStoredIds(key: string, ids: Set<string>) {
+  try {
+    window.localStorage.setItem(key, JSON.stringify([...ids]));
+  } catch {
+    // Ignore storage failures in privacy-restricted browsers.
+  }
 }
 
 function buildCommentTree(
@@ -130,14 +167,135 @@ function buildCommentTree(
   return roots;
 }
 
+function VotePill({
+  value,
+  score,
+  upCount,
+  downCount,
+  canVote,
+  onVote,
+}: {
+  value: -1 | 0 | 1;
+  score: number;
+  upCount: number;
+  downCount: number;
+  canVote: boolean;
+  onVote: (value: -1 | 0 | 1) => void;
+}) {
+  return (
+    <div className="inline-flex items-stretch overflow-hidden rounded-full border border-forest/10 bg-paper shadow-[0_6px_18px_rgba(18,53,36,0.04)]">
+      <button
+        type="button"
+        onClick={() => onVote(value === 1 ? 0 : 1)}
+        disabled={!canVote}
+        className={`flex min-h-10 items-center gap-1.5 px-3.5 py-2 font-mono text-[10px] uppercase tracking-[0.15em] transition ${
+          value === 1
+            ? "bg-forest text-gold"
+            : "text-forest hover:bg-forest/[0.04] disabled:cursor-not-allowed disabled:opacity-40"
+        }`}
+        aria-label={`Upvote. Current count ${upCount}`}
+      >
+        <span aria-hidden="true">▲</span>
+        <span>Up</span>
+      </button>
+      <div className="flex min-w-16 items-center justify-center border-x border-forest/10 bg-forest/[0.03] px-3 py-2 text-[10px] font-mono uppercase tracking-[0.14em] text-forest/80">
+        {score}
+      </div>
+      <button
+        type="button"
+        onClick={() => onVote(value === -1 ? 0 : -1)}
+        disabled={!canVote}
+        className={`flex min-h-10 items-center gap-1.5 px-3.5 py-2 font-mono text-[10px] uppercase tracking-[0.15em] transition ${
+          value === -1
+            ? "bg-forest text-gold"
+            : "text-forest hover:bg-forest/[0.04] disabled:cursor-not-allowed disabled:opacity-40"
+        }`}
+        aria-label={`Downvote. Current count ${downCount}`}
+      >
+        <span aria-hidden="true">▼</span>
+        <span>Down</span>
+      </button>
+    </div>
+  );
+}
+
+function ReportMenu({
+  canReport,
+  reported,
+  reportCount,
+  onReport,
+}: {
+  canReport: boolean;
+  reported: boolean;
+  reportCount: number;
+  onReport: () => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    function handlePointerDown(event: MouseEvent) {
+      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+        setOpen(false);
+      }
+    }
+
+    document.addEventListener("mousedown", handlePointerDown);
+    return () => document.removeEventListener("mousedown", handlePointerDown);
+  }, []);
+
+  return (
+    <div ref={menuRef} className="relative inline-flex">
+      <button
+        type="button"
+        onClick={(event) => {
+          event.stopPropagation();
+          setOpen((current) => !current);
+        }}
+        className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-forest/10 bg-paper text-lg leading-none text-forest transition hover:bg-forest/[0.04]"
+        aria-label="More actions"
+        aria-haspopup="menu"
+        aria-expanded={open}
+      >
+        ⋯
+      </button>
+      {open && (
+        <div className="absolute right-0 top-full z-20 mt-2 w-44 overflow-hidden rounded-sm border border-forest/10 bg-paper p-1 shadow-lg">
+          <button
+            type="button"
+            onClick={() => {
+              setOpen(false);
+              onReport();
+            }}
+            disabled={!canReport || reported}
+            className="flex w-full items-center justify-between rounded-sm px-3 py-2 text-left text-sm text-forest transition hover:bg-forest/[0.04] disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            <span>{reported ? "Reported" : "Report"}</span>
+            <span className="font-mono text-[10px] uppercase tracking-[0.15em] text-graphite/45">
+              {reportCount}
+            </span>
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function QuestionCard({
   post,
   expanded,
   displayName,
   authUserId,
-  voteMap,
-  reportedSet,
+  canVote,
+  canReply,
+  canReport,
+  questionVoteMap,
+  questionReportedSet,
+  answerVoteMap,
+  answerReportedSet,
   onToggle,
+  onQuestionVote,
+  onQuestionReport,
   onVote,
   onReport,
   onRefresh,
@@ -146,16 +304,29 @@ function QuestionCard({
   expanded: boolean;
   displayName: string;
   authUserId: string | null;
-  voteMap: Map<string, -1 | 0 | 1>;
-  reportedSet: Set<string>;
+  canVote: boolean;
+  canReply: boolean;
+  canReport: boolean;
+  questionVoteMap: Map<string, -1 | 0 | 1>;
+  questionReportedSet: Set<string>;
+  answerVoteMap: Map<string, -1 | 0 | 1>;
+  answerReportedSet: Set<string>;
   onToggle: () => void;
+  onQuestionVote: (questionId: string, value: -1 | 0 | 1) => Promise<void>;
+  onQuestionReport: (questionId: string) => Promise<void>;
   onVote: (commentId: string, value: -1 | 0 | 1) => Promise<void>;
   onReport: (commentId: string) => Promise<void>;
   onRefresh: () => void;
 }) {
-  const comments = useMemo(() => buildCommentTree(post.qa_answers, voteMap, reportedSet), [post.qa_answers, reportedSet, voteMap]);
+  const comments = useMemo(
+    () => buildCommentTree(post.qa_answers, answerVoteMap, answerReportedSet),
+    [answerReportedSet, answerVoteMap, post.qa_answers],
+  );
   const commentCount = post.qa_answers.filter((comment) => comment.status === "approved").length;
   const preview = post.question.length > 220 ? `${post.question.slice(0, 220).trimEnd()}...` : post.question;
+  const postScore = post.upvote_count - post.downvote_count;
+  const myQuestionVote = questionVoteMap.get(post.id) ?? 0;
+  const reportedQuestion = questionReportedSet.has(post.id);
 
   return (
     <article className="overflow-hidden rounded-sm border border-forest/10 bg-paper ring-1 ring-forest/5">
@@ -164,10 +335,10 @@ function QuestionCard({
         onClick={onToggle}
         className="block w-full px-5 py-4 text-left transition hover:bg-forest/[0.02]"
       >
-        <div className="flex items-start gap-3">
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-sm bg-forest text-sm font-semibold text-gold">
-            {post.asked_by_name.slice(0, 1).toUpperCase()}
-          </div>
+          <div className="flex items-start gap-3">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-sm bg-forest text-sm font-semibold text-gold">
+              {post.asked_by_name.slice(0, 1).toUpperCase()}
+            </div>
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-2 text-[10px] uppercase tracking-[0.18em] text-graphite/50">
               <span className="rounded-sm border border-gold/20 bg-gold/10 px-2.5 py-1 text-forest">
@@ -188,6 +359,9 @@ function QuestionCard({
             <div className="mt-4 flex flex-wrap items-center gap-3 text-xs text-graphite/50">
               <span className="rounded-sm bg-forest/[0.05] px-3 py-1">{commentCount} comments</span>
               <span className="rounded-sm bg-forest/[0.05] px-3 py-1">Open thread</span>
+              <span className="rounded-sm bg-forest/[0.05] px-3 py-1">
+                Score {postScore}
+              </span>
             </div>
           </div>
         </div>
@@ -196,17 +370,50 @@ function QuestionCard({
       {expanded && (
         <div className="border-t border-forest/10 px-5 py-5">
           <div className="space-y-5">
-            <div className="rounded-sm bg-forest/[0.03] p-4 ring-1 ring-forest/10">
-              <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-gold">Add a comment</p>
-              <AnswerForm
-                questionId={post.id}
-                answeredByName={displayName}
-                answeredByAuthUserId={authUserId}
-                submitLabel="Post Comment"
-                placeholder="Join the discussion..."
-                onSubmitted={onRefresh}
-              />
+            <div className="flex flex-wrap items-start justify-between gap-3 rounded-sm border border-forest/10 bg-forest/[0.02] p-4">
+              <div>
+                <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-gold">Post actions</p>
+                <p className="mt-1 text-sm text-graphite/60">
+                  Vote on the post or open the menu to report it.
+                </p>
+              </div>
+              <div className="flex items-start gap-2">
+                <VotePill
+                  value={myQuestionVote}
+                  score={postScore}
+                  upCount={post.upvote_count}
+                  downCount={post.downvote_count}
+                  canVote={canVote}
+                  onVote={(value) => onQuestionVote(post.id, value)}
+                />
+                <ReportMenu
+                  canReport={canReport}
+                  reported={reportedQuestion}
+                  reportCount={post.report_count}
+                  onReport={() => onQuestionReport(post.id)}
+                />
+              </div>
             </div>
+
+            {canReply ? (
+              <div className="rounded-sm bg-forest/[0.03] p-4 ring-1 ring-forest/10">
+                <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-gold">
+                  Add a comment
+                </p>
+                <AnswerForm
+                  questionId={post.id}
+                  answeredByName={displayName}
+                  answeredByAuthUserId={authUserId}
+                  submitLabel="Post Comment"
+                  placeholder="Join the discussion..."
+                  onSubmitted={onRefresh}
+                />
+              </div>
+            ) : (
+              <div className="rounded-sm border border-forest/10 bg-forest/[0.03] p-4 text-sm text-graphite/65">
+                Sign in with an approved student account to comment on posts.
+              </div>
+            )}
 
             <div className="flex flex-wrap items-center justify-between gap-3">
               <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-gold">Comments</p>
@@ -226,6 +433,9 @@ function QuestionCard({
                     questionId={post.id}
                     displayName={displayName}
                     authUserId={authUserId}
+                    canVote={canVote}
+                    canReport={canReport}
+                    canReply={canReply}
                     onVote={onVote}
                     onReport={onReport}
                     onRefresh={onRefresh}
@@ -245,6 +455,9 @@ function CommentCard({
   questionId,
   displayName,
   authUserId,
+  canVote,
+  canReport,
+  canReply,
   onVote,
   onReport,
   onRefresh,
@@ -254,6 +467,9 @@ function CommentCard({
   questionId: string;
   displayName: string;
   authUserId: string | null;
+  canVote: boolean;
+  canReport: boolean;
+  canReply: boolean;
   onVote: (commentId: string, value: -1 | 0 | 1) => Promise<void>;
   onReport: (commentId: string) => Promise<void>;
   onRefresh: () => void;
@@ -261,7 +477,7 @@ function CommentCard({
 }) {
   const [replying, setReplying] = useState(false);
 
-  return (
+    return (
     <div
       className={`rounded-sm border border-forest/10 bg-paper p-4 ${
         depth > 0 ? "border-l-2 border-l-gold/40" : ""
@@ -273,54 +489,37 @@ function CommentCard({
           <p className="font-semibold text-forest">{comment.answered_by_name}</p>
           <p className="mt-1 text-xs text-graphite/50">Posted {formatDate(comment.created_at)}</p>
         </div>
-        <div className="rounded-sm bg-forest/10 px-3 py-1 font-mono text-[10px] uppercase tracking-[0.15em] text-forest">
-          Score {comment.score}
+        <div className="flex items-start gap-2">
+          <VotePill
+            value={comment.myVote}
+            score={comment.score}
+            upCount={comment.upvote_count}
+            downCount={comment.downvote_count}
+            canVote={canVote}
+            onVote={(value) => onVote(comment.id, value)}
+          />
+          <ReportMenu
+            canReport={canReport}
+            reported={comment.reportedByMe}
+            reportCount={comment.report_count}
+            onReport={() => onReport(comment.id)}
+          />
         </div>
       </div>
 
       <p className="mt-3 whitespace-pre-wrap text-sm leading-relaxed text-graphite/80">{comment.answer}</p>
 
-      <div className="mt-4 flex flex-wrap gap-2">
-        <button
-          type="button"
-          onClick={() => onVote(comment.id, comment.myVote === 1 ? 0 : 1)}
-          className={`rounded-sm px-3 py-1.5 font-mono text-[10px] uppercase tracking-[0.15em] transition ${
-            comment.myVote === 1
-              ? "bg-forest text-gold"
-              : "bg-forest/[0.06] text-forest hover:bg-forest/10"
-          }`}
-        >
-          Upvote ({comment.upvote_count})
-        </button>
-        <button
-          type="button"
-          onClick={() => onVote(comment.id, comment.myVote === -1 ? 0 : -1)}
-          className={`rounded-sm px-3 py-1.5 font-mono text-[10px] uppercase tracking-[0.15em] transition ${
-            comment.myVote === -1
-              ? "bg-forest text-gold"
-              : "bg-forest/[0.06] text-forest hover:bg-forest/10"
-          }`}
-        >
-          Downvote ({comment.downvote_count})
-        </button>
+      {canReply && (
         <button
           type="button"
           onClick={() => setReplying((current) => !current)}
-          className="rounded-sm bg-forest/[0.06] px-3 py-1.5 font-mono text-[10px] uppercase tracking-[0.15em] text-forest transition hover:bg-forest/10"
+          className="mt-4 inline-flex rounded-full border border-forest/10 bg-forest/[0.03] px-4 py-2 font-mono text-[10px] uppercase tracking-[0.15em] text-forest transition hover:bg-forest/[0.06]"
         >
           {replying ? "Cancel Reply" : "Reply"}
         </button>
-        <button
-          type="button"
-          onClick={() => onReport(comment.id)}
-          disabled={comment.reportedByMe}
-          className="rounded-sm bg-forest/[0.06] px-3 py-1.5 font-mono text-[10px] uppercase tracking-[0.15em] text-forest transition hover:bg-forest/10 disabled:cursor-not-allowed disabled:opacity-50"
-        >
-          {comment.reportedByMe ? "Reported" : `Report (${comment.report_count})`}
-        </button>
-      </div>
+      )}
 
-      {replying && (
+      {replying && canReply && (
         <div className="mt-4 border-l-2 border-gold/40 pl-4">
           <AnswerForm
             questionId={questionId}
@@ -346,6 +545,9 @@ function CommentCard({
               questionId={questionId}
               displayName={displayName}
               authUserId={authUserId}
+              canVote={canVote}
+              canReport={canReport}
+              canReply={canReply}
               onVote={onVote}
               onReport={onReport}
               onRefresh={onRefresh}
@@ -361,13 +563,23 @@ function CommentCard({
 export default function QAHub({
   authUserId,
   displayName,
+  canCreatePost = Boolean(authUserId),
+  canVote = Boolean(authUserId),
+  canReply = Boolean(authUserId),
+  canReport = true,
 }: {
   authUserId: string | null;
   displayName: string | null;
+  canCreatePost?: boolean;
+  canVote?: boolean;
+  canReply?: boolean;
+  canReport?: boolean;
 }) {
   const [posts, setPosts] = useState<ForumPost[]>([]);
-  const [voteMap, setVoteMap] = useState<Map<string, -1 | 0 | 1>>(new Map());
-  const [reportedSet, setReportedSet] = useState<Set<string>>(new Set());
+  const [questionVoteMap, setQuestionVoteMap] = useState<Map<string, -1 | 0 | 1>>(new Map());
+  const [questionReportedSet, setQuestionReportedSet] = useState<Set<string>>(new Set());
+  const [answerVoteMap, setAnswerVoteMap] = useState<Map<string, -1 | 0 | 1>>(new Map());
+  const [answerReportedSet, setAnswerReportedSet] = useState<Set<string>>(new Set());
   const [myQuestions, setMyQuestions] = useState<MyQuestion[]>([]);
   const [myAnswers, setMyAnswers] = useState<MyAnswer[]>([]);
   const [myVotes, setMyVotes] = useState<MyVote[]>([]);
@@ -379,7 +591,28 @@ export default function QAHub({
   const [sortMode, setSortMode] = useState<SortMode>("best");
   const [mutationError, setMutationError] = useState<string | null>(null);
   const [composerOpen, setComposerOpen] = useState(false);
+  const [reporterKey, setReporterKey] = useState<string | null>(authUserId);
   const composerRef = useRef<HTMLElement | null>(null);
+
+  useEffect(() => {
+    if (authUserId) {
+      setReporterKey(authUserId);
+      return;
+    }
+
+    if (typeof window === "undefined") return;
+
+    const existingKey = window.localStorage.getItem(REPORTER_KEY_STORAGE);
+    if (existingKey) {
+      setReporterKey(existingKey);
+      return;
+    }
+
+    const nextKey =
+      typeof crypto !== "undefined" && "randomUUID" in crypto ? crypto.randomUUID() : `${Date.now()}-${Math.random()}`;
+    window.localStorage.setItem(REPORTER_KEY_STORAGE, nextKey);
+    setReporterKey(nextKey);
+  }, [authUserId]);
 
   async function load() {
     setLoading(true);
@@ -387,8 +620,10 @@ export default function QAHub({
 
     if (!hasSupabaseConfig()) {
       setPosts([]);
-      setVoteMap(new Map());
-      setReportedSet(new Set());
+      setQuestionVoteMap(new Map());
+      setQuestionReportedSet(new Set());
+      setAnswerVoteMap(new Map());
+      setAnswerReportedSet(new Set());
       setMyQuestions([]);
       setMyAnswers([]);
       setMyVotes([]);
@@ -400,7 +635,7 @@ export default function QAHub({
     const publicPostsPromise = supabase
       .from("qa_questions")
       .select(
-        "id, question, asked_by_name, created_at, forum_board, status, rejection_reason, qa_answers(id, answer, answered_by_name, created_at, parent_answer_id, answered_by_auth_user_id, status, rejection_reason, upvote_count, downvote_count, report_count)",
+        "id, question, asked_by_name, created_at, forum_board, status, rejection_reason, upvote_count, downvote_count, report_count, qa_answers(id, answer, answered_by_name, created_at, parent_answer_id, answered_by_auth_user_id, status, rejection_reason, upvote_count, downvote_count, report_count)",
       )
       .eq("status", "approved")
       .order("created_at", { ascending: false });
@@ -451,32 +686,75 @@ export default function QAHub({
     }));
 
     const commentIds = nextPosts.flatMap((post) => post.qa_answers.map((comment) => comment.id));
-    let nextVoteMap = new Map<string, -1 | 0 | 1>();
-    let nextReportedSet = new Set<string>();
+    const postIds = nextPosts.map((post) => post.id);
+    let nextQuestionVoteMap = new Map<string, -1 | 0 | 1>();
+    let nextQuestionReportedSet = authUserId ? new Set<string>() : readStoredIds(REPORTED_QUESTION_STORAGE);
+    let nextAnswerVoteMap = new Map<string, -1 | 0 | 1>();
+    let nextAnswerReportedSet = authUserId ? new Set<string>() : readStoredIds(REPORTED_ANSWER_STORAGE);
 
-    if (authUserId && commentIds.length > 0) {
-      const [{ data: voteRows }, { data: reportRows }] = await Promise.all([
-        supabase
-          .from("qa_answer_votes")
-          .select("answer_id, value")
-          .eq("voter_auth_user_id", authUserId)
-          .in("answer_id", commentIds),
-        supabase
-          .from("qa_answer_reports")
-          .select("answer_id")
-          .eq("reporter_auth_user_id", authUserId)
-          .in("answer_id", commentIds),
+    if (authUserId) {
+      const questionQueries = postIds.length > 0
+        ? [
+            supabase
+              .from("qa_question_votes")
+              .select("question_id, value")
+              .eq("voter_auth_user_id", authUserId)
+              .in("question_id", postIds),
+            supabase
+              .from("qa_question_reports")
+              .select("question_id")
+              .eq("reporter_auth_user_id", authUserId)
+              .in("question_id", postIds),
+          ]
+        : [];
+
+      const answerQueries = commentIds.length > 0
+        ? [
+            supabase
+              .from("qa_answer_votes")
+              .select("answer_id, value")
+              .eq("voter_auth_user_id", authUserId)
+              .in("answer_id", commentIds),
+            supabase
+              .from("qa_answer_reports")
+              .select("answer_id")
+              .eq("reporter_auth_user_id", authUserId)
+              .in("answer_id", commentIds),
+          ]
+        : [];
+
+      const [questionVoteRes, questionReportRes, answerVoteRes, answerReportRes] = await Promise.all([
+        questionQueries[0] ?? Promise.resolve({ data: [] } as any),
+        questionQueries[1] ?? Promise.resolve({ data: [] } as any),
+        answerQueries[0] ?? Promise.resolve({ data: [] } as any),
+        answerQueries[1] ?? Promise.resolve({ data: [] } as any),
       ]);
 
-      nextVoteMap = new Map(
-        ((voteRows as VoteRow[]) ?? []).map((row) => [row.answer_id, row.value as -1 | 0 | 1]),
+      nextQuestionVoteMap = new Map(
+        (((questionVoteRes as { data: QuestionVoteRow[] }).data) ?? []).map((row) => [
+          row.question_id,
+          row.value as -1 | 0 | 1,
+        ]),
       );
-      nextReportedSet = new Set(((reportRows as ReportRow[]) ?? []).map((row) => row.answer_id));
+      nextQuestionReportedSet = new Set(
+        (((questionReportRes as { data: QuestionReportRow[] }).data) ?? []).map((row) => row.question_id),
+      );
+      nextAnswerVoteMap = new Map(
+        (((answerVoteRes as { data: AnswerVoteRow[] }).data) ?? []).map((row) => [
+          row.answer_id,
+          row.value as -1 | 0 | 1,
+        ]),
+      );
+      nextAnswerReportedSet = new Set(
+        (((answerReportRes as { data: AnswerReportRow[] }).data) ?? []).map((row) => row.answer_id),
+      );
     }
 
     setPosts(nextPosts);
-    setVoteMap(nextVoteMap);
-    setReportedSet(nextReportedSet);
+    setQuestionVoteMap(nextQuestionVoteMap);
+    setQuestionReportedSet(nextQuestionReportedSet);
+    setAnswerVoteMap(nextAnswerVoteMap);
+    setAnswerReportedSet(nextAnswerReportedSet);
     setMyQuestions((questionData as MyQuestion[]) ?? []);
     setMyAnswers((answerData as MyAnswer[]) ?? []);
     setMyVotes((voteData as MyVote[]) ?? []);
@@ -487,7 +765,6 @@ export default function QAHub({
     load();
   }, [authUserId, refreshTick]);
 
-  const isSignedIn = Boolean(authUserId);
   const normalizedSearch = searchQuery.trim().toLowerCase();
 
   const visiblePosts = useMemo(() => {
@@ -514,8 +791,8 @@ export default function QAHub({
         return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
       }
 
-      const aScore = a.qa_answers.reduce((total, comment) => total + (comment.upvote_count - comment.downvote_count), 0);
-      const bScore = b.qa_answers.reduce((total, comment) => total + (comment.upvote_count - comment.downvote_count), 0);
+      const aScore = a.upvote_count - a.downvote_count;
+      const bScore = b.upvote_count - b.downvote_count;
       return bScore - aScore || new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
     });
   }, [normalizedSearch, posts, selectedBoard, sortMode]);
@@ -527,6 +804,7 @@ export default function QAHub({
   }, [selectedPostId, visiblePosts]);
 
   const selectedPost = visiblePosts.find((post) => post.id === selectedPostId) ?? null;
+  const reportEnabled = canReport && Boolean(reporterKey);
 
   const recentActivity = useMemo(() => {
     const postItems = myQuestions.map((question) => ({
@@ -566,22 +844,58 @@ export default function QAHub({
     composerRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
   }, [composerOpen]);
 
-  async function handleVote(commentId: string, value: -1 | 0 | 1) {
+  async function submitQuestionVote(questionId: string, value: -1 | 0 | 1) {
     if (!authUserId || !hasSupabaseConfig()) return;
 
     const supabase = createClient();
     setMutationError(null);
 
-    const currentValue = voteMap.get(commentId) ?? 0;
+    const currentValue = questionVoteMap.get(questionId) ?? 0;
+    if (currentValue === value) return;
+
+    if (value === 0) {
+      const { error } = await supabase
+        .from("qa_question_votes")
+        .delete()
+        .eq("question_id", questionId)
+        .eq("voter_auth_user_id", authUserId);
+      if (error) {
+        setMutationError("We couldn’t update that vote.");
+        return;
+      }
+    } else {
+      const { error } = await supabase.from("qa_question_votes").upsert(
+        {
+          question_id: questionId,
+          voter_auth_user_id: authUserId,
+          value,
+        },
+        { onConflict: "question_id,voter_auth_user_id" },
+      );
+      if (error) {
+        setMutationError("We couldn’t update that vote.");
+        return;
+      }
+    }
+
+    setRefreshTick((tick) => tick + 1);
+  }
+
+  async function submitAnswerVote(answerId: string, value: -1 | 0 | 1) {
+    if (!authUserId || !hasSupabaseConfig()) return;
+
+    const supabase = createClient();
+    setMutationError(null);
+
+    const currentValue = answerVoteMap.get(answerId) ?? 0;
     if (currentValue === value) return;
 
     if (value === 0) {
       const { error } = await supabase
         .from("qa_answer_votes")
         .delete()
-        .eq("answer_id", commentId)
+        .eq("answer_id", answerId)
         .eq("voter_auth_user_id", authUserId);
-
       if (error) {
         setMutationError("We couldn’t update that vote.");
         return;
@@ -589,13 +903,12 @@ export default function QAHub({
     } else {
       const { error } = await supabase.from("qa_answer_votes").upsert(
         {
-          answer_id: commentId,
+          answer_id: answerId,
           voter_auth_user_id: authUserId,
           value,
         },
         { onConflict: "answer_id,voter_auth_user_id" },
       );
-
       if (error) {
         setMutationError("We couldn’t update that vote.");
         return;
@@ -605,49 +918,44 @@ export default function QAHub({
     setRefreshTick((tick) => tick + 1);
   }
 
-  async function handleReport(commentId: string) {
-    if (!authUserId || !hasSupabaseConfig()) return;
+  async function submitReport(targetType: "question" | "answer", targetId: string) {
+    if (!hasSupabaseConfig()) return;
 
-    const supabase = createClient();
-    setMutationError(null);
+    const key = reporterKey ?? authUserId;
+    if (!key) return;
 
-    const { error } = await supabase.from("qa_answer_reports").insert({
-      answer_id: commentId,
-      reporter_auth_user_id: authUserId,
-      reason: "Community report",
+    const response = await fetch("/api/forum/report", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        targetType,
+        targetId,
+        reporterKey: key,
+      }),
     });
 
-    if (error) {
-      if (error.code === "23505") {
-        setReportedSet((current) => new Set(current).add(commentId));
-        return;
-      }
+    if (!response.ok) {
       setMutationError("We couldn’t submit that report.");
       return;
     }
 
-    setRefreshTick((tick) => tick + 1);
-  }
+    if (targetType === "question") {
+      setQuestionReportedSet((current) => {
+        const next = new Set(current);
+        next.add(targetId);
+        if (!authUserId) writeStoredIds(REPORTED_QUESTION_STORAGE, next);
+        return next;
+      });
+    } else {
+      setAnswerReportedSet((current) => {
+        const next = new Set(current);
+        next.add(targetId);
+        if (!authUserId) writeStoredIds(REPORTED_ANSWER_STORAGE, next);
+        return next;
+      });
+    }
 
-  if (!isSignedIn) {
-    return (
-      <section className="rounded-sm bg-forest/[0.03] p-6 ring-1 ring-forest/10">
-        <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-gold">Community Forum</p>
-        <h2 className="mt-3 text-2xl font-semibold text-forest">Sign in to join the conversation</h2>
-        <p className="mt-3 max-w-xl text-sm leading-relaxed text-graphite/70">
-          Once you&apos;re signed in, you can browse posts, search the feed, jump between boards, reply to
-          threads, vote, and report spam.
-        </p>
-        <div className="mt-5">
-          <Link
-            href="/login"
-            className="inline-flex min-h-11 items-center rounded-sm bg-forest px-5 py-2.5 font-mono text-xs uppercase tracking-[0.15em] text-gold transition hover:bg-forestdeep"
-          >
-            Log In
-          </Link>
-        </div>
-      </section>
-    );
+    setRefreshTick((tick) => tick + 1);
   }
 
   return (
@@ -660,19 +968,31 @@ export default function QAHub({
               Ask, answer, and follow the discussion
             </h2>
             <p className="mt-3 max-w-2xl text-sm leading-relaxed text-graphite/70 sm:text-base">
-              Use the forum to ask questions, browse posts, and keep up with answers from the same
-              page.
+              Ask questions, browse posts, and reply in the forum.
             </p>
           </div>
 
           <div className="flex flex-wrap gap-2">
-            <button
-              type="button"
-              onClick={() => setComposerOpen(true)}
-              className="inline-flex min-h-11 items-center rounded-sm bg-forest px-5 py-2.5 font-mono text-xs uppercase tracking-[0.15em] text-gold transition hover:bg-forestdeep"
-            >
-              Create Post
-            </button>
+            {canCreatePost ? (
+              <button
+                type="button"
+                onClick={() => setComposerOpen(true)}
+                className="inline-flex min-h-11 items-center rounded-sm bg-forest px-5 py-2.5 font-mono text-xs uppercase tracking-[0.15em] text-gold transition hover:bg-forestdeep"
+              >
+                Create Post
+              </button>
+            ) : authUserId ? (
+              <span className="inline-flex min-h-11 items-center rounded-sm border border-forest/15 px-5 py-2.5 font-mono text-xs uppercase tracking-[0.15em] text-forest/60">
+                Pending approval
+              </span>
+            ) : (
+              <Link
+                href="/login"
+                className="inline-flex min-h-11 items-center rounded-sm bg-forest px-5 py-2.5 font-mono text-xs uppercase tracking-[0.15em] text-gold transition hover:bg-forestdeep"
+              >
+                Sign in to post
+              </Link>
+            )}
             <a
               href="#feed"
               className="inline-flex min-h-11 items-center rounded-sm border border-forest/15 px-5 py-2.5 font-mono text-xs uppercase tracking-[0.15em] text-forest transition hover:bg-forest/[0.03]"
@@ -682,6 +1002,13 @@ export default function QAHub({
           </div>
         </div>
       </section>
+
+      {!canCreatePost && authUserId && (
+        <section className="rounded-sm border border-forest/10 bg-forest/[0.03] px-5 py-4 text-sm leading-relaxed text-graphite/70 ring-1 ring-forest/5">
+          Your account is pending approval. You can read the forum and report content, but you
+          cannot post, reply, or vote yet.
+        </section>
+      )}
 
       <section className="rounded-sm bg-forest/[0.03] px-5 py-5 ring-1 ring-forest/10 sm:px-6">
         <div className="flex flex-col gap-5">
@@ -763,7 +1090,7 @@ export default function QAHub({
         </div>
       </section>
 
-      {composerOpen && (
+      {composerOpen && canCreatePost && (
         <section
           ref={composerRef}
           id="create-post"
@@ -837,11 +1164,18 @@ export default function QAHub({
                 expanded={selectedPost?.id === post.id}
                 displayName={displayName ?? "GEA Student"}
                 authUserId={authUserId}
-                voteMap={voteMap}
-                reportedSet={reportedSet}
+                canVote={canVote}
+                canReply={canReply}
+                canReport={reportEnabled}
+                questionVoteMap={questionVoteMap}
+                questionReportedSet={questionReportedSet}
+                answerVoteMap={answerVoteMap}
+                answerReportedSet={answerReportedSet}
                 onToggle={() => setSelectedPostId((current) => (current === post.id ? null : post.id))}
-                onVote={handleVote}
-                onReport={handleReport}
+                onQuestionVote={submitQuestionVote}
+                onQuestionReport={(questionId) => submitReport("question", questionId)}
+                onVote={submitAnswerVote}
+                onReport={(answerId) => submitReport("answer", answerId)}
                 onRefresh={() => setRefreshTick((tick) => tick + 1)}
               />
             ))

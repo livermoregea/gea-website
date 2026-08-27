@@ -39,10 +39,10 @@ export default async function AdminPortalPage() {
 
   const [{ data: adminRow }, { data: teacherRow }] = await Promise.all([
     supabase
-    .from("admins")
-    .select("name")
-    .eq("auth_user_id", user.id)
-    .maybeSingle(),
+      .from("admins")
+      .select("name")
+      .eq("auth_user_id", user.id)
+      .maybeSingle(),
     supabase
       .from("teacher_profiles")
       .select("full_name, school_email")

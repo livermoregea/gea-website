@@ -4,7 +4,7 @@ export const FORUM_BOARDS: Array<{ value: ForumBoard; label: string; description
   { value: "general", label: "General", description: "All-school discussion and updates." },
   { value: "academics", label: "Academics", description: "Classes, homework, and school support." },
   { value: "projects", label: "Projects", description: "Builds, labs, and engineering work." },
-  { value: "events", label: "Events", description: "Trips, deadlines, and academy events." },
+  { value: "events", label: "Events", description: "Trips, deadlines, and school events." },
   { value: "advice", label: "Advice", description: "Tips for incoming and current students." },
   { value: "life", label: "Student Life", description: "Campus, clubs, and day-to-day questions." },
 ];

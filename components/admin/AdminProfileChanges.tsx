@@ -134,86 +134,98 @@ export default function AdminProfileChanges() {
   if (loading) return <p className="text-sm text-graphite/50">Loading profile change requests...</p>;
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
+      <section className="rounded-sm bg-paper p-5 ring-1 ring-forest/10">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <p className="font-mono text-xs uppercase tracking-[0.2em] text-gold">Profile Changes</p>
+            <h3 className="mt-2 font-display text-2xl text-forest">Pending changes</h3>
+          </div>
+          <p className="text-sm text-graphite/60">{requests.length} pending request{requests.length === 1 ? "" : "s"}</p>
+        </div>
+      </section>
+
+      <div className="space-y-4">
       {message && (
         <p className="rounded-sm bg-forest/[0.05] p-4 text-sm text-graphite/80 ring-1 ring-forest/10">
           {message}
         </p>
       )}
       {requests.length === 0 && <p className="text-sm text-graphite/50">No pending profile changes.</p>}
-      {requests.map((request) => (
-        <div key={request.id} className="rounded-sm bg-forest/[0.03] p-5 ring-1 ring-forest/5">
-          <div className="flex flex-wrap items-start justify-between gap-3">
-            <div>
-              <p className="font-mono text-[11px] uppercase tracking-[0.2em] text-gold">
-                {request.profile_type} profile
+        {requests.map((request) => (
+          <div key={request.id} className="rounded-sm bg-forest/[0.03] p-5 ring-1 ring-forest/10">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <p className="font-mono text-[11px] uppercase tracking-[0.2em] text-gold">
+                  {request.profile_type} profile
+                </p>
+                <p className="mt-1 font-display text-lg text-forest">{request.requested_by_name}</p>
+                <p className="text-xs text-graphite/60">Requested {new Date(request.created_at).toLocaleString()}</p>
+              </div>
+            </div>
+
+            <div className="mt-4 grid gap-3 sm:grid-cols-2">
+              <div className="rounded-sm bg-paper/80 p-4 ring-1 ring-forest/10">
+                <p className="font-mono text-[10px] uppercase tracking-[0.15em] text-graphite/40">Current</p>
+                <div className="mt-2 space-y-1 text-sm text-graphite/80">
+                  {Object.entries(request.current_fields).map(([key, value]) => (
+                    <p key={key}>
+                      <span className="font-mono text-[10px] uppercase tracking-[0.12em] text-graphite/45">
+                        {fieldLabel(key)}:
+                      </span>{" "}
+                      {toText(value)}
+                    </p>
+                  ))}
+                </div>
+              </div>
+              <div className="rounded-sm bg-paper/80 p-4 ring-1 ring-forest/10">
+                <p className="font-mono text-[10px] uppercase tracking-[0.15em] text-graphite/40">Requested</p>
+                <div className="mt-2 space-y-1 text-sm text-graphite/80">
+                  {Object.entries(request.requested_fields).map(([key, value]) => (
+                    <p key={key}>
+                      <span className="font-mono text-[10px] uppercase tracking-[0.12em] text-graphite/45">
+                        {fieldLabel(key)}:
+                      </span>{" "}
+                      {toText(value)}
+                    </p>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {request.rejection_reason ? (
+              <p className="mt-3 rounded-sm bg-red-50 px-4 py-3 text-sm text-red-700 ring-1 ring-red-100">
+                Rejection reason: {request.rejection_reason}
               </p>
-              <p className="mt-1 font-display text-lg text-forest">{request.requested_by_name}</p>
-              <p className="text-xs text-graphite/60">Requested {new Date(request.created_at).toLocaleString()}</p>
+            ) : null}
+
+            <textarea
+              value={rejectionReasons[request.id] ?? ""}
+              onChange={(e) =>
+                setRejectionReasons((current) => ({ ...current, [request.id]: e.target.value }))
+              }
+              rows={2}
+              placeholder="Reason for rejection (required if you reject this request)"
+              className="mt-4 w-full rounded-sm border border-forest/15 bg-paper px-3 py-2 text-sm outline-none focus:border-gold"
+            />
+
+            <div className="mt-3 flex gap-3">
+              <button
+                onClick={() => approveRequest(request)}
+                className="inline-flex min-h-11 items-center font-mono text-xs uppercase tracking-[0.15em] text-forest hover:underline"
+              >
+                Approve
+              </button>
+              <button
+                onClick={() => rejectRequest(request)}
+                className="inline-flex min-h-11 items-center font-mono text-xs uppercase tracking-[0.15em] text-red-700 hover:underline"
+              >
+                Reject
+              </button>
             </div>
           </div>
-
-          <div className="mt-4 grid gap-3 sm:grid-cols-2">
-            <div className="rounded-sm bg-paper/80 p-4 ring-1 ring-forest/10">
-              <p className="font-mono text-[10px] uppercase tracking-[0.15em] text-graphite/40">Current</p>
-              <div className="mt-2 space-y-1 text-sm text-graphite/80">
-                {Object.entries(request.current_fields).map(([key, value]) => (
-                  <p key={key}>
-                    <span className="font-mono text-[10px] uppercase tracking-[0.12em] text-graphite/45">
-                      {fieldLabel(key)}:
-                    </span>{" "}
-                    {toText(value)}
-                  </p>
-                ))}
-              </div>
-            </div>
-            <div className="rounded-sm bg-paper/80 p-4 ring-1 ring-forest/10">
-              <p className="font-mono text-[10px] uppercase tracking-[0.15em] text-graphite/40">Requested</p>
-              <div className="mt-2 space-y-1 text-sm text-graphite/80">
-                {Object.entries(request.requested_fields).map(([key, value]) => (
-                  <p key={key}>
-                    <span className="font-mono text-[10px] uppercase tracking-[0.12em] text-graphite/45">
-                      {fieldLabel(key)}:
-                    </span>{" "}
-                    {toText(value)}
-                  </p>
-                ))}
-              </div>
-            </div>
-          </div>
-
-          {request.rejection_reason ? (
-            <p className="mt-3 rounded-sm bg-red-50 px-4 py-3 text-sm text-red-700 ring-1 ring-red-100">
-              Rejection reason: {request.rejection_reason}
-            </p>
-          ) : null}
-
-          <textarea
-            value={rejectionReasons[request.id] ?? ""}
-            onChange={(e) =>
-              setRejectionReasons((current) => ({ ...current, [request.id]: e.target.value }))
-            }
-            rows={2}
-            placeholder="Reason for rejection (required if you reject this request)"
-            className="mt-4 w-full rounded-sm border border-forest/15 bg-paper px-3 py-2 text-sm outline-none focus:border-gold"
-          />
-
-          <div className="mt-3 flex gap-3">
-            <button
-              onClick={() => approveRequest(request)}
-              className="inline-flex min-h-11 items-center font-mono text-xs uppercase tracking-[0.15em] text-forest hover:underline"
-            >
-              Approve
-            </button>
-            <button
-              onClick={() => rejectRequest(request)}
-              className="inline-flex min-h-11 items-center font-mono text-xs uppercase tracking-[0.15em] text-red-700 hover:underline"
-            >
-              Reject
-            </button>
-          </div>
-        </div>
-      ))}
+        ))}
+      </div>
     </div>
   );
 }

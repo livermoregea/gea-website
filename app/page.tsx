@@ -141,8 +141,7 @@ export default function HomePage() {
             Want to join GEA?
           </h2>
           <p className="mx-auto mt-4 max-w-3xl text-base leading-relaxed text-paper/75 sm:text-lg">
-            Start with the application if you want to join the academy. Student leadership roles
-            live on a separate page, and general questions are answered in Q&amp;A.
+            Apply, view leadership, or visit Q&amp;A.
           </p>
           <div className="mt-7 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:justify-center">
             <Link
@@ -191,28 +190,15 @@ export default function HomePage() {
                 Questions
               </p>
               <p className="mt-2 text-sm leading-relaxed sm:text-base">
-              Reach your academic counselor or the GEA coordinators:
+                Need contact information? Visit the Contact Us page for GEA coordinators, the
+                official counseling-services page, GEA email, and social links.
               </p>
-              <div className="mt-3 space-y-1 text-sm sm:text-base">
-                <p>
-                  Karen Fletcher:{" "}
-                  <a
-                    href="mailto:kfletcher@lvjusd.org"
-                    className="text-paper underline decoration-paper/30 underline-offset-4"
-                  >
-                    kfletcher@lvjusd.org
-                  </a>
-                </p>
-                <p>
-                  Dorothy Morallos:{" "}
-                  <a
-                    href="mailto:dmorallos@lvjusd.org"
-                    className="text-paper underline decoration-paper/30 underline-offset-4"
-                  >
-                    dmorallos@lvjusd.org
-                  </a>
-                </p>
-              </div>
+              <Link
+                href="/contact"
+                className="mt-4 inline-flex rounded-sm border border-paper/20 px-4 py-2 font-mono text-[11px] uppercase tracking-[0.15em] text-paper transition hover:border-gold hover:text-gold"
+              >
+                Contact Us
+              </Link>
             </div>
           </div>
           <div className="mt-8 flex flex-col items-center gap-3">

@@ -32,18 +32,26 @@ export default function ApplicationForm({
 }: Props) {
   const [name, setName] = useState(profile?.full_name ?? "");
   const [email, setEmail] = useState(profile?.school_email ?? "");
+  const [graduatingYear, setGraduatingYear] = useState(
+    profile?.graduating_class_year ? String(profile.graduating_class_year) : ""
+  );
+  const [studentIdNumber, setStudentIdNumber] = useState(profile?.student_id_number ?? "");
   const [whyApply, setWhyApply] = useState("");
   const [whyFit, setWhyFit] = useState("");
   const [proofOfWork, setProofOfWork] = useState("");
   const [agreed, setAgreed] = useState(false);
+  const [geaConfirmed, setGeaConfirmed] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState(false);
   const nameId = useId();
   const emailId = useId();
+  const graduatingYearId = useId();
+  const studentIdNumberId = useId();
   const whyApplyId = useId();
   const whyFitId = useId();
   const proofId = useId();
+  const geaConfirmedId = useId();
   const agreedId = useId();
 
   async function handleSubmit(e: React.FormEvent) {
@@ -54,6 +62,19 @@ export default function ApplicationForm({
       setError(
         "Please use your official school email address so we can verify you're a current student."
       );
+      return;
+    }
+    const graduatingYearValue = Number.parseInt(graduatingYear.trim(), 10);
+    if (!Number.isInteger(graduatingYearValue) || graduatingYearValue < 2000) {
+      setError("Please enter a valid graduating class year.");
+      return;
+    }
+    if (!studentIdNumber.trim()) {
+      setError("Please enter your student ID number.");
+      return;
+    }
+    if (!geaConfirmed) {
+      setError("Please confirm that you are in the Green Engineering Academy (GEA).");
       return;
     }
     if (requiresProof && proofOfWork.trim().length === 0) {
@@ -80,8 +101,8 @@ export default function ApplicationForm({
       student_profile_id: profile?.id ?? null,
       auth_user_id: authUserId ?? null,
       display_username: profile?.display_username ?? null,
-      graduating_class_year: profile?.graduating_class_year ?? null,
-      student_id_number: profile?.student_id_number ?? null,
+      graduating_class_year: graduatingYearValue,
+      student_id_number: studentIdNumber.trim(),
       school_email: email.trim().toLowerCase(),
       why_apply: whyApply.trim(),
       why_fit: whyFit.trim(),
@@ -169,6 +190,50 @@ export default function ApplicationForm({
       </div>
 
       <div>
+        <label
+          htmlFor={graduatingYearId}
+          className="font-mono text-xs uppercase tracking-[0.15em] text-graphite/70"
+        >
+          Graduating Year
+        </label>
+        <div className="mt-2 flex items-center gap-3">
+          <span className="font-mono text-sm uppercase tracking-[0.15em] text-graphite/60">
+            Class of
+          </span>
+          <input
+            id={graduatingYearId}
+            required
+            inputMode="numeric"
+            pattern="[0-9]*"
+            value={graduatingYear}
+            onChange={(e) => setGraduatingYear(e.target.value)}
+            className="w-full rounded-sm border border-forest/15 bg-paper px-4 py-3 text-sm text-graphite outline-none focus:border-gold sm:max-w-[14rem]"
+            placeholder="2027"
+          />
+        </div>
+        <p className="mt-1 text-xs text-graphite/50">
+          Please enter the year your class graduates from Livermore High School.
+        </p>
+      </div>
+
+      <div>
+        <label
+          htmlFor={studentIdNumberId}
+          className="font-mono text-xs uppercase tracking-[0.15em] text-graphite/70"
+        >
+          Student ID Number
+        </label>
+        <input
+          id={studentIdNumberId}
+          required
+          value={studentIdNumber}
+          onChange={(e) => setStudentIdNumber(e.target.value)}
+          className="mt-2 w-full rounded-sm border border-forest/15 bg-paper px-4 py-3 text-sm text-graphite outline-none focus:border-gold"
+          placeholder="Student ID number"
+        />
+      </div>
+
+      <div>
         <label htmlFor={whyApplyId} className="font-mono text-xs uppercase tracking-[0.15em] text-graphite/70">
           Why would you like to apply for {roleLabel}?
         </label>
@@ -217,15 +282,34 @@ export default function ApplicationForm({
         </div>
       )}
 
-      <label htmlFor={agreedId} className="flex items-start gap-3 rounded-sm bg-forest/[0.04] p-4 text-xs leading-relaxed text-graphite/70">
+      <label
+        htmlFor={geaConfirmedId}
+        className="flex items-center gap-3 rounded-sm bg-forest/[0.04] p-4 text-xs leading-relaxed text-graphite/70"
+      >
+        <input
+          id={geaConfirmedId}
+          type="checkbox"
+          checked={geaConfirmed}
+          onChange={(e) => setGeaConfirmed(e.target.checked)}
+          className="h-4 w-4 shrink-0 accent-forest"
+        />
+        <span className="flex-1">
+          I confirm I am in the Green Engineering Academy (GEA).
+        </span>
+      </label>
+
+      <label
+        htmlFor={agreedId}
+        className="flex items-center gap-3 rounded-sm bg-forest/[0.04] p-4 text-xs leading-relaxed text-graphite/70"
+      >
         <input
           id={agreedId}
           type="checkbox"
           checked={agreed}
           onChange={(e) => setAgreed(e.target.checked)}
-          className="mt-0.5 h-4 w-4 shrink-0 accent-forest"
+          className="h-4 w-4 shrink-0 accent-forest"
         />
-        <span>
+        <span className="flex-1">
           I understand that submitting this application does <strong>not</strong> guarantee me a
           position. This is only an application, and I won&apos;t be able to edit it after
           submitting. If I want to add anything later, I can mention it during the interview. If

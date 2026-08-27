@@ -81,8 +81,7 @@ export default async function QAPage() {
           GEA questions and answers
         </h1>
         <p className="mt-4 text-sm leading-relaxed text-graphite/80 sm:text-base">
-          Start here for the most common questions about GEA. If you want to ask a question or
-          keep track of replies, log in to use the student dashboard.
+          Frequently asked questions and forum access.
         </p>
       </div>
 
@@ -90,11 +89,10 @@ export default async function QAPage() {
         <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
           <div className="max-w-2xl">
             <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-gold">
-              Helpful links
+              Links
             </p>
             <p className="mt-2 text-sm leading-relaxed text-graphite/70 sm:text-base">
-              Use the application link if you&apos;re ready to join, or sign in to use the forum
-              and keep your Q&amp;A activity in one place.
+              Application access and student sign-in.
             </p>
           </div>
 
@@ -111,10 +109,19 @@ export default async function QAPage() {
               href="/login"
               className="inline-flex min-h-11 items-center justify-center rounded-sm border border-forest/15 px-4 py-2.5 font-mono text-xs uppercase tracking-[0.15em] text-forest transition hover:bg-forest/[0.03]"
             >
-              Open Forum
+              Sign In
             </Link>
           </div>
         </div>
+      </div>
+
+      <div className="mt-10 rounded-sm bg-paper px-5 py-6 ring-1 ring-forest/10 sm:px-6">
+        <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-gold">Forum</p>
+        <h2 className="mt-3 font-display text-2xl text-forest">Sign in to view the forum</h2>
+        <p className="mt-3 max-w-3xl text-sm leading-relaxed text-graphite/70">
+          The forum is only visible to approved student accounts. Sign in or create an account to
+          view posts, reply, and vote.
+        </p>
       </div>
 
       <div className="dim-divider my-12" />
@@ -127,10 +134,19 @@ export default async function QAPage() {
               Frequently asked questions
             </h2>
           </div>
-          <p className="max-w-xl text-sm leading-relaxed text-graphite/60">
-            The questions below cover the basics. If you need a deeper answer, the forum is the
-            best place to ask and follow up.
-          </p>
+          <div className="max-w-xl rounded-sm border border-forest/10 bg-paper px-4 py-3 text-sm leading-relaxed text-graphite/60 shadow-[0_8px_24px_rgba(18,53,36,0.04)]">
+            <p>Basic information is listed below.</p>
+            <p className="mt-2 text-xs uppercase tracking-[0.18em] text-gold">
+              Questions not covered?
+            </p>
+            <p className="mt-2">
+              Visit the{" "}
+              <Link href="/contact" className="text-forest underline decoration-gold underline-offset-4">
+                Contact Us
+              </Link>{" "}
+              page.
+            </p>
+          </div>
         </div>
 
         <div className="mt-6 space-y-4">
@@ -151,6 +167,16 @@ export default async function QAPage() {
               </div>
             </details>
           ))}
+        </div>
+        <div className="mt-8 rounded-sm border border-forest/10 bg-paper px-4 py-3 text-sm leading-relaxed text-graphite/60 shadow-[0_8px_24px_rgba(18,53,36,0.04)]">
+          <p className="text-xs uppercase tracking-[0.18em] text-gold">Questions not covered?</p>
+          <p className="mt-2">
+            Visit the{" "}
+            <Link href="/contact" className="text-forest underline decoration-gold underline-offset-4">
+              Contact Us
+            </Link>{" "}
+            page.
+          </p>
         </div>
       </section>
     </div>

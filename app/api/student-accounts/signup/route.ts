@@ -26,7 +26,7 @@ async function findAuthUserByEmail(supabase: ReturnType<typeof createAdminClient
 export async function POST(request: Request) {
   if (!hasSupabaseConfig() || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
     return NextResponse.json(
-      { error: "Student accounts are unavailable until Supabase is configured." },
+      { error: "Student account requests are unavailable until Supabase is configured." },
       { status: 503 }
     );
   }
@@ -47,12 +47,68 @@ export async function POST(request: Request) {
   }
 
   const supabase = createAdminClient();
+  const [{ data: existingProfile, error: profileLookupError }, { data: existingRequest, error: requestLookupError }] = await Promise.all([
+    supabase
+      .from("student_profiles")
+      .select("id")
+      .eq("school_email", schoolEmail)
+      .maybeSingle(),
+    supabase
+      .from("student_account_requests")
+      .select("id, status")
+      .eq("school_email", schoolEmail)
+      .maybeSingle(),
+  ]);
+
+  if (profileLookupError) {
+    return NextResponse.json(
+      { error: profileLookupError.message ?? "Could not check for an existing student profile." },
+      { status: 500 }
+    );
+  }
+
+  if (existingProfile) {
+    return NextResponse.json(
+      { error: "That student already has an approved account." },
+      { status: 409 }
+    );
+  }
+
+  if (requestLookupError) {
+    return NextResponse.json(
+      { error: requestLookupError.message ?? "Could not check for an existing request." },
+      { status: 500 }
+    );
+  }
+
+  if (existingRequest?.status === "pending") {
+    return NextResponse.json(
+      { error: "That request is already pending admin review." },
+      { status: 409 }
+    );
+  }
+
   const existingUser = await findAuthUserByEmail(supabase, schoolEmail);
+  if (existingUser) {
+    const { error: updateUserError } = await supabase.auth.admin.updateUserById(existingUser.id, {
+      password: studentIdNumber,
+      email_confirm: true,
+      user_metadata: {
+        full_name: fullName,
+        display_username: displayUsername,
+        graduating_class_year: graduatingClassYear,
+        account_type: "student_pending",
+      },
+    });
 
-  let authUser = existingUser;
-
-  if (!authUser) {
-    const { data: createdUser, error: createUserError } = await supabase.auth.admin.createUser({
+    if (updateUserError) {
+      return NextResponse.json(
+        { error: updateUserError.message ?? "Could not create the student account." },
+        { status: 400 }
+      );
+    }
+  } else {
+    const { error: createUserError } = await supabase.auth.admin.createUser({
       email: schoolEmail,
       password: studentIdNumber,
       email_confirm: true,
@@ -60,55 +116,42 @@ export async function POST(request: Request) {
         full_name: fullName,
         display_username: displayUsername,
         graduating_class_year: graduatingClassYear,
+        account_type: "student_pending",
       },
     });
 
-    if (createUserError || !createdUser.user) {
+    if (createUserError) {
       return NextResponse.json(
-        { error: createUserError?.message ?? "Could not create the authentication account." },
-        { status: 400 }
-      );
-    }
-
-    authUser = createdUser.user;
-  } else {
-    const { error: updateUserError } = await supabase.auth.admin.updateUserById(authUser.id, {
-      password: studentIdNumber,
-      email_confirm: true,
-      user_metadata: {
-        full_name: fullName,
-        display_username: displayUsername,
-        graduating_class_year: graduatingClassYear,
-      },
-    });
-
-    if (updateUserError) {
-      return NextResponse.json(
-        { error: updateUserError.message ?? "Could not update the authentication account." },
+        { error: createUserError.message ?? "Could not create the student account." },
         { status: 400 }
       );
     }
   }
 
-  const { error: profileError } = await supabase.from("student_profiles").upsert(
+  const { error: requestError } = await supabase.from("student_account_requests").upsert(
     {
-      auth_user_id: authUser.id,
-      auth_email: schoolEmail,
       full_name: fullName,
       display_username: displayUsername,
+      school_email: schoolEmail,
       graduating_class_year: graduatingClassYear,
       student_id_number: studentIdNumber,
-      school_email: schoolEmail,
+      status: "pending",
+      reviewed_at: null,
+      reviewed_by_auth_user_id: null,
+      rejection_reason: null,
     },
-    { onConflict: "auth_user_id" }
+    { onConflict: "school_email" }
   );
 
-  if (profileError) {
+  if (requestError) {
     return NextResponse.json(
-      { error: profileError.message ?? "Could not save the student profile." },
+      { error: requestError.message ?? "Could not save the student request." },
       { status: 400 }
     );
   }
 
-  return NextResponse.json({ authEmail: schoolEmail });
+  return NextResponse.json({
+    ok: true,
+    message: "Your request has been submitted for admin approval.",
+  });
 }
