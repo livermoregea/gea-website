@@ -4,7 +4,7 @@ export const ROLES = [
   { slug: "president", label: "President", open: false },
   { slug: "vice-president", label: "Vice President", open: true, eligibility: "upperclassmen" },
   { slug: "secretary", label: "Secretary", open: true, eligibility: "upperclassmen" },
-  { slug: "publicist", label: "Publicist", open: true, requiresProof: true, eligibility: "upperclassmen" },
+  { slug: "publicist", label: "Publicist", open: true, requiresProof: true, eligibility: "all-grades" },
   { slug: "treasurer", label: "Treasurer", open: true, eligibility: "upperclassmen" },
   { slug: "rep-10", label: "10th Grade Representative", open: true, eligibility: "grade-10" },
   { slug: "rep-9", label: "9th Grade Representative", open: true, eligibility: "grade-9" },
@@ -26,6 +26,8 @@ export function getRoleEligibilityLabel(roleSlug: RoleSlug) {
   switch (eligibility) {
     case "upperclassmen":
       return "Juniors and seniors only";
+    case "all-grades":
+      return "All grade levels";
     case "grade-10":
       return "10th grade only";
     case "grade-9":
@@ -43,6 +45,8 @@ export function isEligibleForRole(roleSlug: RoleSlug, graduatingClassYear: numbe
   switch (eligibility) {
     case "upperclassmen":
       return graduatingClassYear <= currentYear + 2;
+    case "all-grades":
+      return true;
     case "grade-10":
       return graduatingClassYear === currentYear + 3;
     case "grade-9":
