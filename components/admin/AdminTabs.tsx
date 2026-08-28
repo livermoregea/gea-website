@@ -58,7 +58,7 @@ export default function AdminTabs({
       const supabase = createClient();
       const [
         applications,
-        studentRequests,
+        studentBlocks,
         websiteAnnouncements,
         profileChanges,
         pendingQuestions,
@@ -66,9 +66,9 @@ export default function AdminTabs({
       ] = await Promise.all([
         supabase.from("applications").select("id", { count: "exact", head: true }).eq("status", "pending"),
         supabase
-          .from("student_account_requests")
+          .from("student_email_blocks")
           .select("id", { count: "exact", head: true })
-          .eq("status", "pending"),
+          .eq("is_active", true),
         supabase
           .from("website_announcements")
           .select("id", { count: "exact", head: true })
@@ -83,7 +83,7 @@ export default function AdminTabs({
 
       setAlertCounts({
         applications: applications.count ?? 0,
-        students: studentRequests.count ?? 0,
+        students: studentBlocks.count ?? 0,
         website: websiteAnnouncements.count ?? 0,
         "profile-changes": profileChanges.count ?? 0,
         slots: 0,

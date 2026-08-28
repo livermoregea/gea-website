@@ -26,7 +26,7 @@ async function findAuthUserByEmail(supabase: ReturnType<typeof createAdminClient
 export async function POST(request: Request) {
   if (!hasSupabaseConfig() || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
     return NextResponse.json(
-      { error: "Student account requests are unavailable until Supabase is configured." },
+      { error: "Student accounts are unavailable until Supabase is configured." },
       { status: 503 }
     );
   }
@@ -47,16 +47,20 @@ export async function POST(request: Request) {
   }
 
   const supabase = createAdminClient();
-  const [{ data: existingProfile, error: profileLookupError }, { data: existingRequest, error: requestLookupError }] = await Promise.all([
+  const [
+    { data: existingProfile, error: profileLookupError },
+    { data: existingBlock, error: blockLookupError },
+  ] = await Promise.all([
     supabase
       .from("student_profiles")
       .select("id")
       .eq("school_email", schoolEmail)
       .maybeSingle(),
     supabase
-      .from("student_account_requests")
-      .select("id, status")
+      .from("student_email_blocks")
+      .select("school_email, reason, note")
       .eq("school_email", schoolEmail)
+      .eq("is_active", true)
       .maybeSingle(),
   ]);
 
@@ -69,26 +73,28 @@ export async function POST(request: Request) {
 
   if (existingProfile) {
     return NextResponse.json(
-      { error: "That student already has an approved account." },
+      { error: "That student already has an account." },
       { status: 409 }
     );
   }
 
-  if (requestLookupError) {
+  if (blockLookupError) {
     return NextResponse.json(
-      { error: requestLookupError.message ?? "Could not check for an existing request." },
+      { error: blockLookupError.message ?? "Could not check whether that email is blocked." },
       { status: 500 }
     );
   }
 
-  if (existingRequest?.status === "pending") {
+  if (existingBlock) {
     return NextResponse.json(
-      { error: "That request is already pending admin review." },
-      { status: 409 }
+      { error: "That email address is blocked from creating a student account. Please contact a GEA coordinator." },
+      { status: 403 }
     );
   }
 
   const existingUser = await findAuthUserByEmail(supabase, schoolEmail);
+  let authUserId = existingUser?.id ?? null;
+
   if (existingUser) {
     const { error: updateUserError } = await supabase.auth.admin.updateUserById(existingUser.id, {
       password: studentIdNumber,
@@ -97,7 +103,7 @@ export async function POST(request: Request) {
         full_name: fullName,
         display_username: displayUsername,
         graduating_class_year: graduatingClassYear,
-        account_type: "student_pending",
+        account_type: "student",
       },
     });
 
@@ -108,7 +114,7 @@ export async function POST(request: Request) {
       );
     }
   } else {
-    const { error: createUserError } = await supabase.auth.admin.createUser({
+    const { data: createdUser, error: createUserError } = await supabase.auth.admin.createUser({
       email: schoolEmail,
       password: studentIdNumber,
       email_confirm: true,
@@ -116,7 +122,7 @@ export async function POST(request: Request) {
         full_name: fullName,
         display_username: displayUsername,
         graduating_class_year: graduatingClassYear,
-        account_type: "student_pending",
+        account_type: "student",
       },
     });
 
@@ -126,32 +132,36 @@ export async function POST(request: Request) {
         { status: 400 }
       );
     }
+
+    authUserId = createdUser.user?.id ?? null;
   }
 
-  const { error: requestError } = await supabase.from("student_account_requests").upsert(
+  if (!authUserId) {
+    return NextResponse.json({ error: "Could not resolve the student account." }, { status: 500 });
+  }
+
+  const { error: profileError } = await supabase.from("student_profiles").upsert(
     {
+      auth_user_id: authUserId,
+      auth_email: schoolEmail,
       full_name: fullName,
       display_username: displayUsername,
-      school_email: schoolEmail,
       graduating_class_year: graduatingClassYear,
       student_id_number: studentIdNumber,
-      status: "pending",
-      reviewed_at: null,
-      reviewed_by_auth_user_id: null,
-      rejection_reason: null,
+      school_email: schoolEmail,
     },
-    { onConflict: "school_email" }
+    { onConflict: "auth_user_id" }
   );
 
-  if (requestError) {
+  if (profileError) {
     return NextResponse.json(
-      { error: requestError.message ?? "Could not save the student request." },
+      { error: profileError.message ?? "Could not save the student profile." },
       { status: 400 }
     );
   }
 
   return NextResponse.json({
     ok: true,
-    message: "Your request has been submitted for admin approval.",
+    message: "Your account is ready. You can sign in now.",
   });
 }

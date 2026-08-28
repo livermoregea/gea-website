@@ -983,7 +983,7 @@ export default function QAHub({
               </button>
             ) : authUserId ? (
               <span className="inline-flex min-h-11 items-center rounded-sm border border-forest/15 px-5 py-2.5 font-mono text-xs uppercase tracking-[0.15em] text-forest/60">
-                Pending approval
+                Posting disabled
               </span>
             ) : (
               <Link
@@ -1005,8 +1005,8 @@ export default function QAHub({
 
       {!canCreatePost && authUserId && (
         <section className="rounded-sm border border-forest/10 bg-forest/[0.03] px-5 py-4 text-sm leading-relaxed text-graphite/70 ring-1 ring-forest/5">
-          Your account is pending approval. You can read the forum and report content, but you
-          cannot post, reply, or vote yet.
+          Your account is currently not allowed to post. You can read the forum and report content,
+          but you cannot post, reply, or vote yet.
         </section>
       )}
 

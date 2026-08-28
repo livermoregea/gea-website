@@ -73,8 +73,8 @@ create index if not exists student_profiles_display_username_idx on student_prof
 create index if not exists student_profiles_full_name_idx on student_profiles(full_name);
 
 -- ---------------------------------------------------------
--- STUDENT ACCOUNT REQUESTS: pending GEA student signups that
--- require admin approval before the real account is created.
+-- STUDENT ACCOUNT REQUESTS: legacy signup records kept for
+-- historical compatibility with the old approval flow.
 -- ---------------------------------------------------------
 create table if not exists student_account_requests (
   id uuid primary key default gen_random_uuid(),
@@ -92,6 +92,35 @@ create table if not exists student_account_requests (
 
 create index if not exists student_account_requests_status_idx on student_account_requests(status);
 create index if not exists student_account_requests_school_email_idx on student_account_requests(school_email);
+
+-- ---------------------------------------------------------
+-- STUDENT EMAIL BLOCKS: admin-managed blacklist for student
+-- emails that should not be allowed to create new accounts.
+-- ---------------------------------------------------------
+create table if not exists student_email_blocks (
+  school_email text primary key,
+  reason text not null check (reason in ('not_in_gea','inappropriate_behavior','other')),
+  note text,
+  is_active boolean not null default true,
+  blocked_by_auth_user_id uuid references auth.users(id) on delete set null,
+  blocked_at timestamptz not null default now(),
+  unblocked_by_auth_user_id uuid references auth.users(id) on delete set null,
+  unblocked_at timestamptz,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+alter table student_email_blocks add column if not exists reason text not null default 'not_in_gea';
+alter table student_email_blocks add column if not exists note text;
+alter table student_email_blocks add column if not exists is_active boolean not null default true;
+alter table student_email_blocks add column if not exists blocked_by_auth_user_id uuid references auth.users(id) on delete set null;
+alter table student_email_blocks add column if not exists blocked_at timestamptz not null default now();
+alter table student_email_blocks add column if not exists unblocked_by_auth_user_id uuid references auth.users(id) on delete set null;
+alter table student_email_blocks add column if not exists unblocked_at timestamptz;
+alter table student_email_blocks add column if not exists created_at timestamptz not null default now();
+alter table student_email_blocks add column if not exists updated_at timestamptz not null default now();
+
+create index if not exists student_email_blocks_is_active_idx on student_email_blocks(is_active);
 
 -- ---------------------------------------------------------
 -- TEACHER PROFILES: private teacher accounts created with a
@@ -460,6 +489,7 @@ alter table qa_answer_reports enable row level security;
 alter table upperclassmen enable row level security;
 alter table student_profiles enable row level security;
 alter table student_account_requests enable row level security;
+alter table student_email_blocks enable row level security;
 alter table teacher_profiles enable row level security;
 alter table teacher_invites enable row level security;
 alter table admins enable row level security;
@@ -517,6 +547,13 @@ create policy "student_account_requests_self_read" on student_account_requests
 drop policy if exists "student_account_requests_staff_update" on student_account_requests;
 create policy "student_account_requests_staff_update" on student_account_requests
   for update using (is_staff()) with check (is_staff());
+
+drop policy if exists "student_email_blocks_staff_read" on student_email_blocks;
+create policy "student_email_blocks_staff_read" on student_email_blocks
+  for select using (is_staff());
+drop policy if exists "student_email_blocks_staff_write" on student_email_blocks;
+create policy "student_email_blocks_staff_write" on student_email_blocks
+  for all using (is_staff()) with check (is_staff());
 
 drop policy if exists "teacher_profiles_self_read" on teacher_profiles;
 create policy "teacher_profiles_self_read" on teacher_profiles
@@ -680,6 +717,21 @@ drop trigger if exists student_profiles_set_updated_at on student_profiles;
 create trigger student_profiles_set_updated_at
 before update on student_profiles
 for each row execute function set_student_profiles_updated_at();
+
+create or replace function set_student_email_blocks_updated_at()
+returns trigger
+language plpgsql
+as $$
+begin
+  new.updated_at = now();
+  return new;
+end;
+$$;
+
+drop trigger if exists student_email_blocks_set_updated_at on student_email_blocks;
+create trigger student_email_blocks_set_updated_at
+before update on student_email_blocks
+for each row execute function set_student_email_blocks_updated_at();
 
 create or replace function qa_text_is_flagged(p_text text)
 returns boolean

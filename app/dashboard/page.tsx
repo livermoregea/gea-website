@@ -36,20 +36,13 @@ export default async function DashboardPage() {
     );
   }
 
-  const [{ data: profile }, { data: request }] = await Promise.all([
-    supabase
-      .from("student_profiles")
-      .select("full_name, display_username, graduating_class_year")
-      .eq("auth_user_id", user.id)
-      .maybeSingle(),
-    supabase
-      .from("student_account_requests")
-      .select("full_name, display_username, graduating_class_year, status")
-      .eq("school_email", user.email?.toLowerCase() ?? "")
-      .maybeSingle(),
-  ]);
+  const { data: profile } = await supabase
+    .from("student_profiles")
+    .select("full_name, display_username, graduating_class_year")
+    .eq("auth_user_id", user.id)
+    .maybeSingle();
 
-  if (!profile && !request) {
+  if (!profile) {
     return (
       <div className="mx-auto max-w-md px-4 py-16 text-center sm:px-6 md:py-24">
         <p className="text-sm text-graphite/70">
@@ -60,21 +53,9 @@ export default async function DashboardPage() {
     );
   }
 
-  if (!profile && request?.status === "rejected") {
-    return (
-      <div className="mx-auto max-w-md px-4 py-16 text-center sm:px-6 md:py-24">
-        <p className="text-sm text-graphite/70">
-          Your student account request was not approved. If you think this is a mistake, contact a
-          GEA coordinator.
-        </p>
-      </div>
-    );
-  }
-
-  const isPending = !profile && request?.status === "pending";
-  const displayName = profile?.display_username ?? request?.display_username ?? "GEA Student";
-  const fullName = profile?.full_name ?? request?.full_name ?? "Student";
-  const classYear = profile?.graduating_class_year ?? request?.graduating_class_year ?? null;
+  const displayName = profile.display_username ?? "GEA Student";
+  const fullName = profile.full_name ?? "Student";
+  const classYear = profile.graduating_class_year ?? null;
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-16 sm:px-6 md:py-20">
@@ -86,29 +67,21 @@ export default async function DashboardPage() {
         <p className="mt-3 text-sm leading-relaxed text-graphite/70">
           Name: {fullName}
           {classYear ? `. Class of ${classYear}.` : "."}{" "}
-          {profile ? "This is your student account for the site." : "Your account is pending approval."}
+          This is your student account for the site.
         </p>
       </div>
       <div className="dim-divider my-8" />
       <section id="qa" className="space-y-6">
         <div>
           <p className="font-mono text-xs uppercase tracking-[0.2em] text-gold">GEA Forum</p>
-          <h2 className="mt-2 font-display text-xl text-forest">
-            {isPending ? "Read-only access" : "Forum access"}
-          </h2>
-          {isPending && (
-            <p className="mt-2 max-w-2xl text-sm leading-relaxed text-graphite/70">
-              Your account is waiting for approval. You can read posts and report issues, but you
-              cannot post, reply, or vote yet.
-            </p>
-          )}
+          <h2 className="mt-2 font-display text-xl text-forest">Forum access</h2>
         </div>
         <QAHub
           authUserId={user.id}
           displayName={displayName}
-          canCreatePost={!isPending}
-          canVote={!isPending}
-          canReply={!isPending}
+          canCreatePost
+          canVote
+          canReply
           canReport
         />
       </section>

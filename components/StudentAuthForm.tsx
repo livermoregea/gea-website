@@ -65,21 +65,11 @@ export default function StudentAuthForm({ redirectTo }: { redirectTo: string }) 
       return;
     }
 
-    const [{ data: studentProfile }, { data: studentRequest }, { data: teacherProfile }, { data: adminProfile }] =
-      await Promise.all([
-        supabase.from("student_profiles").select("id").eq("auth_user_id", user.id).maybeSingle(),
-        supabase
-          .from("student_account_requests")
-          .select("status")
-          .eq("school_email", user.email?.toLowerCase() ?? "")
-          .maybeSingle(),
-        supabase
-          .from("teacher_profiles")
-          .select("id")
-          .eq("auth_user_id", user.id)
-          .maybeSingle(),
-        supabase.from("admins").select("name").eq("auth_user_id", user.id).maybeSingle(),
-      ]);
+    const [{ data: studentProfile }, { data: teacherProfile }, { data: adminProfile }] = await Promise.all([
+      supabase.from("student_profiles").select("id").eq("auth_user_id", user.id).maybeSingle(),
+      supabase.from("teacher_profiles").select("id").eq("auth_user_id", user.id).maybeSingle(),
+      supabase.from("admins").select("name").eq("auth_user_id", user.id).maybeSingle(),
+    ]);
 
     router.refresh();
 
@@ -92,10 +82,6 @@ export default function StudentAuthForm({ redirectTo }: { redirectTo: string }) 
       return;
     }
     if (studentProfile) {
-      router.push(redirectTo);
-      return;
-    }
-    if (studentRequest?.status === "pending") {
       router.push(redirectTo);
       return;
     }
@@ -151,7 +137,7 @@ export default function StudentAuthForm({ redirectTo }: { redirectTo: string }) 
     }
 
     setLoading(false);
-    setSignupSuccess(data.message ?? "Your request has been submitted for admin approval.");
+    setSignupSuccess(data.message ?? "Your account is ready. You can sign in now.");
     setSignupName("");
     setSignupUsername("");
     setSignupEmail("");
@@ -318,7 +304,7 @@ export default function StudentAuthForm({ redirectTo }: { redirectTo: string }) 
           )}
           {signupSuccess && (
             <p className="rounded-sm bg-forest/[0.04] px-4 py-3 text-sm text-forest" role="status">
-              {signupSuccess} You can sign in now, but the forum stays read-only until approval.
+              {signupSuccess} You can sign in now.
             </p>
           )}
 
