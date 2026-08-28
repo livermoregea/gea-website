@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { PUBLIC_ROLES, getRoleEligibilityLabel } from "@/lib/roles";
 import ApplicationForm from "@/components/ApplicationForm";
 import { hasSupabaseConfig } from "@/lib/supabase/config";
+import { formatApplicationDeadline, isApplicationsOpen } from "@/lib/application-deadline";
 
 type StudentProfile = {
   id: string;
@@ -62,6 +63,7 @@ export default async function ApplyPage({
 }) {
   const { role: roleSlug } = await params;
   const role = PUBLIC_ROLES.find((r) => r.slug === roleSlug);
+  const applicationsOpen = isApplicationsOpen();
   const supabase = await createClient();
   const user = hasSupabaseConfig() ? (await supabase.auth.getUser()).data.user : null;
 
@@ -93,6 +95,9 @@ export default async function ApplyPage({
       <h1 className="mt-3 font-display text-2xl font-medium text-forest sm:text-3xl">{role.label}</h1>
       <p className="mt-4 text-sm leading-relaxed text-graphite/70 sm:text-base">
         Submit the form below to apply. Applications are reviewed by the GEA officer team.
+      </p>
+      <p className="mt-2 text-sm leading-relaxed text-graphite/60 sm:text-base">
+        Applications close on {formatApplicationDeadline()}.
       </p>
       <p className="mt-2 text-sm leading-relaxed text-graphite/60 sm:text-base">
         Applications cannot be edited after submission. If you need to add anything later, mention
@@ -147,13 +152,28 @@ export default async function ApplyPage({
 
       <div className="dim-divider my-10" />
 
-      <ApplicationForm
-        roleSlug={role.slug}
-        roleLabel={role.label}
-        requiresProof={Boolean("requiresProof" in role && role.requiresProof)}
-        profile={profile}
-        authUserId={user?.id ?? null}
-      />
+      {applicationsOpen ? (
+        <ApplicationForm
+          roleSlug={role.slug}
+          roleLabel={role.label}
+          requiresProof={Boolean("requiresProof" in role && role.requiresProof)}
+          profile={profile}
+          authUserId={user?.id ?? null}
+        />
+      ) : (
+        <div className="rounded-sm bg-forest/[0.04] p-6 ring-1 ring-forest/10">
+          <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-gold">
+            Applications Closed
+          </p>
+          <p className="mt-2 text-sm leading-relaxed text-graphite/70">
+            The deadline has passed, so new applications are no longer being accepted.
+          </p>
+          <p className="mt-2 text-sm leading-relaxed text-graphite/60">
+            If you already applied, you can still check your status from the leadership page after
+            signing in.
+          </p>
+        </div>
+      )}
     </div>
   );
 }

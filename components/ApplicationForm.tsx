@@ -5,6 +5,7 @@ import { useId, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { getRoleEligibilityLabel, isEligibleForRole, isSchoolEmail, type RoleSlug } from "@/lib/roles";
 import { hasSupabaseConfig } from "@/lib/supabase/config";
+import { formatApplicationDeadline, isApplicationsOpen } from "@/lib/application-deadline";
 
 type Props = {
   roleSlug: RoleSlug;
@@ -57,6 +58,11 @@ export default function ApplicationForm({
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
+
+    if (!isApplicationsOpen()) {
+      setError(`Applications closed on ${formatApplicationDeadline()}.`);
+      return;
+    }
 
     if (!isSchoolEmail(email)) {
       setError(
@@ -150,8 +156,19 @@ export default function ApplicationForm({
     );
   }
 
+  const applicationsOpen = isApplicationsOpen();
+
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
+      {!applicationsOpen ? (
+        <div className="rounded-sm bg-forest/[0.04] p-4 ring-1 ring-forest/10" aria-live="polite">
+          <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-gold">Applications Closed</p>
+          <p className="mt-2 text-sm text-graphite/70">
+            The deadline passed on {formatApplicationDeadline()}.
+          </p>
+        </div>
+      ) : null}
+
       {profile && (
         <div className="rounded-sm bg-paper p-4 ring-1 ring-forest/10">
           <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-gold">Using Student Profile</p>
@@ -334,10 +351,10 @@ export default function ApplicationForm({
 
       <button
         type="submit"
-        disabled={submitting}
+        disabled={submitting || !applicationsOpen}
         className="w-full rounded-sm bg-forest px-6 py-3 font-mono text-xs uppercase tracking-[0.15em] text-gold transition hover:bg-forestdeep disabled:opacity-50"
       >
-        {submitting ? "Submitting..." : "Submit Application"}
+        {submitting ? "Submitting..." : applicationsOpen ? "Submit Application" : "Applications Closed"}
       </button>
     </form>
   );

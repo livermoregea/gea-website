@@ -2,6 +2,7 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { PUBLIC_ROLES, getRoleEligibilityLabel } from "@/lib/roles";
 import { hasSupabaseConfig } from "@/lib/supabase/config";
+import { formatApplicationDeadline, isApplicationsOpen } from "@/lib/application-deadline";
 
 export const revalidate = 0;
 
@@ -40,6 +41,7 @@ function formatStatus(status: string) {
 }
 
 export default async function LeadershipPage() {
+  const applicationsOpen = isApplicationsOpen();
   const supabase = await createClient();
   const {
     data: { user },
@@ -71,6 +73,9 @@ export default async function LeadershipPage() {
       </h1>
       <p className="mt-3 max-w-2xl text-sm leading-relaxed text-graphite/75 sm:text-base">
         View the leadership board and apply for open roles below.
+      </p>
+      <p className="mt-2 max-w-2xl text-sm leading-relaxed text-graphite/65 sm:text-base">
+        Applications close on {formatApplicationDeadline()}.
       </p>
 
       {user ? (
@@ -172,7 +177,7 @@ export default async function LeadershipPage() {
                       </p>
                     </div>
                   </details>
-                ) : !filled && role.open ? (
+                ) : !filled && role.open && applicationsOpen ? (
                   <Link
                     href={`/leadership/apply/${role.slug}`}
                     className="inline-block w-full rounded-sm bg-forest px-4 py-2 text-center font-mono text-[10px] uppercase tracking-[0.15em] text-gold transition hover:bg-forestdeep"
@@ -181,7 +186,7 @@ export default async function LeadershipPage() {
                   </Link>
                 ) : !filled ? (
                   <span className="inline-block w-full rounded-sm border border-forest/10 px-4 py-2 text-center font-mono text-[10px] uppercase tracking-[0.15em] text-graphite/40">
-                    Not Accepting Applications
+                    {role.open ? "Applications Closed" : "Not Accepting Applications"}
                   </span>
                 ) : null}
                 </div>

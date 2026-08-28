@@ -511,6 +511,8 @@ create policy "leadership_admin_write" on leadership_members
 drop policy if exists "applications_public_insert" on applications;
 create policy "applications_public_insert" on applications
   for insert with check (
+    now() < timestamptz '2026-09-05 07:00:00+00'
+    and
     case
       when role in ('vice-president', 'secretary', 'publicist', 'treasurer') then graduating_class_year <= extract(year from now())::int + 2
       when role = 'rep-10' then graduating_class_year = extract(year from now())::int + 3
