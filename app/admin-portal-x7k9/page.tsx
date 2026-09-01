@@ -70,6 +70,7 @@ export default async function AdminPortalPage() {
       displayName={displayName.split(" ")[0]}
       schoolEmail={teacherRow?.school_email ?? user.email ?? ""}
       userId={user.id}
+      section="dashboard"
     />
   );
 }

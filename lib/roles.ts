@@ -19,6 +19,10 @@ export function getRole(slug: string) {
   return ROLES.find((r) => r.slug === slug);
 }
 
+export function getRoleLabel(slug: string) {
+  return getRole(slug)?.label ?? slug;
+}
+
 export function getRoleEligibilityLabel(roleSlug: RoleSlug) {
   const role = getRole(roleSlug);
   const eligibility = role && "eligibility" in role ? role.eligibility : undefined;

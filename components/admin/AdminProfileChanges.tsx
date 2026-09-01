@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { hasSupabaseConfig } from "@/lib/supabase/config";
+import { markAdminNotificationSeen } from "@/lib/admin-notifications";
 
 type ProfileChangeRequest = {
   id: string;
@@ -65,6 +66,10 @@ export default function AdminProfileChanges() {
   useEffect(() => {
     load();
   }, []);
+
+  useEffect(() => {
+    requests.forEach((request) => markAdminNotificationSeen("profile-changes", request.id));
+  }, [requests]);
 
   async function approveRequest(request: ProfileChangeRequest) {
     if (!hasSupabaseConfig()) return;

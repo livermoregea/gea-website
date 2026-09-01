@@ -16,7 +16,7 @@ type AnnouncementButton = {
   newTab: boolean;
 };
 
-type WebsiteAnnouncement = {
+export type WebsiteAnnouncement = {
   kind: AnnouncementKind;
   is_enabled: boolean;
   scope: AnnouncementScope;
@@ -66,17 +66,24 @@ function storageKey(announcement: WebsiteAnnouncement) {
   return `${DISMISS_PREFIX}:${announcement.kind}:${announcement.updated_at}`;
 }
 
-export default function SiteAnnouncements() {
+export default function SiteAnnouncements({
+  initialAnnouncements = [],
+}: {
+  initialAnnouncements?: WebsiteAnnouncement[];
+}) {
   const pathname = usePathname();
-  const [mounted, setMounted] = useState(false);
-  const [banner, setBanner] = useState<WebsiteAnnouncement | null>(null);
-  const [popup, setPopup] = useState<WebsiteAnnouncement | null>(null);
+  const initialBanner = initialAnnouncements.find(
+    (row) => row.kind === "banner" && (row.scope === "site" || pathname === "/")
+  ) ?? null;
+  const initialPopup = initialAnnouncements.find(
+    (row) => row.kind === "popup" && (row.scope === "site" || pathname === "/")
+  ) ?? null;
+  const [banner, setBanner] = useState<WebsiteAnnouncement | null>(initialBanner);
+  const [popup, setPopup] = useState<WebsiteAnnouncement | null>(initialPopup);
   const [popupOpen, setPopupOpen] = useState(false);
   const [dontShowAgain, setDontShowAgain] = useState(false);
 
   useEffect(() => {
-    setMounted(true);
-
     async function load() {
       if (!hasSupabaseConfig()) {
         setBanner(null);
@@ -137,10 +144,6 @@ export default function SiteAnnouncements() {
 
   const popupButtons = useMemo(() => normalizeButtons(popup?.buttons ?? []), [popup]);
   const bannerButtons = useMemo(() => normalizeButtons(banner?.buttons ?? []), [banner]);
-
-  if (!mounted) {
-    return null;
-  }
 
   return (
     <>

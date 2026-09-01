@@ -1,9 +1,11 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
-import { ROLES } from "@/lib/roles";
+import { getRoleLabel, ROLES } from "@/lib/roles";
 import { hasSupabaseConfig } from "@/lib/supabase/config";
+import { isAdminNotificationSeen, markAdminNotificationSeen } from "@/lib/admin-notifications";
 
 type Application = {
   id: string;
@@ -70,6 +72,7 @@ const CSV_HEADERS = [
   "invite_sent_at",
   "interview_token",
 ] as const;
+const APPLICATIONS_PAGE_SIZE = 20;
 
 function formatDate(value: string) {
   return new Intl.DateTimeFormat("en-US", {
@@ -92,26 +95,8 @@ function getStatusLabel(status: ApplicationStatus) {
   return status.replaceAll("_", " ");
 }
 
-function getStatusStyle(status: ApplicationStatus) {
-  switch (status) {
-    case "pending":
-      return "border-amber-400/30 bg-amber-50 text-amber-900";
-    case "reviewing":
-      return "border-forest/20 bg-forest/[0.06] text-forest";
-    case "invited":
-      return "border-gold/30 bg-gold/10 text-forest";
-    case "interview_booked":
-      return "border-sky-300/40 bg-sky-50 text-sky-900";
-    case "approved":
-      return "border-emerald-300/40 bg-emerald-50 text-emerald-900";
-    case "rejected":
-      return "border-red-300/40 bg-red-50 text-red-800";
-    default:
-      return "border-forest/15 bg-paper text-forest";
-  }
-}
-
 export default function AdminApplications() {
+  const router = useRouter();
   const [apps, setApps] = useState<Application[]>([]);
   const [slots, setSlots] = useState<InterviewSlot[]>([]);
   const [loading, setLoading] = useState(true);
@@ -123,7 +108,8 @@ export default function AdminApplications() {
   const [roleFilter, setRoleFilter] = useState<RoleFilter>("all");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [sortMode, setSortMode] = useState<SortMode>("newest");
-  const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [page, setPage] = useState(1);
+  const [quickActionId, setQuickActionId] = useState<string | null>(null);
 
   async function load() {
     setLoading(true);
@@ -292,6 +278,17 @@ export default function AdminApplications() {
     });
   }, [apps, roleFilter, searchQuery, sortMode, statusFilter]);
 
+  const totalPages = Math.max(1, Math.ceil(visibleApps.length / APPLICATIONS_PAGE_SIZE));
+  const currentPage = Math.min(page, totalPages);
+  const startIndex = (currentPage - 1) * APPLICATIONS_PAGE_SIZE;
+  const pagedApps = visibleApps.slice(startIndex, startIndex + APPLICATIONS_PAGE_SIZE);
+  const showingStart = visibleApps.length === 0 ? 0 : startIndex + 1;
+  const showingEnd = Math.min(startIndex + APPLICATIONS_PAGE_SIZE, visibleApps.length);
+
+  useEffect(() => {
+    setPage(1);
+  }, [roleFilter, searchQuery, sortMode, statusFilter]);
+
   function formatSlotTime(slotTime: string) {
     return new Intl.DateTimeFormat("en-US", {
       weekday: "short",
@@ -442,217 +439,269 @@ export default function AdminApplications() {
           {message}
         </p>
       )}
-      <div className="space-y-3">
-        {visibleApps.length === 0 ? (
-          <p className="text-sm text-graphite/50">No applications match the current filters.</p>
-        ) : (
-          visibleApps.map((a) => {
-            const bookedSlot = a.booked_slot_id ? slotById.get(a.booked_slot_id) : null;
-            const isOpen = expandedId === a.id;
+      <div className="space-y-4">
+        {visibleApps.length > 0 && (
+          <div className="flex flex-col gap-3 rounded-sm bg-paper px-4 py-3 ring-1 ring-forest/10 sm:flex-row sm:items-center sm:justify-between">
+            <p className="font-mono text-[10px] uppercase tracking-[0.15em] text-graphite/50">
+              Showing {showingStart}-{showingEnd} of {visibleApps.length}
+            </p>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setPage((current) => Math.max(1, current - 1))}
+                disabled={currentPage <= 1}
+                className="rounded-sm border border-forest/15 px-3 py-2 font-mono text-[11px] uppercase tracking-[0.12em] text-forest transition hover:bg-forest/[0.03] disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                Previous
+              </button>
+              <span className="font-mono text-[10px] uppercase tracking-[0.15em] text-graphite/50">
+                Page {currentPage} of {totalPages}
+              </span>
+              <button
+                type="button"
+                onClick={() => setPage((current) => Math.min(totalPages, current + 1))}
+                disabled={currentPage >= totalPages}
+                className="rounded-sm border border-forest/15 px-3 py-2 font-mono text-[11px] uppercase tracking-[0.12em] text-forest transition hover:bg-forest/[0.03] disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                Next
+              </button>
+            </div>
+          </div>
+        )}
 
-            return (
-              <article key={a.id} className="overflow-hidden rounded-sm bg-paper ring-1 ring-forest/10">
+        <div className="space-y-3">
+          {visibleApps.length === 0 ? (
+            <p className="text-sm text-graphite/50">No applications match the current filters.</p>
+          ) : (
+            pagedApps.map((a) => {
+              const bookedSlot = a.booked_slot_id ? slotById.get(a.booked_slot_id) : null;
+              const bookedSlotTime = bookedSlot?.slot_time;
+
+              return (
+                <article key={a.id} className="relative rounded-sm bg-paper ring-1 ring-forest/10">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      markAdminNotificationSeen("applications", a.id);
+                      router.push(`/admin-portal-x7k9/applications/${a.id}`);
+                    }}
+                    className="block w-full px-5 py-4 text-left transition hover:bg-forest/[0.02]"
+                  >
+                    <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-3">
+                          {!isAdminNotificationSeen("applications", a.id) && (
+                            <span className="h-2.5 w-2.5 shrink-0 rounded-full bg-red-600" title="New application" aria-label="New application" />
+                          )}
+                          <p className="font-display text-lg text-forest">{a.name}</p>
+                        </div>
+                        <div className="mt-2 flex flex-wrap gap-x-5 gap-y-1 text-sm text-graphite/60">
+                          <span>Class of {a.graduating_class_year ?? "?"}</span>
+                          <span>Position: {getRoleLabel(a.role)}</span>
+                        </div>
+                      </div>
+                    </div>
+                    <p className="mt-4 font-mono text-[10px] uppercase tracking-[0.15em] text-graphite/40">
+                      View application
+                    </p>
+                  </button>
+
+                  <div className="relative flex justify-end border-t border-forest/10 px-5 py-2">
                     <button
                       type="button"
-                      onClick={() => setExpandedId((current) => (current === a.id ? null : a.id))}
-                      className="block w-full px-5 py-4 text-left transition hover:bg-forest/[0.02]"
-                >
-                  <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-                    <div className="min-w-0 flex-1">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <span
-                          className={`rounded-sm border px-2.5 py-1 font-mono text-[10px] uppercase tracking-[0.15em] ${getStatusStyle(a.status as ApplicationStatus)}`}
-                        >
-                          {getStatusLabel(a.status as ApplicationStatus)}
-                        </span>
-                        <span className="rounded-sm border border-forest/10 bg-forest/[0.04] px-2.5 py-1 font-mono text-[10px] uppercase tracking-[0.15em] text-forest">
-                          {a.role}
-                        </span>
-                      </div>
-                      <div className="mt-3 grid gap-1 sm:grid-cols-2 lg:grid-cols-[1.1fr_0.9fr] lg:gap-4">
-                        <div>
-                          <p className="font-display text-lg text-forest">{a.name}</p>
-                          <p className="mt-1 text-sm text-graphite/60">
-                            {a.school_email}
-                            {a.display_username ? ` · @${a.display_username}` : ""}
-                          </p>
-                        </div>
-                        <div className="text-sm text-graphite/60 lg:text-right">
-                          <p>Class of {a.graduating_class_year ?? "?"}</p>
-                          <p className="mt-1">
-                            {bookedSlot ? `Interview: ${bookedSlot.label}` : "Interview: not booked yet"}
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                  <p className="mt-4 font-mono text-[10px] uppercase tracking-[0.15em] text-graphite/40">
-                    {isOpen ? "Hide details" : "Open details"}
-                  </p>
-                </button>
-
-                {isOpen && (
-                  <div className="border-t border-forest/10 px-5 py-5">
-                    <div className="grid gap-4 lg:grid-cols-3">
-                      <section className="rounded-sm bg-forest/[0.03] p-4 ring-1 ring-forest/10">
-                        <p className="font-mono text-[10px] uppercase tracking-[0.15em] text-gold">
-                          Profile snapshot
-                        </p>
-                        <div className="mt-3 space-y-2 text-sm text-graphite/75">
-                          <p>Display name: {a.display_username ?? "None"}</p>
-                          <p>Class year: {a.graduating_class_year ?? "None"}</p>
-                          <p>Student ID: {a.student_id_number ?? "None"}</p>
-                          <p>School email: {a.school_email}</p>
-                        </div>
-                      </section>
-
-                      <section className="rounded-sm bg-forest/[0.03] p-4 ring-1 ring-forest/10 lg:col-span-2">
-                        <p className="font-mono text-[10px] uppercase tracking-[0.15em] text-gold">
-                          Application details
-                        </p>
-                        <div className="mt-3 grid gap-4 sm:grid-cols-2">
-                          <div>
-                            <p className="font-mono text-[10px] uppercase tracking-[0.15em] text-graphite/40">
-                              Why apply
-                            </p>
-                            <p className="mt-1 whitespace-pre-wrap text-sm leading-relaxed text-graphite/75">
-                              {a.why_apply}
-                            </p>
-                          </div>
-                          <div>
-                            <p className="font-mono text-[10px] uppercase tracking-[0.15em] text-graphite/40">
-                              Why fit
-                            </p>
-                            <p className="mt-1 whitespace-pre-wrap text-sm leading-relaxed text-graphite/75">
-                              {a.why_fit}
-                            </p>
-                          </div>
-                          {a.proof_of_work && (
-                            <div className="sm:col-span-2">
-                              <p className="font-mono text-[10px] uppercase tracking-[0.15em] text-graphite/40">
-                                Proof of work
-                              </p>
-                              <p className="mt-1 whitespace-pre-wrap text-sm leading-relaxed text-graphite/75">
-                                {a.proof_of_work}
-                              </p>
-                            </div>
-                          )}
-                        </div>
-                      </section>
-
-                      <section className="rounded-sm bg-forest/[0.03] p-4 ring-1 ring-forest/10">
-                        <p className="font-mono text-[10px] uppercase tracking-[0.15em] text-gold">
-                          Interview
-                        </p>
-                        <div className="mt-3 space-y-3 text-sm text-graphite/75">
-                          {bookedSlot ? (
-                            <div className="space-y-1">
-                              <p className="font-medium text-graphite">{bookedSlot.label}</p>
-                              <p className="text-xs text-graphite/60">{formatSlotTime(bookedSlot.slot_time)}</p>
-                            </div>
-                          ) : (
-                            <p>No interview booked yet.</p>
-                          )}
-                          <select
-                            aria-label={`Change status for ${a.name}`}
-                            value={a.status}
-                            onChange={(e) => updateStatus(a.id, e.target.value)}
-                            className="min-h-11 w-full rounded-sm border border-forest/15 bg-paper px-3 py-2 font-mono text-xs uppercase tracking-[0.1em]"
-                          >
-                            {STATUSES.map((s) => (
-                              <option key={s} value={s}>
-                                {getStatusLabel(s)}
-                              </option>
-                            ))}
-                          </select>
+                      onClick={() => setQuickActionId((current) => (current === a.id ? null : a.id))}
+                      className="inline-flex min-h-9 items-center gap-2 rounded-sm px-2 font-mono text-[10px] uppercase tracking-[0.12em] text-forest transition hover:bg-forest/[0.05]"
+                      aria-expanded={quickActionId === a.id}
+                      aria-haspopup="menu"
+                    >
+                      Quick actions
+                      <span aria-hidden="true">⌄</span>
+                    </button>
+                    {quickActionId === a.id && (
+                      <div className="absolute right-5 top-full z-10 mt-1 w-52 rounded-sm border border-forest/10 bg-paper p-2 shadow-lg shadow-forest/10" role="menu">
+                        <p className="px-3 py-2 font-mono text-[9px] uppercase tracking-[0.15em] text-graphite/40">Change status</p>
+                        {STATUSES.map((status) => (
                           <button
+                            key={status}
                             type="button"
-                            onClick={() => generateInviteDraft(a.id)}
-                            disabled={busyId === a.id}
-                            className="inline-flex min-h-11 w-full items-center justify-center rounded-sm bg-forest px-4 py-2 font-mono text-xs uppercase tracking-[0.15em] text-gold transition hover:bg-forestdeep disabled:opacity-50"
+                            role="menuitem"
+                            disabled={a.status === status}
+                            onClick={() => {
+                              updateStatus(a.id, status);
+                              setQuickActionId(null);
+                            }}
+                            className="block min-h-9 w-full rounded-sm px-3 py-2 text-left font-mono text-[10px] uppercase tracking-[0.1em] text-forest transition hover:bg-forest/[0.05] disabled:cursor-not-allowed disabled:text-graphite/35"
                           >
-                            {busyId === a.id ? "Generating..." : "Generate Interview Draft"}
+                            {getStatusLabel(status)}
                           </button>
-                        </div>
-                      </section>
-                    </div>
-
-                    {drafts[a.id] && (
-                      <div className="mt-5 rounded-sm border border-forest/10 bg-paper/70 p-4">
-                        <div className="flex flex-wrap items-center justify-between gap-2">
-                          <p className="font-mono text-[10px] uppercase tracking-[0.15em] text-graphite/40">
-                            Draft ready
-                          </p>
-                          <div className="flex flex-wrap gap-2">
-                            <button
-                              type="button"
-                              onClick={() => copyText(drafts[a.id].email.subject, `${a.id}-subject`)}
-                              className="rounded-sm border border-forest/15 px-3 py-1.5 font-mono text-[11px] uppercase tracking-[0.12em] text-forest transition hover:bg-forest/5"
-                            >
-                              {copiedKey === `${a.id}-subject` ? "Copied subject" : "Copy subject"}
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() =>
-                                copyText(
-                                  `Subject: ${drafts[a.id].email.subject}\n\n${drafts[a.id].email.body}`,
-                                  `${a.id}-email`
-                                )
-                              }
-                              className="rounded-sm border border-forest/15 px-3 py-1.5 font-mono text-[11px] uppercase tracking-[0.12em] text-forest transition hover:bg-forest/5"
-                            >
-                              {copiedKey === `${a.id}-email` ? "Copied email" : "Copy email"}
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => copyText(drafts[a.id].bookingLink, `${a.id}-link`)}
-                              className="rounded-sm border border-forest/15 px-3 py-1.5 font-mono text-[11px] uppercase tracking-[0.12em] text-forest transition hover:bg-forest/5"
-                            >
-                              {copiedKey === `${a.id}-link` ? "Copied link" : "Copy link"}
-                            </button>
-                          </div>
-                        </div>
-                        <div className="mt-4 space-y-3 text-sm text-graphite/80">
-                          <p>
-                            <span className="font-mono text-[10px] uppercase tracking-[0.15em] text-graphite/40">
-                              Subject
-                            </span>
-                            <br />
-                            {drafts[a.id].email.subject}
-                          </p>
-                          <p>
-                            <span className="font-mono text-[10px] uppercase tracking-[0.15em] text-graphite/40">
-                              Booking link
-                            </span>
-                            <br />
-                            <a
-                              href={drafts[a.id].bookingLink}
-                              target="_blank"
-                              rel="noreferrer"
-                              className="break-all text-forest underline decoration-forest/30 underline-offset-2"
-                            >
-                              {drafts[a.id].bookingLink}
-                            </a>
-                          </p>
-                          <label className="block">
-                            <span className="font-mono text-[10px] uppercase tracking-[0.15em] text-graphite/40">
-                              Email body
-                            </span>
-                            <textarea
-                              readOnly
-                              value={drafts[a.id].email.body}
-                              className="mt-1 min-h-48 w-full rounded-sm border border-forest/10 bg-paper p-3 font-sans text-sm leading-6 text-graphite outline-none"
-                            />
-                          </label>
-                        </div>
+                        ))}
                       </div>
                     )}
                   </div>
-                )}
-              </article>
-            );
-          })
-        )}
+
+                  {false && (
+                    <div className="border-t border-forest/10 px-5 py-5">
+                      <div className="grid gap-4 lg:grid-cols-3">
+                        <section className="rounded-sm bg-forest/[0.03] p-4 ring-1 ring-forest/10">
+                          <p className="font-mono text-[10px] uppercase tracking-[0.15em] text-gold">
+                            Profile snapshot
+                          </p>
+                          <div className="mt-3 space-y-2 text-sm text-graphite/75">
+                            <p>Display name: {a.display_username ?? "None"}</p>
+                            <p>Class year: {a.graduating_class_year ?? "None"}</p>
+                            <p>Student ID: {a.student_id_number ?? "None"}</p>
+                            <p>School email: {a.school_email}</p>
+                          </div>
+                        </section>
+
+                        <section className="rounded-sm bg-forest/[0.03] p-4 ring-1 ring-forest/10 lg:col-span-2">
+                          <p className="font-mono text-[10px] uppercase tracking-[0.15em] text-gold">
+                            Application details
+                          </p>
+                          <div className="mt-3 grid gap-4 sm:grid-cols-2">
+                            <div>
+                              <p className="font-mono text-[10px] uppercase tracking-[0.15em] text-graphite/40">
+                                Why apply
+                              </p>
+                              <p className="mt-1 whitespace-pre-wrap text-sm leading-relaxed text-graphite/75">
+                                {a.why_apply}
+                              </p>
+                            </div>
+                            <div>
+                              <p className="font-mono text-[10px] uppercase tracking-[0.15em] text-graphite/40">
+                                Why fit
+                              </p>
+                              <p className="mt-1 whitespace-pre-wrap text-sm leading-relaxed text-graphite/75">
+                                {a.why_fit}
+                              </p>
+                            </div>
+                            {a.proof_of_work && (
+                              <div className="sm:col-span-2">
+                                <p className="font-mono text-[10px] uppercase tracking-[0.15em] text-graphite/40">
+                                  Proof of work
+                                </p>
+                                <p className="mt-1 whitespace-pre-wrap text-sm leading-relaxed text-graphite/75">
+                                  {a.proof_of_work}
+                                </p>
+                              </div>
+                            )}
+                          </div>
+                        </section>
+
+                        <section className="rounded-sm bg-forest/[0.03] p-4 ring-1 ring-forest/10">
+                          <p className="font-mono text-[10px] uppercase tracking-[0.15em] text-gold">
+                            Interview
+                          </p>
+                          <div className="mt-3 space-y-3 text-sm text-graphite/75">
+                            {bookedSlot ? (
+                              <div className="space-y-1">
+                                <p className="font-medium text-graphite">{bookedSlot?.label}</p>
+                                <p className="text-xs text-graphite/60">{formatSlotTime(bookedSlotTime ?? "")}</p>
+                              </div>
+                            ) : (
+                              <p>No interview booked yet.</p>
+                            )}
+                            <select
+                              aria-label={`Change status for ${a.name}`}
+                              value={a.status}
+                              onChange={(e) => updateStatus(a.id, e.target.value)}
+                              className="min-h-11 w-full rounded-sm border border-forest/15 bg-paper px-3 py-2 font-mono text-xs uppercase tracking-[0.1em]"
+                            >
+                              {STATUSES.map((s) => (
+                                <option key={s} value={s}>
+                                  {getStatusLabel(s)}
+                                </option>
+                              ))}
+                            </select>
+                            <button
+                              type="button"
+                              onClick={() => generateInviteDraft(a.id)}
+                              disabled={busyId === a.id}
+                              className="inline-flex min-h-11 w-full items-center justify-center rounded-sm bg-forest px-4 py-2 font-mono text-xs uppercase tracking-[0.15em] text-gold transition hover:bg-forestdeep disabled:opacity-50"
+                            >
+                              {busyId === a.id ? "Generating..." : "Generate Interview Draft"}
+                            </button>
+                          </div>
+                        </section>
+                      </div>
+
+                      {drafts[a.id] && (
+                        <div className="mt-5 rounded-sm border border-forest/10 bg-paper/70 p-4">
+                          <div className="flex flex-wrap items-center justify-between gap-2">
+                            <p className="font-mono text-[10px] uppercase tracking-[0.15em] text-graphite/40">
+                              Draft ready
+                            </p>
+                            <div className="flex flex-wrap gap-2">
+                              <button
+                                type="button"
+                                onClick={() => copyText(drafts[a.id].email.subject, `${a.id}-subject`)}
+                                className="rounded-sm border border-forest/15 px-3 py-1.5 font-mono text-[11px] uppercase tracking-[0.12em] text-forest transition hover:bg-forest/5"
+                              >
+                                {copiedKey === `${a.id}-subject` ? "Copied subject" : "Copy subject"}
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  copyText(
+                                    `Subject: ${drafts[a.id].email.subject}\n\n${drafts[a.id].email.body}`,
+                                    `${a.id}-email`
+                                  )
+                                }
+                                className="rounded-sm border border-forest/15 px-3 py-1.5 font-mono text-[11px] uppercase tracking-[0.12em] text-forest transition hover:bg-forest/5"
+                              >
+                                {copiedKey === `${a.id}-email` ? "Copied email" : "Copy email"}
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => copyText(drafts[a.id].bookingLink, `${a.id}-link`)}
+                                className="rounded-sm border border-forest/15 px-3 py-1.5 font-mono text-[11px] uppercase tracking-[0.12em] text-forest transition hover:bg-forest/5"
+                              >
+                                {copiedKey === `${a.id}-link` ? "Copied link" : "Copy link"}
+                              </button>
+                            </div>
+                          </div>
+                          <div className="mt-4 space-y-3 text-sm text-graphite/80">
+                            <p>
+                              <span className="font-mono text-[10px] uppercase tracking-[0.15em] text-graphite/40">
+                                Subject
+                              </span>
+                              <br />
+                              {drafts[a.id].email.subject}
+                            </p>
+                            <p>
+                              <span className="font-mono text-[10px] uppercase tracking-[0.15em] text-graphite/40">
+                                Booking link
+                              </span>
+                              <br />
+                              <a
+                                href={drafts[a.id].bookingLink}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="break-all text-forest underline decoration-forest/30 underline-offset-2"
+                              >
+                                {drafts[a.id].bookingLink}
+                              </a>
+                            </p>
+                            <label className="block">
+                              <span className="font-mono text-[10px] uppercase tracking-[0.15em] text-graphite/40">
+                                Email body
+                              </span>
+                              <textarea
+                                readOnly
+                                value={drafts[a.id].email.body}
+                                className="mt-1 min-h-48 w-full rounded-sm border border-forest/10 bg-paper p-3 font-sans text-sm leading-6 text-graphite outline-none"
+                              />
+                            </label>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </article>
+              );
+            })
+          )}
+        </div>
       </div>
     </div>
   );

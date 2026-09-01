@@ -7,6 +7,9 @@ import "./globals.css";
 import Nav from "@/components/Nav";
 import Footer from "@/components/Footer";
 import SiteAnnouncements from "@/components/SiteAnnouncements";
+import { createClient } from "@/lib/supabase/server";
+import { hasSupabaseConfig } from "@/lib/supabase/config";
+import type { WebsiteAnnouncement } from "@/components/SiteAnnouncements";
 
 const display = Space_Grotesk({
   subsets: ["latin"],
@@ -31,11 +34,21 @@ export const viewport = {
   initialScale: 1,
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  let initialAnnouncements: WebsiteAnnouncement[] = [];
+  if (hasSupabaseConfig()) {
+    const supabase = await createClient();
+    const { data } = await supabase
+      .from("website_announcements")
+      .select("kind, is_enabled, scope, title, body, buttons, allow_dont_show_again, updated_at")
+      .eq("is_enabled", true);
+    initialAnnouncements = (data as WebsiteAnnouncement[]) ?? [];
+  }
+
   return (
     <html lang="en" className={`${display.variable} ${body.variable} ${mono.variable}`}>
       <body className="min-h-screen font-body antialiased" suppressHydrationWarning>
@@ -46,7 +59,7 @@ export default function RootLayout({
           Skip to content
         </a>
         <Nav />
-        <SiteAnnouncements />
+        <SiteAnnouncements initialAnnouncements={initialAnnouncements} />
         <main id="content" className="min-h-screen">
           {children}
         </main>

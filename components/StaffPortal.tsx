@@ -1,4 +1,5 @@
 import AdminTabs from "@/components/admin/AdminTabs";
+import type { AdminSectionKey } from "@/components/admin/AdminTabs";
 
 type StaffPortalProps = {
   title: string;
@@ -6,6 +7,7 @@ type StaffPortalProps = {
   displayName: string;
   schoolEmail: string;
   userId: string;
+  section?: AdminSectionKey;
 };
 
 export default function StaffPortal({
@@ -14,9 +16,10 @@ export default function StaffPortal({
   displayName,
   schoolEmail,
   userId,
+  section = "dashboard",
 }: StaffPortalProps) {
   return (
-    <div className="mx-auto max-w-[86rem] px-4 py-10 sm:px-6 md:py-14">
+    <div className="mx-auto max-w-[92rem] px-4 py-8 sm:px-6 md:py-10">
       <section className="rounded-sm bg-paper px-5 py-4 ring-1 ring-forest/10 sm:px-6">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div className="min-w-0">
@@ -43,12 +46,8 @@ export default function StaffPortal({
         </div>
       </section>
 
-      <section className="mt-8">
-        <div className="mb-4">
-          <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-gold">Admin Panel</p>
-          <h2 className="mt-2 font-display text-xl text-forest sm:text-2xl">Staff dashboard</h2>
-        </div>
-        <AdminTabs authUserId={userId} displayName={displayName} />
+      <section className="mt-6">
+        <AdminTabs section={section} />
       </section>
     </div>
   );

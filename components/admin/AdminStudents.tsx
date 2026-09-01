@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useId, useState } from "react";
+import { useEffect, useId, useMemo, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { hasSupabaseConfig } from "@/lib/supabase/config";
 import {
@@ -8,6 +8,7 @@ import {
   getStudentEmailBlockReasonLabel,
   type StudentEmailBlockReason,
 } from "@/lib/student-access";
+import { isAdminNotificationSeen, markAdminNotificationSeen } from "@/lib/admin-notifications";
 
 type StudentProfile = {
   id: string;
@@ -31,6 +32,8 @@ function getStudentEmail(student: StudentProfile) {
   return (student.school_email ?? student.auth_email).trim().toLowerCase();
 }
 
+const STUDENTS_PAGE_SIZE = 10;
+
 export default function AdminStudents() {
   const [students, setStudents] = useState<StudentProfile[]>([]);
   const [blocks, setBlocks] = useState<StudentBlock[]>([]);
@@ -45,6 +48,7 @@ export default function AdminStudents() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+  const [page, setPage] = useState(1);
   const fullNameId = useId();
   const displayUsernameId = useId();
   const graduatingClassYearId = useId();
@@ -85,16 +89,31 @@ export default function AdminStudents() {
     load();
   }, []);
 
-  const filteredStudents = students.filter((student) => {
+  const filteredStudents = useMemo(() => {
     const query = searchQuery.trim().toLowerCase();
-    if (!query) return true;
-    return [student.full_name, student.display_username, getStudentEmail(student), String(student.graduating_class_year)]
-      .join(" ")
-      .toLowerCase()
-      .includes(query);
-  });
+    if (!query) return students;
+
+    return students.filter((student) =>
+      [student.full_name, student.display_username, getStudentEmail(student), String(student.graduating_class_year)]
+        .join(" ")
+        .toLowerCase()
+        .includes(query)
+    );
+  }, [searchQuery, students]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredStudents.length / STUDENTS_PAGE_SIZE));
+  const currentPage = Math.min(page, totalPages);
+  const startIndex = (currentPage - 1) * STUDENTS_PAGE_SIZE;
+  const pagedStudents = filteredStudents.slice(startIndex, startIndex + STUDENTS_PAGE_SIZE);
+  const showingStart = filteredStudents.length === 0 ? 0 : startIndex + 1;
+  const showingEnd = Math.min(startIndex + STUDENTS_PAGE_SIZE, filteredStudents.length);
+
+  useEffect(() => {
+    setPage(1);
+  }, [searchQuery]);
 
   function startEdit(student: StudentProfile) {
+    markAdminNotificationSeen("students", student.id);
     setSelectedId(student.id);
     setFullName(student.full_name);
     setDisplayUsername(student.display_username);
@@ -233,12 +252,42 @@ export default function AdminStudents() {
             />
           </div>
 
-          <div className="space-y-3">
+          <div className="space-y-4">
+            {filteredStudents.length > 0 && (
+              <div className="flex flex-col gap-3 rounded-sm bg-paper px-4 py-3 ring-1 ring-forest/10 sm:flex-row sm:items-center sm:justify-between">
+                <p className="font-mono text-[10px] uppercase tracking-[0.15em] text-graphite/50">
+                  Showing {showingStart}-{showingEnd} of {filteredStudents.length}
+                </p>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setPage((current) => Math.max(1, current - 1))}
+                    disabled={currentPage <= 1}
+                    className="rounded-sm border border-forest/15 px-3 py-2 font-mono text-[11px] uppercase tracking-[0.12em] text-forest transition hover:bg-forest/[0.03] disabled:cursor-not-allowed disabled:opacity-40"
+                  >
+                    Previous
+                  </button>
+                  <span className="font-mono text-[10px] uppercase tracking-[0.15em] text-graphite/50">
+                    Page {currentPage} of {totalPages}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setPage((current) => Math.min(totalPages, current + 1))}
+                    disabled={currentPage >= totalPages}
+                    className="rounded-sm border border-forest/15 px-3 py-2 font-mono text-[11px] uppercase tracking-[0.12em] text-forest transition hover:bg-forest/[0.03] disabled:cursor-not-allowed disabled:opacity-40"
+                  >
+                    Next
+                  </button>
+                </div>
+              </div>
+            )}
+
+          <div className="max-h-[65vh] space-y-3 overflow-y-auto pr-1">
             {loading && <p className="text-sm text-graphite/50">Loading student profiles...</p>}
             {!loading && filteredStudents.length === 0 && (
               <p className="text-sm text-graphite/50">No student profiles match that search.</p>
             )}
-            {filteredStudents.map((student) => (
+            {pagedStudents.map((student) => (
               <button
                 key={student.id}
                 onClick={() => startEdit(student)}
@@ -248,20 +297,20 @@ export default function AdminStudents() {
                     : "border-forest/10 bg-paper hover:bg-forest/[0.02]"
                 }`}
               >
-                <div className="flex flex-wrap items-start justify-between gap-3">
-                  <div>
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div className="flex items-center gap-3">
+                    {!isAdminNotificationSeen("students", student.id) && (
+                      <span className="h-2.5 w-2.5 shrink-0 rounded-full bg-red-600" title="New student" aria-label="New student" />
+                    )}
                     <p className="font-display text-lg text-forest">{student.full_name}</p>
-                    <p className="text-xs text-graphite/60">{getStudentEmail(student)}</p>
                   </div>
-                  <div className="text-right">
-                    <p className="font-mono text-[10px] uppercase tracking-[0.15em] text-gold">
-                      Class of {student.graduating_class_year}
-                    </p>
-                    <p className="mt-1 text-xs text-graphite/50">@{student.display_username}</p>
-                  </div>
+                  <p className="font-mono text-[10px] uppercase tracking-[0.15em] text-gold">
+                    Class of {student.graduating_class_year}
+                  </p>
                 </div>
               </button>
             ))}
+          </div>
           </div>
 
           <div className="rounded-sm bg-paper p-5 ring-1 ring-forest/10">

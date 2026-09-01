@@ -187,10 +187,30 @@ create table if not exists leadership_members (
   contact_email text,
   bio text,
   photo_url text,
+  display_order integer not null default 0,
   created_at timestamptz not null default now()
 );
 
 alter table leadership_members add column if not exists contact_email text;
+alter table leadership_members add column if not exists display_order integer not null default 0;
+
+-- Archived leadership members, grouped by school year after retirement.
+create table if not exists leadership_history (
+  id uuid primary key default gen_random_uuid(),
+  role text not null,
+  name text not null,
+  contact_email text,
+  bio text,
+  photo_url text,
+  school_year text not null,
+  display_order integer not null default 0,
+  retired_at timestamptz not null default now()
+);
+
+alter table leadership_history add column if not exists display_order integer not null default 0;
+
+create index if not exists leadership_history_school_year_idx
+  on leadership_history (school_year desc);
 
 -- ---------------------------------------------------------
 -- STORAGE: leadership photos uploaded directly from the admin
@@ -478,6 +498,7 @@ create unique index if not exists qa_answer_reports_target_reporter_idx
 -- =========================================================
 
 alter table leadership_members enable row level security;
+alter table leadership_history enable row level security;
 alter table applications enable row level security;
 alter table interview_slots enable row level security;
 alter table qa_questions enable row level security;
@@ -502,6 +523,13 @@ create policy "leadership_public_read" on leadership_members
   for select using (true);
 drop policy if exists "leadership_admin_write" on leadership_members;
 create policy "leadership_admin_write" on leadership_members
+  for all using (is_staff()) with check (is_staff());
+
+drop policy if exists "leadership_history_public_read" on leadership_history;
+create policy "leadership_history_public_read" on leadership_history
+  for select using (true);
+drop policy if exists "leadership_history_staff_write" on leadership_history;
+create policy "leadership_history_staff_write" on leadership_history
   for all using (is_staff()) with check (is_staff());
 
 -- Applications: anyone can submit one; only admins can read/update.
