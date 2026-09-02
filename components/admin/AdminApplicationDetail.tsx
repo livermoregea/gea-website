@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { hasSupabaseConfig } from "@/lib/supabase/config";
@@ -41,6 +42,7 @@ function label(value: string) {
 }
 
 export default function AdminApplicationDetail({ applicationId }: { applicationId: string }) {
+  const router = useRouter();
   const [application, setApplication] = useState<Application | null>(null);
   const [applicationSummaries, setApplicationSummaries] = useState<ApplicationSummary[]>([]);
   const [slots, setSlots] = useState<Slot[]>([]);
@@ -139,6 +141,21 @@ export default function AdminApplicationDetail({ applicationId }: { applicationI
           ← Back to admin panel
         </Link>
         <div className="flex items-center gap-2">
+          {applicationSummaries.length > 0 && (
+            <label className="sr-only" htmlFor="jump-to-application">Jump to application</label>
+          )}
+          {applicationSummaries.length > 0 && (
+            <select
+              id="jump-to-application"
+              value={application?.id ?? applicationId}
+              onChange={(event) => router.push(`/admin-portal-x7k9/applications/${event.target.value}`)}
+              className="min-h-10 max-w-52 rounded-sm border border-forest/15 bg-paper px-3 py-2 font-mono text-[10px] uppercase tracking-[0.08em] text-forest"
+            >
+              {applicationSummaries.map((item) => (
+                <option key={item.id} value={item.id}>{item.name}</option>
+              ))}
+            </select>
+          )}
           {previousApplication ? (
             <Link href={`/admin-portal-x7k9/applications/${previousApplication.id}`} className="max-w-48 rounded-sm border border-forest/15 px-3 py-2 text-left font-mono text-[10px] uppercase tracking-[0.08em] text-forest hover:bg-forest/[0.04]">
               <span className="block text-[9px] text-graphite/45">Previous</span>
