@@ -75,7 +75,13 @@ for a "designated login" per answerer, not open registration.
 
 ## 6. Fill the President seat (and any other seat)
 
-Either use the **Leadership Board** tab in the admin portal, or run SQL directly:
+Use **Leadership Board → Manage roles** in the admin portal to add, rename, or remove roles.
+For an existing database, first run `supabase/leadership_roles.sql` in the Supabase SQL editor
+(after `leadership_history.sql` if that migration has not been applied). New databases include
+role management in `schema.sql`. Retire or vacate filled seats before removing their roles;
+archived members and applications are retained. New roles accept applications from all grades.
+
+To fill a seat, use the **Leadership Board** tab in the admin portal, or run SQL directly:
 
 ```sql
 insert into leadership_members (role, name, bio)

@@ -1,4 +1,4 @@
-// Canonical list of GEA leadership roles, in display order.
+// Default leadership roles for initial setup and unconfigured previews.
 // "president" is always shown as filled/not-open-to-application per club rules.
 export const ROLES = [
   { slug: "president", label: "President", open: false },
@@ -12,15 +12,15 @@ export const ROLES = [
 
 export const PUBLIC_ROLES = ROLES;
 
-export type RoleSlug = (typeof ROLES)[number]["slug"];
+export type RoleSlug = string;
 export type RoleEligibility = (typeof ROLES)[number] extends { eligibility: infer T } ? T : never;
 
 export function getRole(slug: string) {
   return ROLES.find((r) => r.slug === slug);
 }
 
-export function getRoleLabel(slug: string) {
-  return getRole(slug)?.label ?? slug;
+export function getRoleLabel(slug: string, roles: readonly { slug: string; label: string }[] = ROLES) {
+  return roles.find((role) => role.slug === slug)?.label ?? getRole(slug)?.label ?? slug;
 }
 
 export function getRoleEligibilityLabel(roleSlug: RoleSlug) {

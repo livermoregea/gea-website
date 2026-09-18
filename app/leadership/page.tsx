@@ -1,8 +1,7 @@
-import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
-import { PUBLIC_ROLES, getRoleEligibilityLabel, getRoleLabel } from "@/lib/roles";
+import { getRoleLabel } from "@/lib/roles";
 import { hasSupabaseConfig } from "@/lib/supabase/config";
-import { formatApplicationDeadline, isApplicationsOpen } from "@/lib/application-deadline";
+import { loadLeadershipRoles } from "@/lib/leadership-roles";
 
 export const revalidate = 0;
 
@@ -20,105 +19,32 @@ type FormerMember = Member & {
   school_year: string;
 };
 
-type Application = {
-  id: string;
-  role: string;
-  status: string;
-  created_at: string;
-};
-
-function formatStatus(status: string) {
-  switch (status) {
-    case "pending":
-      return "Pending review";
-    case "reviewing":
-      return "Under review";
-    case "invited":
-      return "Interview invite sent";
-    case "interview_booked":
-      return "Interview booked";
-    case "approved":
-      return "Approved";
-    case "rejected":
-      return "Rejected";
-    default:
-      return status;
-  }
-}
-
 export default async function LeadershipPage() {
-  const applicationsOpen = isApplicationsOpen();
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
   const { data: members } = hasSupabaseConfig()
     ? await supabase.from("leadership_members").select("*")
     : { data: [] };
   const { data: formerMembers } = hasSupabaseConfig()
     ? await supabase.from("leadership_history").select("*").order("school_year", { ascending: false }).order("display_order")
     : { data: [] as FormerMember[] };
-  const { data: applications } = hasSupabaseConfig() && user
-    ? await supabase
-        .from("applications")
-        .select("id, role, status, created_at")
-        .eq("auth_user_id", user.id)
-        .order("created_at", { ascending: false })
-    : { data: [] as Application[] };
-
+  const { roles } = await loadLeadershipRoles(supabase);
   const memberByRole = new Map<string, Member>((members ?? []).map((m: Member) => [m.role, m]));
-  const orderedRoles = [...PUBLIC_ROLES].sort((a, b) => {
-    const aOrder = memberByRole.get(a.slug)?.display_order ?? PUBLIC_ROLES.findIndex((item) => item.slug === a.slug);
-    const bOrder = memberByRole.get(b.slug)?.display_order ?? PUBLIC_ROLES.findIndex((item) => item.slug === b.slug);
+  const orderedRoles = roles.filter((role) => role.active).sort((a, b) => {
+    const aOrder = memberByRole.get(a.slug)?.display_order ?? a.display_order;
+    const bOrder = memberByRole.get(b.slug)?.display_order ?? b.display_order;
     return aOrder - bOrder;
   });
-  const applicationByRole = new Map<string, Application>();
-  for (const application of applications ?? []) {
-    if (!applicationByRole.has(application.role)) {
-      applicationByRole.set(application.role, application);
-    }
-  }
-
   return (
     <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6 md:py-12">
       <p className="font-mono text-xs uppercase tracking-[0.3em] text-gold">Student Leadership</p>
       <h1 className="mt-2 font-display text-2xl font-medium text-forest sm:text-3xl md:text-4xl">
         GEA Leadership Board
       </h1>
-      <p className="mt-3 max-w-2xl text-sm leading-relaxed text-graphite/75 sm:text-base">
-        View the leadership board and apply for open roles below.
-      </p>
-      <p className="mt-2 max-w-2xl text-sm leading-relaxed text-graphite/65 sm:text-base">
-        Applications close on {formatApplicationDeadline()}.
-      </p>
-
-      {user ? (
-        <div className="mt-4 rounded-sm bg-forest/[0.04] p-4 ring-1 ring-forest/10">
-          <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-gold">
-            Signed In
-          </p>
-          <p className="mt-1 text-sm text-graphite/70">
-            Applications are linked to your account.
-          </p>
-          {applicationByRole.size > 0 ? (
-            <p className="mt-1 text-sm text-graphite/70">
-              Submitted applications are shown below.
-            </p>
-          ) : (
-            <p className="mt-1 text-sm text-graphite/70">
-              No submitted applications yet.
-            </p>
-          )}
-        </div>
-      ) : null}
-
       <div className="dim-divider my-8" />
 
       <div id="roles" className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
         {orderedRoles.map((role) => {
           const member = memberByRole.get(role.slug);
-          const application = applicationByRole.get(role.slug);
-          const filled = Boolean(member);
 
           return (
             <div
@@ -136,15 +62,7 @@ export default async function LeadershipPage() {
 
               <div className="flex flex-1 flex-col justify-between p-4">
                 <div>
-                  <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-gold">
-                    {filled ? "Seat Filled" : "Seat Open"}
-                  </p>
                   <h2 className="mt-1 font-display text-base text-forest">{role.label}</h2>
-                  {getRoleEligibilityLabel(role.slug) ? (
-                    <p className="mt-1 text-[10px] uppercase tracking-[0.12em] text-graphite/50">
-                      {getRoleEligibilityLabel(role.slug)}
-                    </p>
-                  ) : null}
                   {member ? (
                     <div className="mt-3">
                       <p className="text-sm font-medium text-graphite">{member.name}</p>
@@ -163,46 +81,7 @@ export default async function LeadershipPage() {
                         <p className="mt-1 text-[11px] leading-relaxed text-graphite/70">{member.bio}</p>
                       )}
                     </div>
-                  ) : (
-                    <p className="mt-3 text-[11px] leading-relaxed text-graphite/60">
-                      This position isn&apos;t currently held by a student. If you&apos;re interested,
-                      you can apply below.
-                    </p>
-                  )}
-                </div>
-
-                <div className="mt-4">
-                {application ? (
-                  <details className="rounded-sm border border-forest/10 bg-paper/80 p-2.5">
-                    <summary className="cursor-pointer list-none font-mono text-[10px] uppercase tracking-[0.15em] text-forest">
-                      Check Application Status
-                    </summary>
-                    <div className="mt-2 space-y-1.5">
-                      <p className="font-mono text-[9px] uppercase tracking-[0.15em] text-graphite/40">
-                        Current status
-                      </p>
-                      <p className="text-xs font-medium text-graphite">{formatStatus(application.status)}</p>
-                      <p className="text-[11px] text-graphite/55">
-                        Submitted {new Intl.DateTimeFormat("en-US", {
-                          month: "short",
-                          day: "numeric",
-                          year: "numeric",
-                        }).format(new Date(application.created_at))}
-                      </p>
-                    </div>
-                  </details>
-                ) : !filled && role.open && applicationsOpen ? (
-                  <Link
-                    href={`/leadership/apply/${role.slug}`}
-                    className="inline-block w-full rounded-sm bg-forest px-4 py-2 text-center font-mono text-[10px] uppercase tracking-[0.15em] text-gold transition hover:bg-forestdeep"
-                  >
-                    Apply now!
-                  </Link>
-                ) : !filled ? (
-                  <span className="inline-block w-full rounded-sm border border-forest/10 px-4 py-2 text-center font-mono text-[10px] uppercase tracking-[0.15em] text-graphite/40">
-                    {role.open ? "Applications Closed" : "Not Accepting Applications"}
-                  </span>
-                ) : null}
+                  ) : null}
                 </div>
               </div>
             </div>
@@ -234,7 +113,7 @@ export default async function LeadershipPage() {
                       </div>
                       <div>
                         <p className="font-medium text-forest">{member.name}</p>
-                        <p className="mt-1 text-xs text-graphite/60">{getRoleLabel(member.role)}</p>
+                        <p className="mt-1 text-xs text-graphite/60">{getRoleLabel(member.role, roles)}</p>
                       </div>
                     </div>
                   ))}

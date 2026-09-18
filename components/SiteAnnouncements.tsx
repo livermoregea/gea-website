@@ -3,6 +3,7 @@
 import { usePathname } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
+import { normalizeAnnouncementLink } from "@/lib/announcement-links";
 import { hasSupabaseConfig } from "@/lib/supabase/config";
 
 type AnnouncementKind = "popup" | "banner";
@@ -44,7 +45,7 @@ function normalizeButtons(value: unknown): AnnouncementButton[] {
       if (!button || typeof button !== "object") return null;
       const candidate = button as Record<string, unknown>;
       const label = typeof candidate.label === "string" ? candidate.label.trim() : "";
-      const href = typeof candidate.href === "string" ? candidate.href.trim() : "";
+      const href = typeof candidate.href === "string" ? normalizeAnnouncementLink(candidate.href) : null;
       const variant = typeof candidate.variant === "string" && isButtonVariant(candidate.variant)
         ? candidate.variant
         : "secondary";

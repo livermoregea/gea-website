@@ -6,6 +6,7 @@ import { useEffect, useMemo, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { hasSupabaseConfig } from "@/lib/supabase/config";
 import AdminLoading from "@/components/admin/AdminLoading";
+import { useLeadershipRoles } from "@/lib/use-leadership-roles";
 import { getRoleLabel } from "@/lib/roles";
 import { markAdminNotificationSeen } from "@/lib/admin-notifications";
 
@@ -43,6 +44,7 @@ function label(value: string) {
 
 export default function AdminApplicationDetail({ applicationId }: { applicationId: string }) {
   const router = useRouter();
+  const roles = useLeadershipRoles();
   const [application, setApplication] = useState<Application | null>(null);
   const [applicationSummaries, setApplicationSummaries] = useState<ApplicationSummary[]>([]);
   const [slots, setSlots] = useState<Slot[]>([]);
@@ -180,7 +182,7 @@ export default function AdminApplicationDetail({ applicationId }: { applicationI
           </header>
 
           <section className="grid gap-4 sm:grid-cols-3">
-            <div className="rounded-sm bg-forest/[0.04] p-4"><p className="font-mono text-[10px] uppercase tracking-[0.15em] text-gold">Position</p><p className="mt-2 text-sm text-forest">{getRoleLabel(application.role)}</p></div>
+            <div className="rounded-sm bg-forest/[0.04] p-4"><p className="font-mono text-[10px] uppercase tracking-[0.15em] text-gold">Position</p><p className="mt-2 text-sm text-forest">{getRoleLabel(application.role, roles)}</p></div>
             <div className="rounded-sm bg-forest/[0.04] p-4"><p className="font-mono text-[10px] uppercase tracking-[0.15em] text-gold">Class year</p><p className="mt-2 text-sm text-forest">{application.graduating_class_year ?? "Not provided"}</p></div>
             <div className="rounded-sm bg-forest/[0.04] p-4"><p className="font-mono text-[10px] uppercase tracking-[0.15em] text-gold">Email</p><p className="mt-2 break-all text-sm text-forest">{application.school_email}</p></div>
           </section>

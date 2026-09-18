@@ -3,7 +3,8 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
-import { getRoleLabel, ROLES } from "@/lib/roles";
+import { useLeadershipRoles } from "@/lib/use-leadership-roles";
+import { getRoleLabel } from "@/lib/roles";
 import { hasSupabaseConfig } from "@/lib/supabase/config";
 import { isAdminNotificationSeen, markAdminNotificationSeen } from "@/lib/admin-notifications";
 
@@ -42,7 +43,7 @@ type InterviewDraft = {
 };
 
 type ApplicationStatus = "pending" | "reviewing" | "invited" | "interview_booked" | "approved" | "rejected";
-type RoleFilter = "all" | (typeof ROLES)[number]["slug"];
+type RoleFilter = string;
 type StatusFilter = "all" | ApplicationStatus;
 type SortMode = "newest" | "oldest";
 
@@ -97,6 +98,7 @@ function getStatusLabel(status: ApplicationStatus) {
 
 export default function AdminApplications() {
   const router = useRouter();
+  const roles = useLeadershipRoles();
   const [apps, setApps] = useState<Application[]>([]);
   const [slots, setSlots] = useState<InterviewSlot[]>([]);
   const [loading, setLoading] = useState(true);
@@ -395,7 +397,7 @@ export default function AdminApplications() {
             >
               All Positions
             </button>
-            {ROLES.map((role) => (
+            {roles.map((role) => (
               <button
                 key={role.slug}
                 type="button"
@@ -497,7 +499,7 @@ export default function AdminApplications() {
                         </div>
                         <div className="mt-2 flex flex-wrap gap-x-5 gap-y-1 text-sm text-graphite/60">
                           <span>Class of {a.graduating_class_year ?? "?"}</span>
-                          <span>Position: {getRoleLabel(a.role)}</span>
+                          <span>Position: {getRoleLabel(a.role, roles)}</span>
                         </div>
                       </div>
                     </div>

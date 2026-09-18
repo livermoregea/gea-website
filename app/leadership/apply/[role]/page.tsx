@@ -1,10 +1,12 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
-import { PUBLIC_ROLES, getRoleEligibilityLabel } from "@/lib/roles";
+import { getRoleEligibilityLabel } from "@/lib/roles";
 import ApplicationForm from "@/components/ApplicationForm";
 import { hasSupabaseConfig } from "@/lib/supabase/config";
 import { formatApplicationDeadline, isApplicationsOpen } from "@/lib/application-deadline";
+
+import { loadLeadershipRoles } from "@/lib/leadership-roles";
 
 type StudentProfile = {
   id: string;
@@ -62,9 +64,10 @@ export default async function ApplyPage({
   params: Promise<{ role: string }>;
 }) {
   const { role: roleSlug } = await params;
-  const role = PUBLIC_ROLES.find((r) => r.slug === roleSlug);
   const applicationsOpen = isApplicationsOpen();
   const supabase = await createClient();
+  const { roles } = await loadLeadershipRoles(supabase);
+  const role = roles.find((r) => r.slug === roleSlug && r.active);
   const user = hasSupabaseConfig() ? (await supabase.auth.getUser()).data.user : null;
 
   const { data: profile } = hasSupabaseConfig() && user

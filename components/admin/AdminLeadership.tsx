@@ -2,6 +2,7 @@
 
 import { useEffect, useId, useMemo, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
+import { DEFAULT_LEADERSHIP_ROLES, loadLeadershipRoles, type LeadershipRole } from "@/lib/leadership-roles";
 import { getRoleLabel, ROLES } from "@/lib/roles";
 import { hasSupabaseConfig } from "@/lib/supabase/config";
 
@@ -21,6 +22,13 @@ type FormerMember = Member & {
 };
 
 export default function AdminLeadership() {
+  const [roles, setRoles] = useState<LeadershipRole[]>(DEFAULT_LEADERSHIP_ROLES);
+  const [roleDrafts, setRoleDrafts] = useState<Record<string, string>>({});
+  const [newRoleName, setNewRoleName] = useState("");
+  const [roleError, setRoleError] = useState("");
+  const [roleSaving, setRoleSaving] = useState(false);
+  const [rolesReady, setRolesReady] = useState(false);
+  const activeRoles = useMemo(() => roles.filter((item) => item.active), [roles]);
   const [members, setMembers] = useState<Member[]>([]);
   const [formerMembers, setFormerMembers] = useState<FormerMember[]>([]);
   const [role, setRole] = useState<string>(ROLES[1].slug);
@@ -45,21 +53,26 @@ export default function AdminLeadership() {
   const bioId = useId();
   const photoId = useId();
 
-  const selectedRole = useMemo(() => ROLES.find((r) => r.slug === role), [role]);
+  const selectedRole = useMemo(() => roles.find((r) => r.slug === role), [roles, role]);
   const currentMember = useMemo(() => members.find((member) => member.role === role) ?? null, [members, role]);
 
   async function load() {
     setLoading(true);
     if (!hasSupabaseConfig()) {
       setMembers([]);
+      setRoleError("Connect Supabase to manage leadership roles.");
       setLoading(false);
       return;
     }
     const supabase = createClient();
-  const [{ data }, { data: formerData }] = await Promise.all([
+    const [{ data }, { data: formerData }, roleResult] = await Promise.all([
       supabase.from("leadership_members").select("*"),
       supabase.from("leadership_history").select("*").order("school_year", { ascending: false }).order("display_order"),
+      loadLeadershipRoles(supabase),
     ]);
+    setRoles(roleResult.roles);
+    setRolesReady(!roleResult.error);
+    if (roleResult.error) setRoleError("Role management is unavailable. Apply the leadership_roles.sql database migration and reload.");
     setMembers((data as Member[]) ?? []);
     setFormerMembers((formerData as FormerMember[]) ?? []);
     setLoading(false);
@@ -68,6 +81,59 @@ export default function AdminLeadership() {
   useEffect(() => {
     load();
   }, []);
+
+  useEffect(() => {
+    if (!activeRoles.some((item) => item.slug === role)) setRole(activeRoles[0]?.slug ?? "");
+    if (!activeRoles.some((item) => item.slug === formerRole)) setFormerRole(activeRoles[0]?.slug ?? "");
+  }, [activeRoles, role, formerRole]);
+
+  async function saveRole(event: React.FormEvent, slug?: string) {
+    event.preventDefault();
+    const label = (slug ? roleDrafts[slug] ?? roles.find((item) => item.slug === slug)?.label ?? "" : newRoleName).trim();
+    if (!label || !rolesReady) return;
+    if (activeRoles.some((item) => item.slug !== slug && item.label.toLowerCase() === label.toLowerCase())) {
+      setRoleError("A role with this name already exists.");
+      return;
+    }
+    setRoleError("");
+    setRoleSaving(true);
+    try {
+      const supabase = createClient();
+      const result = slug
+        ? await supabase.from("leadership_roles").update({ label }).eq("slug", slug).select().single()
+        : await supabase.from("leadership_roles").insert({
+            slug: `role-${crypto.randomUUID()}`, label,
+            display_order: Math.max(-1, ...roles.map((item) => item.display_order), ...members.map((item) => item.display_order)) + 1,
+          }).select().single();
+      if (result.error) throw result.error;
+      if (!slug) setNewRoleName("");
+      if (slug) setRoleDrafts((drafts) => {
+        const next = { ...drafts };
+        delete next[slug];
+        return next;
+      });
+      await load();
+    } catch (error) {
+      setRoleError(error instanceof Error ? error.message : (error as { message?: string }).message ?? "Unable to save role.");
+    } finally {
+      setRoleSaving(false);
+    }
+  }
+
+  async function removeRole(item: LeadershipRole) {
+    if (!rolesReady || members.some((member) => member.role === item.slug)) return;
+    setRoleError("");
+    setRoleSaving(true);
+    try {
+      const { error } = await createClient().from("leadership_roles").update({ active: false }).eq("slug", item.slug).select().single();
+      if (error) throw error;
+      await load();
+    } catch (error) {
+      setRoleError(error instanceof Error ? error.message : (error as { message?: string }).message ?? "Unable to remove role.");
+    } finally {
+      setRoleSaving(false);
+    }
+  }
 
   useEffect(() => {
     if (!photoFile) {
@@ -85,7 +151,7 @@ export default function AdminLeadership() {
 
   async function fillSeat(e: React.FormEvent) {
     e.preventDefault();
-    if (!name.trim()) return;
+    if (!name.trim() || !role) return;
     setPhotoError("");
     setSaving(true);
     try {
@@ -117,7 +183,7 @@ export default function AdminLeadership() {
       const { error: saveError } = await supabase.from("leadership_members").upsert(
         {
           role,
-          display_order: currentMember?.display_order ?? ROLES.findIndex((item) => item.slug === role),
+          display_order: currentMember?.display_order ?? (selectedRole?.display_order ?? 0),
           name: name.trim(),
           contact_email: contactEmail.trim() || null,
           bio: bio.trim() || null,
@@ -203,7 +269,7 @@ export default function AdminLeadership() {
 
   async function addFormerMember(event: React.FormEvent) {
     event.preventDefault();
-    if (!formerName.trim() || !hasSupabaseConfig()) return;
+    if (!formerName.trim() || !formerRole || !hasSupabaseConfig()) return;
 
     setSaving(true);
     const { error } = await createClient().from("leadership_history").insert({
@@ -212,7 +278,7 @@ export default function AdminLeadership() {
       contact_email: formerEmail.trim() || null,
       bio: formerBio.trim() || null,
       school_year: formerYear,
-      display_order: ROLES.findIndex((item) => item.slug === formerRole),
+      display_order: (roles.find((item) => item.slug === formerRole)?.display_order ?? 0),
     });
     setSaving(false);
 
@@ -245,6 +311,25 @@ export default function AdminLeadership() {
   return (
     <div className="space-y-6">
       <section className="rounded-sm bg-paper p-5 ring-1 ring-forest/10">
+        <h3 className="font-display text-2xl text-forest">Manage roles</h3>
+        <p className="mt-2 text-sm text-graphite/70">Add a role, edit its name, or remove an empty role from the board. Retire or vacate a filled seat before removing its role. Archives and applications are preserved.</p>
+        {roleError && <p role="alert" className="mt-3 text-sm text-red-700">{roleError}</p>}
+        <fieldset disabled={loading || !rolesReady || roleSaving || saving} className="mt-4 space-y-3 disabled:opacity-60">
+          {activeRoles.map((item) => (
+            <form key={item.slug} onSubmit={(event) => saveRole(event, item.slug)} className="flex flex-wrap items-center gap-2">
+              <input aria-label={`Name for ${item.label}`} required maxLength={100} value={roleDrafts[item.slug] ?? item.label} onChange={(event) => setRoleDrafts((drafts) => ({ ...drafts, [item.slug]: event.target.value }))} className="min-w-0 flex-1 rounded-sm border border-forest/15 bg-paper px-3 py-2 text-sm" />
+              <button type="submit" className="min-h-11 rounded-sm border border-forest/15 px-3 text-sm text-forest">Save name</button>
+              <button type="button" onClick={() => removeRole(item)} disabled={members.some((member) => member.role === item.slug)} title={members.some((member) => member.role === item.slug) ? "Retire or vacate this seat first" : undefined} aria-label={`Remove ${item.label}`} className="min-h-11 px-3 text-sm text-red-700 disabled:opacity-40">Remove</button>
+            </form>
+          ))}
+          {!activeRoles.length && <p className="text-sm text-graphite/60">No roles yet. Add a role to create a seat.</p>}
+          <form onSubmit={(event) => saveRole(event)} className="flex flex-wrap gap-2 border-t border-forest/10 pt-3">
+            <input aria-label="New role name" placeholder="New role name" required maxLength={100} value={newRoleName} onChange={(event) => setNewRoleName(event.target.value)} className="min-w-0 flex-1 rounded-sm border border-forest/15 bg-paper px-3 py-2 text-sm" />
+            <button type="submit" className="min-h-11 rounded-sm bg-forest px-4 py-2 text-sm text-gold">{roleSaving ? "Saving..." : "Add role"}</button>
+          </form>
+        </fieldset>
+      </section>
+      <section className="rounded-sm bg-paper p-5 ring-1 ring-forest/10">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <p className="font-mono text-xs uppercase tracking-[0.2em] text-gold">Leadership Board</p>
@@ -267,7 +352,7 @@ export default function AdminLeadership() {
               onChange={(e) => setRole(e.target.value)}
               className="mt-2 block w-full rounded-sm border border-forest/15 bg-paper px-3 py-2 text-sm"
             >
-              {ROLES.map((r) => (
+              {activeRoles.map((r) => (
                 <option key={r.slug} value={r.slug}>
                   {r.label}
                 </option>
@@ -389,7 +474,7 @@ export default function AdminLeadership() {
           </div>
           <button
             type="submit"
-            disabled={saving}
+            disabled={saving || loading || roleSaving || activeRoles.length === 0}
             className="rounded-sm bg-forest px-4 py-2.5 font-mono text-xs uppercase tracking-[0.15em] text-gold transition hover:bg-forestdeep disabled:cursor-not-allowed disabled:opacity-60 sm:col-span-2"
           >
             {saving ? "Saving..." : "Fill / Update Seat"}
@@ -433,7 +518,7 @@ export default function AdminLeadership() {
                   )}
                 </div>
                 <div>
-                  <p className="font-mono text-[10px] uppercase tracking-[0.15em] text-gold">{getRoleLabel(m.role)}</p>
+                  <p className="font-mono text-[10px] uppercase tracking-[0.15em] text-gold">{getRoleLabel(m.role, roles)}</p>
                   <p className="font-medium text-graphite">{m.name}</p>
                   {m.contact_email && <p className="text-xs text-graphite/60">{m.contact_email}</p>}
                 </div>
@@ -474,7 +559,7 @@ export default function AdminLeadership() {
                 <div className="mt-2 grid gap-2 sm:grid-cols-2">
                   {formerMembers.filter((member) => member.school_year === schoolYear).map((member) => (
                     <div key={member.id} className="rounded-sm bg-forest/[0.03] px-4 py-3 text-sm text-graphite/75">
-                      <span className="font-medium text-forest">{member.name}</span> · {getRoleLabel(member.role)}
+                      <span className="font-medium text-forest">{member.name}</span> · {getRoleLabel(member.role, roles)}
                     </div>
                   ))}
                 </div>
@@ -503,7 +588,7 @@ export default function AdminLeadership() {
           <label className="text-sm text-graphite/70">
             Role
             <select value={formerRole} onChange={(event) => setFormerRole(event.target.value)} className="mt-2 block w-full rounded-sm border border-forest/15 bg-paper px-3 py-2 text-sm">
-              {ROLES.map((item) => <option key={item.slug} value={item.slug}>{item.label}</option>)}
+              {activeRoles.map((item) => <option key={item.slug} value={item.slug}>{item.label}</option>)}
             </select>
           </label>
           <label className="text-sm text-graphite/70">
@@ -518,7 +603,7 @@ export default function AdminLeadership() {
             Bio (optional)
             <input value={formerBio} onChange={(event) => setFormerBio(event.target.value)} className="mt-2 block w-full rounded-sm border border-forest/15 bg-paper px-3 py-2 text-sm" />
           </label>
-          <button type="submit" disabled={saving} className="rounded-sm bg-forest px-4 py-2.5 font-mono text-xs uppercase tracking-[0.15em] text-gold transition hover:bg-forestdeep disabled:cursor-not-allowed disabled:opacity-60 sm:col-span-2">
+          <button type="submit" disabled={saving || loading || roleSaving || activeRoles.length === 0} className="rounded-sm bg-forest px-4 py-2.5 font-mono text-xs uppercase tracking-[0.15em] text-gold transition hover:bg-forestdeep disabled:cursor-not-allowed disabled:opacity-60 sm:col-span-2">
             {saving ? "Adding..." : "Add Former Member"}
           </button>
         </form>

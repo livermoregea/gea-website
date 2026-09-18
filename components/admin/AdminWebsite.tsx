@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
+import { normalizeAnnouncementLink } from "@/lib/announcement-links";
 import { hasSupabaseConfig } from "@/lib/supabase/config";
 
 type AnnouncementKind = "popup" | "banner";
@@ -171,11 +172,20 @@ export default function AdminWebsite() {
   async function saveAnnouncement(kind: AnnouncementKind) {
     if (!hasSupabaseConfig()) return;
 
-    setSavingKind(kind);
     setMessage(null);
-
-    const supabase = createClient();
     const draft = drafts[kind];
+    const buttons: AnnouncementButton[] = [];
+    for (const [index, button] of draft.buttons.entries()) {
+      if (!button.label.trim() && !button.href.trim()) continue;
+      const href = normalizeAnnouncementLink(button.href);
+      if (!button.label.trim() || !href) {
+        setMessage(`${fieldLabel(kind)} button ${index + 1}: enter a button label and a valid link, such as https://example.com.`);
+        return;
+      }
+      buttons.push({ ...button, label: button.label.trim(), href });
+    }
+    setSavingKind(kind);
+    const supabase = createClient();
     const { error } = await supabase.from("website_announcements").upsert(
       {
         kind,
@@ -183,7 +193,7 @@ export default function AdminWebsite() {
         scope: draft.scope,
         title: draft.title.trim(),
         body: draft.body.trim(),
-        buttons: draft.buttons,
+        buttons,
         allow_dont_show_again: draft.allow_dont_show_again,
       },
       { onConflict: "kind" }
@@ -345,12 +355,22 @@ export default function AdminWebsite() {
                         placeholder="Button label"
                         className="w-full rounded-sm border border-forest/15 bg-paper px-3 py-2 text-sm outline-none focus:border-gold"
                       />
-                      <input
-                        value={button.href}
-                        onChange={(event) => updateButton(kind, index, "href", event.target.value)}
-                        placeholder="Button link"
-                        className="w-full rounded-sm border border-forest/15 bg-paper px-3 py-2 text-sm outline-none focus:border-gold"
-                      />
+                      <label className="text-sm text-graphite/70">
+                        <span className="mb-1 block">Button link</span>
+                        <input
+                          type="text"
+                          inputMode="url"
+                          autoCapitalize="none"
+                          spellCheck={false}
+                          value={button.href}
+                          onChange={(event) => updateButton(kind, index, "href", event.target.value)}
+                          placeholder="https://example.com"
+                          className="w-full rounded-sm border border-forest/15 bg-paper px-3 py-2 text-sm outline-none focus:border-gold"
+                        />
+                        <span className="mt-2 block text-xs text-graphite/55">
+                          Paste a link to any website. Addresses like example.com work too. You can also use /leadership for a page on this site.
+                        </span>
+                      </label>
                     </div>
                     <div className="mt-3 grid gap-3 md:grid-cols-[1fr_1fr_auto] md:items-end">
                       <label className="text-sm text-graphite/70">
