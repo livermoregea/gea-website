@@ -1,3 +1,5 @@
+import Image from "next/image";
+import LeadershipPhotoNotice, { ProtectedLeadershipPhoto } from "@/components/LeadershipPhotoNotice";
 import { createClient } from "@/lib/supabase/server";
 import { getRoleLabel } from "@/lib/roles";
 import { hasSupabaseConfig } from "@/lib/supabase/config";
@@ -35,11 +37,19 @@ export default async function LeadershipPage() {
     return aOrder - bOrder;
   });
   return (
+    <LeadershipPhotoNotice>
     <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6 md:py-12">
       <p className="font-mono text-xs uppercase tracking-[0.3em] text-gold">Student Leadership</p>
       <h1 className="mt-2 font-display text-2xl font-medium text-forest sm:text-3xl md:text-4xl">
         GEA Leadership Board
       </h1>
+      <a
+        href="#team-photo"
+        className="mt-5 inline-flex min-h-11 items-center justify-center rounded-sm border border-forest/20 px-5 py-3 font-mono text-xs uppercase tracking-[0.15em] text-forest transition hover:border-forest hover:bg-forest/5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-forest"
+      >
+        Jump to team photo
+      </a>
+
       <div className="dim-divider my-8" />
 
       <div id="roles" className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
@@ -53,10 +63,10 @@ export default async function LeadershipPage() {
             >
               {member?.photo_url ? (
                 <div className="border-b border-forest/10 bg-paper/70">
-                  <div className="flex aspect-[4/5] items-center justify-center overflow-hidden bg-forest/[0.02]">
+                  <ProtectedLeadershipPhoto className="flex aspect-[4/5] items-center justify-center overflow-hidden bg-forest/[0.02]">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={member.photo_url} alt={member.name} className="h-full w-full object-cover" />
-                  </div>
+                    <img src={member.photo_url} alt={member.name} draggable={false} className="h-full w-full object-cover" />
+                  </ProtectedLeadershipPhoto>
                 </div>
               ) : null}
 
@@ -89,6 +99,23 @@ export default async function LeadershipPage() {
         })}
       </div>
 
+      <figure id="team-photo" className="mx-auto mt-14 max-w-5xl scroll-mt-24">
+        <ProtectedLeadershipPhoto className="overflow-hidden rounded-sm ring-1 ring-forest/10">
+          <Image
+            src="/images/leadership/Team2026.jpg"
+            alt="The 2026 GEA leadership team holding the Green Engineering Academy banner"
+            width={5574}
+            height={3716}
+            sizes="(max-width: 640px) calc(100vw - 32px), (max-width: 1072px) calc(100vw - 48px), 1024px"
+            className="h-auto w-full"
+            draggable={false}
+          />
+        </ProtectedLeadershipPhoto>
+        <figcaption className="mt-3 text-center font-mono text-xs uppercase tracking-[0.15em] text-graphite/65">
+          2026 Leadership Team
+        </figcaption>
+      </figure>
+
       {formerMembers && formerMembers.length > 0 ? (
         <section className="mt-14 border-t border-forest/10 pt-8">
           <p className="font-mono text-xs uppercase tracking-[0.3em] text-gold">Former Leadership</p>
@@ -105,8 +132,10 @@ export default async function LeadershipPage() {
                     <div key={member.id} className="flex items-center gap-3 rounded-sm bg-forest/[0.03] p-4 ring-1 ring-forest/5">
                       <div className="flex aspect-[4/5] w-12 shrink-0 items-center justify-center overflow-hidden rounded-sm border border-forest/10 bg-paper">
                         {member.photo_url ? (
-                          // eslint-disable-next-line @next/next/no-img-element
-                          <img src={member.photo_url} alt={member.name} className="h-full w-full object-cover" />
+                          <ProtectedLeadershipPhoto className="h-full w-full">
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img src={member.photo_url} alt={member.name} draggable={false} className="h-full w-full object-cover" />
+                          </ProtectedLeadershipPhoto>
                         ) : (
                           <span className="font-mono text-xs uppercase tracking-[0.12em] text-gold">{member.name.split(" ").filter(Boolean).map((part) => part[0]).slice(0, 2).join("")}</span>
                         )}
@@ -124,5 +153,6 @@ export default async function LeadershipPage() {
         </section>
       ) : null}
     </div>
+    </LeadershipPhotoNotice>
   );
 }
