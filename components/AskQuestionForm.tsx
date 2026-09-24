@@ -1,5 +1,6 @@
 "use client";
 
+import ForumSafetyOverride from "@/components/ForumSafetyOverride";
 import { useId, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { hasSupabaseConfig } from "@/lib/supabase/config";
@@ -122,6 +123,7 @@ export default function AskQuestionForm({
         </label>
         <select
           id={boardId}
+          disabled={submitting}
           value={board}
           onChange={(e) => setBoard(e.target.value as ForumBoard)}
           className="mt-2 w-full rounded-xl border border-forest/15 bg-paper px-4 py-3 text-sm text-graphite outline-none focus:border-gold"
@@ -144,6 +146,7 @@ export default function AskQuestionForm({
         <textarea
           id={questionId}
           required
+          disabled={submitting}
           value={question}
           onChange={(e) => setQuestion(e.target.value)}
           rows={4}
@@ -156,6 +159,14 @@ export default function AskQuestionForm({
         <p className="text-sm text-red-700" role="alert">
           {error}
         </p>
+      )}
+
+      {error && getForumSafetyMessage(question) && (
+        <ForumSafetyOverride text={question} target={{ kind: "question", board }} onBusyChange={setSubmitting} onPublished={() => {
+          setDone(true);
+          resetForm();
+          onSubmitted?.();
+        }} />
       )}
 
       <button

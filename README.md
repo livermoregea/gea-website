@@ -124,3 +124,33 @@ URL so interview links in emails point to the live site.
   the live status that admins set in the portal.
 - `SUPABASE_SERVICE_ROLE_KEY` must stay server-side only. It's used in one file
   (`app/api/send-interview-invite/route.ts`) and nowhere else.
+
+### Verified admin forum overrides
+
+Before deploying this feature to an existing Supabase project, run
+[`supabase/forum_admin_overrides.sql`](supabase/forum_admin_overrides.sql) in the SQL editor.
+Fresh installations include it in `supabase/schema.sql`. The server also needs
+`SUPABASE_SERVICE_ROLE_KEY`; never expose this key to the browser.
+
+When a post or comment hits a content filter, signed-in admins can choose **Review
+admin override**. They must review the exact content, enter a reason of 10–500
+characters, re-enter their own admin password, and explicitly confirm publication.
+Each submission requires fresh verification. Passwordless accounts cannot use this
+flow until they have an account password. Verification is limited to five attempts
+per admin per 15 minutes, including successful attempts.
+
+The server checks the authenticated user's membership in `admins` and verifies the
+password with Supabase Auth. Only the server's service role can call the publishing
+RPC, which rechecks membership, publishes as that admin, and writes an audit record
+atomically. No bypass permission is saved on the user or post. Admins can read
+`forum_override_audit`; browser clients cannot insert, change, or delete audit rows.
+The record retains the content, reason, author, target ID, and timestamp. Normal
+voting/reporting/moderation can update metadata on verified posts, but changing
+flagged content requires verification again.
+
+Checks:
+
+- `node --test tests/forum-override-route.cjs`
+- `psql -v ON_ERROR_STOP=1 -f tests/forum-admin-overrides.sql` against a disposable,
+  empty PostgreSQL database only (the fixtures run inside a rolled-back transaction).
+- `npm run build`

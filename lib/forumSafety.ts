@@ -1,10 +1,10 @@
 const BLOCKED_PATTERNS: Array<{ pattern: RegExp; message: string }> = [
   {
-    pattern: /https?:\/\/\S+/i,
+    pattern: /https?:\/\/|www\./i,
     message: "Links are blocked here to reduce spam. Try rephrasing without a URL.",
   },
   {
-    pattern: /\b(?:buy now|free money|make money fast|crypto pump|casino|onlyfans|porn|nude)\b/i,
+    pattern: /(?:buy now|free money|make money fast|crypto pump|casino|onlyfans|porn|nude)/i,
     message: "That message looks like spam or unsafe content.",
   },
   {
@@ -12,7 +12,9 @@ const BLOCKED_PATTERNS: Array<{ pattern: RegExp; message: string }> = [
     message: "Email addresses are blocked in forum posts.",
   },
   {
-    pattern: /\+?\d[\d\s().-]{7,}\d/,
+    // Count digits, not punctuation, so school-year ranges like 2026-2027 pass.
+    // Also recognize local numbers like 555-0123 without joining separate lines.
+    pattern: /(?:^|[^\w])(?:\+?\d(?:[ \t().-]*\d){9,14}|\d{3}[ .-]\d{4})(?!\w)/,
     message: "Phone numbers are blocked in forum posts.",
   },
 ];

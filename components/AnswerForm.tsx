@@ -1,5 +1,6 @@
 "use client";
 
+import ForumSafetyOverride from "@/components/ForumSafetyOverride";
 import { useId, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { hasSupabaseConfig } from "@/lib/supabase/config";
@@ -68,6 +69,7 @@ export default function AnswerForm({
       <textarea
         id={answerId}
         required
+        disabled={submitting}
         value={answer}
         onChange={(e) => setAnswer(e.target.value)}
         rows={3}
@@ -78,6 +80,13 @@ export default function AnswerForm({
         <p className="text-sm text-red-700" role="alert">
           {error}
         </p>
+      )}
+      {error && getForumSafetyMessage(answer) && (
+        <ForumSafetyOverride text={answer} target={{ kind: "answer", questionId, parentAnswerId }} onBusyChange={setSubmitting} onPublished={() => {
+          setAnswer("");
+          setError(null);
+          onSubmitted();
+        }} />
       )}
       <button
         type="submit"
