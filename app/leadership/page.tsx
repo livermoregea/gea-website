@@ -53,7 +53,7 @@ export default async function LeadershipPage() {
             >
               {member?.photo_url ? (
                 <div className="border-b border-forest/10 bg-paper/70">
-                  <div className="flex aspect-[5/4] items-center justify-center overflow-hidden bg-forest/[0.02]">
+                  <div className="flex aspect-[4/5] items-center justify-center overflow-hidden bg-forest/[0.02]">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img src={member.photo_url} alt={member.name} className="h-full w-full object-cover" />
                   </div>
@@ -103,7 +103,7 @@ export default async function LeadershipPage() {
                 <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                   {(formerMembers as FormerMember[]).filter((member) => member.school_year === schoolYear).map((member) => (
                     <div key={member.id} className="flex items-center gap-3 rounded-sm bg-forest/[0.03] p-4 ring-1 ring-forest/5">
-                      <div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-sm border border-forest/10 bg-paper">
+                      <div className="flex aspect-[4/5] w-12 shrink-0 items-center justify-center overflow-hidden rounded-sm border border-forest/10 bg-paper">
                         {member.photo_url ? (
                           // eslint-disable-next-line @next/next/no-img-element
                           <img src={member.photo_url} alt={member.name} className="h-full w-full object-cover" />

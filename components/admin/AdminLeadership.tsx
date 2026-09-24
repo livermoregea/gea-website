@@ -1,5 +1,6 @@
 "use client";
 
+import LeadershipPhotoCropper from "@/components/admin/LeadershipPhotoCropper";
 import { useEffect, useId, useMemo, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { DEFAULT_LEADERSHIP_ROLES, loadLeadershipRoles, type LeadershipRole } from "@/lib/leadership-roles";
@@ -35,6 +36,7 @@ export default function AdminLeadership() {
   const [name, setName] = useState("");
   const [contactEmail, setContactEmail] = useState("");
   const [bio, setBio] = useState("");
+  const [cropFile, setCropFile] = useState<File | null>(null);
   const [photoFile, setPhotoFile] = useState<File | null>(null);
   const [selectedPhotoPreview, setSelectedPhotoPreview] = useState("");
   const [photoError, setPhotoError] = useState("");
@@ -55,6 +57,12 @@ export default function AdminLeadership() {
 
   const selectedRole = useMemo(() => roles.find((r) => r.slug === role), [roles, role]);
   const currentMember = useMemo(() => members.find((member) => member.role === role) ?? null, [members, role]);
+
+  useEffect(() => {
+    setName(currentMember?.name ?? "");
+    setContactEmail(currentMember?.contact_email ?? "");
+    setBio(currentMember?.bio ?? "");
+  }, [currentMember]);
 
   async function load() {
     setLoading(true);
@@ -151,7 +159,7 @@ export default function AdminLeadership() {
 
   async function fillSeat(e: React.FormEvent) {
     e.preventDefault();
-    if (!name.trim() || !role) return;
+    if (!name.trim() || !role || cropFile) return;
     setPhotoError("");
     setSaving(true);
     try {
@@ -177,7 +185,7 @@ export default function AdminLeadership() {
           return;
         }
 
-        photoUrl = supabase.storage.from("leadership-photos").getPublicUrl(objectPath).data.publicUrl;
+        photoUrl = supabase.storage.from("leadership-photos").getPublicUrl(objectPath).data.publicUrl + `?v=${Date.now()}`;
       }
 
       const { error: saveError } = await supabase.from("leadership_members").upsert(
@@ -202,6 +210,8 @@ export default function AdminLeadership() {
       setBio("");
       setPhotoFile(null);
       load();
+    } catch (error) {
+      setPhotoError(error instanceof Error ? error.message : "Unable to save this seat. Please try again.");
     } finally {
       setSaving(false);
     }
@@ -349,7 +359,13 @@ export default function AdminLeadership() {
             <select
               id={roleId}
               value={role}
-              onChange={(e) => setRole(e.target.value)}
+              disabled={saving}
+              onChange={(e) => {
+                setRole(e.target.value);
+                setPhotoFile(null);
+                setCropFile(null);
+                setPhotoError("");
+              }}
               className="mt-2 block w-full rounded-sm border border-forest/15 bg-paper px-3 py-2 text-sm"
             >
               {activeRoles.map((r) => (
@@ -368,6 +384,7 @@ export default function AdminLeadership() {
             </label>
             <input
               id={nameId}
+              required
               value={name}
               onChange={(e) => setName(e.target.value)}
               className="mt-2 block w-full rounded-sm border border-forest/15 bg-paper px-3 py-2 text-sm"
@@ -409,16 +426,18 @@ export default function AdminLeadership() {
                 <input
                   id={photoId}
                   type="file"
-                  accept="image/*"
+                  accept="image/jpeg,image/png,image/webp"
+                  disabled={saving}
                   onChange={(e) => {
                     setPhotoError("");
-                    setPhotoFile(e.target.files?.[0] ?? null);
+                    const file = e.target.files?.[0];
+                    if (file) setCropFile(file);
+                    e.target.value = "";
                   }}
                   className="block w-full text-sm text-graphite/70 file:mr-4 file:rounded-sm file:border-0 file:bg-forest file:px-4 file:py-2 file:font-mono file:text-xs file:uppercase file:tracking-[0.15em] file:text-gold hover:file:bg-forestdeep"
                 />
                 <p className="mt-2 text-xs leading-relaxed text-graphite/55">
-                  Upload directly from your computer. The image is stored in the photo bucket and
-                  attached to this seat.
+                  Choose a photo, then crop it to a 4:5 portrait. Save the seat to publish your photo.
                 </p>
                 {photoFile && (
                   <p className="mt-1 text-xs text-graphite/70">
@@ -428,7 +447,7 @@ export default function AdminLeadership() {
                 {photoError && <p className="mt-2 text-xs text-red-700">{photoError}</p>}
               </div>
               <div className="flex justify-start sm:justify-end">
-                <div className="flex h-36 w-36 items-center justify-center overflow-hidden rounded-sm border border-forest/10 bg-forest/[0.03]">
+                <div className="flex aspect-[4/5] w-36 items-center justify-center overflow-hidden rounded-sm border border-forest/10 bg-forest/[0.03]">
                   {selectedPhotoPreview ? (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img
@@ -453,12 +472,20 @@ export default function AdminLeadership() {
                   )}
                 </div>
               </div>
+              {cropFile && (
+                <LeadershipPhotoCropper
+                  key={`${role}-${cropFile.name}-${cropFile.lastModified}`}
+                  file={cropFile}
+                  onApply={(file) => { setPhotoFile(file); setCropFile(null); }}
+                  onCancel={() => setCropFile(null)}
+                />
+              )}
               <div className="sm:col-span-2">
                 {currentMember?.photo_url && !photoFile ? (
                   <button
                     type="button"
                     onClick={clearPhoto}
-                    disabled={removingPhoto}
+                    disabled={removingPhoto || saving || !!cropFile}
                     className="inline-flex min-h-11 items-center rounded-sm border border-red-700/20 px-4 py-2 font-mono text-xs uppercase tracking-[0.15em] text-red-700 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-60"
                   >
                     {removingPhoto ? "Removing photo..." : "Remove current photo"}
@@ -474,7 +501,7 @@ export default function AdminLeadership() {
           </div>
           <button
             type="submit"
-            disabled={saving || loading || roleSaving || activeRoles.length === 0}
+            disabled={saving || loading || roleSaving || !!cropFile || activeRoles.length === 0}
             className="rounded-sm bg-forest px-4 py-2.5 font-mono text-xs uppercase tracking-[0.15em] text-gold transition hover:bg-forestdeep disabled:cursor-not-allowed disabled:opacity-60 sm:col-span-2"
           >
             {saving ? "Saving..." : "Fill / Update Seat"}
@@ -502,7 +529,7 @@ export default function AdminLeadership() {
           <div key={m.id} className="rounded-sm bg-forest/[0.03] p-4 ring-1 ring-forest/10">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div className="flex items-center gap-3">
-                <div className="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-sm border border-forest/10 bg-paper">
+                <div className="flex aspect-[4/5] w-14 shrink-0 items-center justify-center overflow-hidden rounded-sm border border-forest/10 bg-paper">
                   {m.photo_url ? (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img src={m.photo_url} alt={m.name} className="h-full w-full object-cover" />

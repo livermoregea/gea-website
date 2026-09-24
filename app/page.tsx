@@ -71,9 +71,11 @@ export default function HomePage() {
   return (
     <div>
       {/* Hero */}
-      <section className="relative w-full h-[80vh] md:h-[85vh] min-h-[550px] overflow-hidden bg-gray-900">
-        <HomeHeroCarousel />
-        <div className="relative z-10 container mx-auto h-full flex flex-col justify-end pb-20 px-6 md:px-12">
+      <section className="relative w-full overflow-hidden bg-forest lg:aspect-[16/9] lg:min-h-[600px] lg:max-h-[900px]">
+        <div className="relative aspect-[4/3] w-full sm:aspect-video lg:absolute lg:inset-0 lg:aspect-auto">
+          <HomeHeroCarousel />
+        </div>
+        <div className="relative z-10 container mx-auto flex flex-col justify-end px-6 py-10 md:px-12 lg:absolute lg:inset-0 lg:h-full lg:pb-20 lg:pt-12">
           <div className="max-w-3xl">
             <HeroCopy />
           </div>
