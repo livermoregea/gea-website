@@ -1,3 +1,4 @@
+import { GEA_DONATION_URL } from "@/lib/donations";
 import Link from "next/link";
 import { SocialIcon, socialLinks } from "@/components/SocialIcons";
 
@@ -15,6 +16,12 @@ export default function Footer() {
               A California Partnership Academy for Livermore High students interested in
               engineering, design, and real-world problem solving.
             </p>
+            <div className="mt-5">
+              <p className="text-sm text-paper/70">Support Green Engineering Academy with a donation.</p>
+              <a href={GEA_DONATION_URL} target="_blank" rel="noopener noreferrer" className="mt-2 inline-flex min-h-11 items-center font-mono text-xs uppercase tracking-[0.15em] text-gold underline decoration-paper/25 underline-offset-4 transition hover:text-paper">
+                Donate to GEA<span className="sr-only"> (opens in a new tab)</span>
+              </a>
+            </div>
             <p className="mt-4 font-mono text-[11px] uppercase tracking-[0.2em] text-paper/45">
               GEA: livermoregea.org
             </p>

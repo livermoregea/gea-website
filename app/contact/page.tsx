@@ -1,3 +1,4 @@
+import { GEA_DONATION_URL } from "@/lib/donations";
 import Link from "next/link";
 import { SocialIcon, socialLinks } from "@/components/SocialIcons";
 
@@ -75,6 +76,16 @@ export default function ContactPage() {
         </div>
 
         <aside className="space-y-5">
+          <section aria-labelledby="donate-heading" className="rounded-sm bg-forest p-5 text-paper">
+            <h2 id="donate-heading" className="font-display text-xl">Support GEA</h2>
+            <p className="mt-3 text-sm leading-relaxed text-paper/75">
+              You can donate to Green Engineering Academy through the LVJUSD online store.
+              Thank you for supporting GEA!
+            </p>
+            <a href={GEA_DONATION_URL} target="_blank" rel="noopener noreferrer" className="mt-4 inline-flex min-h-11 items-center justify-center rounded-sm border border-gold/60 px-4 py-2.5 font-mono text-xs uppercase tracking-[0.15em] text-gold transition hover:border-gold hover:bg-paper/5">
+              Donate to GEA<span className="sr-only"> (opens in a new tab)</span>
+            </a>
+          </section>
           <div className="rounded-sm bg-forest/[0.03] p-5 ring-1 ring-forest/10">
             <p className="font-mono text-xs uppercase tracking-[0.2em] text-gold">Social Media</p>
             <p className="mt-2 text-sm leading-relaxed text-graphite/70">

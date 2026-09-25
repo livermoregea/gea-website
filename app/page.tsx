@@ -1,3 +1,4 @@
+import { GEA_DONATION_URL } from "@/lib/donations";
 import Link from "next/link";
 import HomeHeroCarousel from "@/components/HomeHeroCarousel";
 import { SocialIcon, socialLinks } from "@/components/SocialIcons";
@@ -133,6 +134,22 @@ export default function HomePage() {
           >
             See the full curriculum →
           </Link>
+        </div>
+      </section>
+
+      <section aria-labelledby="support-gea-heading" className="mx-auto max-w-6xl px-4 pt-16 sm:px-6 md:pt-20">
+        <div className="flex flex-col gap-6 rounded-sm border border-forest/10 bg-paper p-6 sm:p-8 md:flex-row md:items-center md:justify-between">
+          <div className="max-w-2xl">
+            <p className="font-mono text-xs uppercase tracking-[0.2em] text-forest/65">Give to GEA</p>
+            <h2 id="support-gea-heading" className="mt-3 font-display text-2xl text-forest sm:text-3xl">Support Green Engineering Academy</h2>
+            <p className="mt-3 text-sm leading-relaxed text-graphite/75 sm:text-base">
+              Want to support GEA? Families, alumni, and community members can donate through the LVJUSD online store.
+              Thank you for supporting our academy.
+            </p>
+          </div>
+          <a href={GEA_DONATION_URL} target="_blank" rel="noopener noreferrer" className="inline-flex min-h-11 shrink-0 items-center justify-center rounded-sm bg-forest px-6 py-3 font-mono text-xs uppercase tracking-[0.15em] text-gold transition hover:bg-forestdeep">
+            Donate to GEA<span className="sr-only"> (opens in a new tab)</span>
+          </a>
         </div>
       </section>
 
