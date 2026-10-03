@@ -1,0 +1,43 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="520" viewBox="0 0 800 520" role="img" aria-labelledby="title description">
+<title id="title">Love waves wiggle the ground sideways</title>
+<desc id="description">A view looking down at the ground. A blue arrow points right, showing where the wave travels. Colorful patches of ground shift across that direction. A teal double arrow points toward the top and bottom of the page to show horizontal side-to-side motion, not vertical bouncing.</desc>
+<rect width="800" height="520" rx="24" fill="#f3faf6"/>
+<g font-family="Arial, sans-serif" text-anchor="middle">
+<text x="400" y="58" fill="#123524" font-size="36" font-weight="700">Love waves wiggle sideways!</text>
+<text x="400" y="96" fill="#345c4b" font-size="25">Looking down at the ground</text>
+<text x="400" y="149" fill="#2155a3" font-size="26" font-weight="700">The wave travels this way</text>
+<path d="M100 174H690" fill="none" stroke="#3975c6" stroke-width="9" stroke-linecap="round"/>
+<path d="m678 160 22 14-22 14" fill="none" stroke="#3975c6" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"/>
+<rect x="60" y="207" width="680" height="198" rx="20" fill="#e1f0e5"/>
+
+<rect x="86" y="246.0" width="49" height="29" rx="8" fill="#98cdb0" stroke="#fff" stroke-width="2"/>
+<rect x="86" y="282.0" width="49" height="29" rx="8" fill="#63b798" stroke="#fff" stroke-width="2"/>
+<rect x="86" y="318.0" width="49" height="29" rx="8" fill="#359e81" stroke="#fff" stroke-width="2"/>
+<rect x="147" y="268.6" width="49" height="29" rx="8" fill="#98cdb0" stroke="#fff" stroke-width="2"/>
+<rect x="147" y="304.6" width="49" height="29" rx="8" fill="#63b798" stroke="#fff" stroke-width="2"/>
+<rect x="147" y="340.6" width="49" height="29" rx="8" fill="#359e81" stroke="#fff" stroke-width="2"/>
+<rect x="208" y="278.0" width="49" height="29" rx="8" fill="#98cdb0" stroke="#fff" stroke-width="2"/>
+<rect x="208" y="314.0" width="49" height="29" rx="8" fill="#63b798" stroke="#fff" stroke-width="2"/>
+<rect x="208" y="350.0" width="49" height="29" rx="8" fill="#359e81" stroke="#fff" stroke-width="2"/>
+<rect x="269" y="268.6" width="49" height="29" rx="8" fill="#98cdb0" stroke="#fff" stroke-width="2"/>
+<rect x="269" y="304.6" width="49" height="29" rx="8" fill="#63b798" stroke="#fff" stroke-width="2"/>
+<rect x="269" y="340.6" width="49" height="29" rx="8" fill="#359e81" stroke="#fff" stroke-width="2"/>
+<rect x="330" y="246.0" width="49" height="29" rx="8" fill="#f5d67c" stroke="#fff" stroke-width="2"/>
+<rect x="330" y="282.0" width="49" height="29" rx="8" fill="#efbd51" stroke="#fff" stroke-width="2"/>
+<rect x="330" y="318.0" width="49" height="29" rx="8" fill="#dfa432" stroke="#fff" stroke-width="2"/>
+<rect x="391" y="223.4" width="49" height="29" rx="8" fill="#98cdb0" stroke="#fff" stroke-width="2"/>
+<rect x="391" y="259.4" width="49" height="29" rx="8" fill="#63b798" stroke="#fff" stroke-width="2"/>
+<rect x="391" y="295.4" width="49" height="29" rx="8" fill="#359e81" stroke="#fff" stroke-width="2"/>
+<rect x="452" y="214.0" width="49" height="29" rx="8" fill="#98cdb0" stroke="#fff" stroke-width="2"/>
+<rect x="452" y="250.0" width="49" height="29" rx="8" fill="#63b798" stroke="#fff" stroke-width="2"/>
+<rect x="452" y="286.0" width="49" height="29" rx="8" fill="#359e81" stroke="#fff" stroke-width="2"/>
+<rect x="513" y="223.4" width="49" height="29" rx="8" fill="#98cdb0" stroke="#fff" stroke-width="2"/>
+<rect x="513" y="259.4" width="49" height="29" rx="8" fill="#63b798" stroke="#fff" stroke-width="2"/>
+<rect x="513" y="295.4" width="49" height="29" rx="8" fill="#359e81" stroke="#fff" stroke-width="2"/>
+<rect x="574" y="246.0" width="49" height="29" rx="8" fill="#98cdb0" stroke="#fff" stroke-width="2"/>
+<rect x="574" y="282.0" width="49" height="29" rx="8" fill="#63b798" stroke="#fff" stroke-width="2"/>
+<rect x="574" y="318.0" width="49" height="29" rx="8" fill="#359e81" stroke="#fff" stroke-width="2"/>
+<path d="M686 239V374m-13-122 13-16 13 16m-26 107 13 16 13-16" fill="none" stroke="#127d79" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="400" y="454" fill="#127d79" font-size="29" font-weight="700">The ground moves side to side</text>
+<text x="400" y="491" fill="#345c4b" font-size="24">Across the wave’s path—not up and down.</text>
+</g></svg>
