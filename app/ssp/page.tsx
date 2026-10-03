@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Image from "next/image";
 import SSPChallenge from "@/components/SSPChallenge";
+import { SocialIcon } from "@/components/SocialIcons";
 
 export const metadata: Metadata = {
   title: "Science at Stockmens Park",
@@ -38,12 +39,17 @@ export default function ScienceAtStockmensParkPage() {
           <p className="font-mono text-xs uppercase tracking-[0.2em] text-forest">Start here</p>
           <h2 id="video-heading" className="mt-3 font-display text-3xl text-forestdeep sm:text-4xl">Watch the instructions</h2>
           <p className="mt-4 max-w-3xl leading-relaxed text-graphite/80">Watch our video to see how the activity works, then scroll down to explore the science and follow the steps. Prefer reading? The written instructions are below, too.</p>
-          {/* Replace this placeholder with a responsive YouTube embed when the instruction video is ready. */}
-          <div className="mt-6 flex aspect-video min-h-48 w-full flex-col items-center justify-center gap-3 rounded-sm border border-forest/20 bg-forestdeep px-5 py-6 text-center text-paper">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.25" className="h-10 w-10 text-goldlight" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2" /><path d="m10 9 5 3-5 3Z" /></svg>
-            <p className="font-display text-xl sm:text-2xl">Instruction video coming soon</p>
-            <p className="max-w-sm text-sm leading-relaxed text-paper/80">Our YouTube video will appear here. For now, follow the written guide below.</p>
+          <div className="mt-6 aspect-video w-full overflow-hidden rounded-sm border border-forest/20 bg-forestdeep">
+            <iframe
+              src="https://www.youtube-nocookie.com/embed/fVFe5nQ5TMs"
+              title="Science at Stockmens Park activity instructions"
+              className="h-full w-full border-0"
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+              referrerPolicy="strict-origin-when-cross-origin"
+              allowFullScreen
+            />
           </div>
+          <p className="mt-3 text-sm text-graphite/80"><a href="https://youtu.be/fVFe5nQ5TMs" target="_blank" rel="noopener noreferrer" className="text-forest underline underline-offset-4">Watch on YouTube ↗</a></p>
           <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
             <a href="#written-instructions" className="inline-flex min-h-11 items-center justify-center rounded-sm bg-gold px-5 py-3 text-sm font-medium text-forestdeep hover:bg-goldlight focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-forest">Read the science & instructions ↓</a>
             <a href="#challenge" className="inline-flex min-h-11 items-center justify-center rounded-sm border border-forest/25 px-5 py-3 text-sm font-medium text-forestdeep hover:bg-forest/5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-forest">Go to the building steps ↓</a>
@@ -93,6 +99,10 @@ export default function ScienceAtStockmensParkPage() {
           <p className="font-mono text-xs uppercase tracking-[0.2em] text-forest">From the park</p>
           <h2 id="photos-heading" className="mt-3 font-display text-3xl text-forestdeep sm:text-4xl">Science in action</h2>
           <p className="mt-4 text-graphite/80">Photos from our builds and shake-table tests will appear here.</p>
+          <a href="https://www.instagram.com/lhsgea/" target="_blank" rel="noopener noreferrer" className="mt-5 inline-flex min-h-11 items-center gap-3 rounded-sm border border-forest/25 px-5 py-3 text-sm font-medium text-forestdeep hover:bg-forest/5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-forest">
+            <SocialIcon icon="instagram" className="h-5 w-5" />
+            Follow us on Instagram @lhsgea ↗
+          </a>
           {/* Replace these placeholders with event photos and descriptive alt text when available. */}
           <div className="mt-8 grid gap-5 sm:grid-cols-3">
             {["Building together", "The shake-table test", "Our finished designs"].map((caption) => (
