@@ -64,6 +64,11 @@ export default function Footer() {
                 Open Contact Page
               </Link>
               <p className="mt-4">
+                <Link href="/community" className="inline-flex min-h-11 items-center font-mono text-[11px] uppercase tracking-[0.18em] text-gold underline decoration-paper/25 underline-offset-4">
+                  Community In Action
+                </Link>
+              </p>
+              <p className="mt-2">
                 <Link
                   href="/privacy"
                   className="font-mono text-[11px] uppercase tracking-[0.18em] text-gold underline decoration-paper/25 underline-offset-4"

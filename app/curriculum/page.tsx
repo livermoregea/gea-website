@@ -1,3 +1,5 @@
+import ROPSection from "@/components/ROPSection";
+
 const years = [
   {
     grade: "9th Grade",
@@ -51,6 +53,8 @@ export default function CurriculumPage() {
           </div>
         ))}
       </div>
+
+      <ROPSection className="mt-12 md:mt-16" />
 
       <div className="mt-12 grid gap-6 rounded-sm bg-forest p-6 text-paper sm:p-8 md:mt-16 md:grid-cols-3 md:p-10">
         <div>

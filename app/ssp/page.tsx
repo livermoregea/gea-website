@@ -1,12 +1,13 @@
 import type { Metadata } from "next";
 import Image from "next/image";
+import Link from "next/link";
 import SSPChallenge from "@/components/SSPChallenge";
 import { SocialIcon } from "@/components/SocialIcons";
 
 export const metadata: Metadata = {
-  title: "Science at Stockmens Park",
+  title: "Science at Stockmens Park 2026",
   description:
-    "Explore seismic waves and take on a 10-minute earthquake engineering challenge with Green Engineering Academy at Stockmens Park.",
+    "Look back at Science at Stockmens Park 2026 with Green Engineering Academy, and revisit the earthquake engineering activity, materials, and instructions.",
 };
 
 const materials = [
@@ -25,20 +26,87 @@ const waves = [
 export default function ScienceAtStockmensParkPage() {
   return (
     <div className="bg-paper">
-      <section className="border-b border-gold/25 bg-forestdeep bg-blueprintgrid bg-grid text-paper">
-        <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6 sm:py-20">
-          <p className="font-mono text-xs uppercase tracking-[0.22em] text-goldlight">Green Engineering Academy · Hands-on science</p>
-          <h1 className="mt-4 max-w-3xl font-display text-3xl font-medium leading-tight sm:text-6xl">Science at Stockmens Park</h1>
-          <p className="mt-4 max-w-2xl text-base sm:mt-6 sm:text-lg leading-relaxed text-paper/85">Can you build a structure that survives an earthquake? Explore the waves that shake the ground, then put your engineering skills to the test.</p>
-          <a href="#video-instructions" className="mt-6 inline-flex min-h-11 items-center rounded-sm bg-gold px-6 py-3 font-mono text-xs font-semibold uppercase tracking-[0.15em] text-forestdeep transition hover:bg-goldlight focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-goldlight">Video & instructions ↓</a>
+      <section className="relative isolate flex min-h-[440px] items-center overflow-hidden border-b border-gold/25 bg-[#181818] text-paper sm:min-h-[560px]">
+        <div aria-hidden="true" className="ssp-hero-video pointer-events-none absolute inset-0 select-none">
+          <video
+            autoPlay
+            muted
+            loop
+            playsInline
+            preload="metadata"
+            poster="/images/ssp/headervideo/poster.jpg"
+            className="h-full w-full object-cover"
+            tabIndex={-1}
+            disablePictureInPicture
+            disableRemotePlayback
+          >
+            <source src="/images/ssp/headervideo/header.mp4" type="video/mp4" />
+          </video>
+        </div>
+        <div aria-hidden="true" className="pointer-events-none absolute inset-0 bg-gradient-to-r from-[#181818]/85 via-[#181818]/70 to-[#181818]/55" />
+        <div className="relative z-10 mx-auto w-full max-w-6xl px-4 py-16 sm:px-6 sm:py-24">
+          <Link href="/community" className="mb-5 inline-flex min-h-11 items-center font-mono text-xs uppercase tracking-[0.15em] text-paper/75 transition hover:text-goldlight"><span aria-hidden="true" className="mr-2">←</span> Community In Action</Link>
+          <p className="font-mono text-xs uppercase tracking-[0.22em] text-goldlight">Community outreach · Looking back at 2026</p>
+          <h1 className="mt-5 max-w-3xl font-display text-4xl font-medium leading-[1.08] tracking-tight sm:text-6xl lg:text-7xl">
+            <span className="block">Science at</span>
+            <span className="block">Stockmens Park 2026</span>
+          </h1>
+          <p className="mt-5 max-w-xl text-base leading-relaxed text-paper/85 sm:mt-6 sm:text-lg">A look back at bringing hands-on earthquake engineering to our community, one spaghetti structure at a time.</p>
+          <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
+            <a href="#event-reflection" className="inline-flex min-h-11 items-center justify-center rounded-sm bg-gold px-6 py-3 font-mono text-xs font-semibold uppercase tracking-[0.15em] text-forestdeep transition hover:bg-goldlight focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-goldlight">Look back at the event ↓</a>
+            <a href="#activity-resources" className="inline-flex min-h-11 items-center justify-center rounded-sm border border-paper/35 px-6 py-3 font-mono text-xs uppercase tracking-[0.15em] text-paper transition hover:border-goldlight hover:text-goldlight">Activity materials & instructions ↓</a>
+          </div>
         </div>
       </section>
 
       <div className="mx-auto max-w-6xl space-y-10 px-4 py-8 sm:space-y-16 sm:px-6 sm:py-20">
+        <section id="event-reflection" aria-labelledby="reflection-heading" className="scroll-mt-28">
+          <div className="grid items-center gap-8 lg:grid-cols-2 lg:gap-12">
+            <div>
+              <p className="font-mono text-xs uppercase tracking-[0.2em] text-forest">From the park · 2026</p>
+              <h2 id="reflection-heading" className="mt-3 font-display text-3xl text-forestdeep sm:text-4xl">Engineering beyond the classroom</h2>
+              <p className="mt-5 leading-relaxed text-graphite/80">At Science at Stockmens Park, GEA brought earthquake engineering out of the classroom and into a hands-on community activity. The challenge began with a simple question: can you build a structure that survives shaking?</p>
+              <p className="mt-4 leading-relaxed text-graphite/80">Spaghetti, marshmallows, and tape turned that question into something to build and test. The activity connected seismic waves with structural design, giving visitors a way to explore engineering through their own ideas.</p>
+              <p className="mt-4 leading-relaxed text-graphite/80">The point of the challenge was more than keeping a tower standing. It was a chance to observe what happened, talk through why, and consider what to change in the next design.</p>
+            </div>
+            <figure className="overflow-hidden rounded-sm border border-forest/15 bg-white/70">
+              <Image src="/images/ssp/headervideo/poster.jpg" width={1920} height={1080} sizes="(min-width: 1024px) 540px, 100vw" alt="GEA students and community visitors gathered around the science activity at Stockmens Park" className="aspect-[4/3] w-full object-cover" />
+              <figcaption className="px-5 py-4 text-sm leading-relaxed text-graphite/70">A moment from the Science at Stockmens Park 2026 timelapse.</figcaption>
+            </figure>
+          </div>
+          <div className="mt-8 grid gap-4 sm:grid-cols-3">
+            {[
+              ["Build", "A 10-minute design challenge with everyday materials made structural engineering tangible."],
+              ["Test", "A skateboard shake table connected the design challenge to the motion of an earthquake."],
+              ["Reflect", "The shake-test report invited teams to explain their observations and propose a design improvement."],
+            ].map(([title, description]) => (
+              <article key={title} className="rounded-sm border border-forest/15 bg-white/70 p-6">
+                <h3 className="font-display text-2xl text-forestdeep">{title}</h3>
+                <p className="mt-3 text-sm leading-relaxed text-graphite/75">{description}</p>
+              </article>
+            ))}
+          </div>
+          <a href="https://www.instagram.com/lhsgea/" target="_blank" rel="noopener noreferrer" className="mt-6 inline-flex min-h-11 items-center gap-3 text-sm font-medium text-forest underline underline-offset-4">
+            <SocialIcon icon="instagram" className="h-5 w-5" />
+            Follow more of GEA&apos;s community projects @lhsgea ↗
+          </a>
+        </section>
+
+        <section id="activity-resources" aria-labelledby="resources-heading" className="scroll-mt-28 rounded-sm border border-gold/30 bg-gold/[0.06] p-6 sm:p-8">
+          <p className="font-mono text-xs uppercase tracking-[0.2em] text-forest">Keep exploring</p>
+          <h2 id="resources-heading" className="mt-3 font-display text-3xl text-forestdeep sm:text-4xl">Try the activity yourself</h2>
+          <p className="mt-4 max-w-3xl leading-relaxed text-graphite/80">The event may be behind us, but the learning can continue. The original activity video, science explanations, supply list, building steps, timer, and shake-test report are all here to revisit.</p>
+          <nav aria-label="Activity resources" className="mt-5 flex flex-wrap gap-x-6 gap-y-2 text-sm font-medium text-forest">
+            <a href="#video-instructions" className="inline-flex min-h-11 items-center underline underline-offset-4">Instruction video ↓</a>
+            <a href="#written-instructions" className="inline-flex min-h-11 items-center underline underline-offset-4">Seismic wave science ↓</a>
+            <a href="#challenge" className="inline-flex min-h-11 items-center underline underline-offset-4">Materials &amp; building steps ↓</a>
+          </nav>
+        </section>
+
         <section id="video-instructions" aria-labelledby="video-heading" className="scroll-mt-28">
-          <p className="font-mono text-xs uppercase tracking-[0.2em] text-forest">Start here</p>
-          <h2 id="video-heading" className="mt-3 font-display text-3xl text-forestdeep sm:text-4xl">Watch the instructions</h2>
-          <p className="mt-4 max-w-3xl leading-relaxed text-graphite/80">Watch our video to see how the activity works, then scroll down to explore the science and follow the steps. Prefer reading? The written instructions are below, too.</p>
+          <p className="font-mono text-xs uppercase tracking-[0.2em] text-forest">Activity resources · Video</p>
+          <h2 id="video-heading" className="mt-3 font-display text-3xl text-forestdeep sm:text-4xl">The original activity instructions</h2>
+          <p className="mt-4 max-w-3xl leading-relaxed text-graphite/80">Revisit the instruction video from the event, or use it to try the challenge with your own group. The written science explanations and building steps are below, too.</p>
           <div className="mt-6 aspect-video w-full overflow-hidden rounded-sm border border-forest/20 bg-forestdeep">
             <iframe
               src="https://www.youtube-nocookie.com/embed/fVFe5nQ5TMs"
@@ -57,9 +125,9 @@ export default function ScienceAtStockmensParkPage() {
         </section>
 
         <section id="written-instructions" aria-labelledby="waves-heading" className="scroll-mt-28">
-          <p className="font-mono text-xs uppercase tracking-[0.2em] text-forest">The science</p>
+          <p className="font-mono text-xs uppercase tracking-[0.2em] text-forest">Activity resources · The science</p>
           <h2 id="waves-heading" className="mt-3 font-display text-3xl text-forestdeep sm:text-4xl">Four types of seismic waves</h2>
-          <p className="mt-4 max-w-3xl leading-relaxed text-graphite/80">Earthquakes send energy through the Earth and along its surface. Meet the four wave types we’re exploring today.</p>
+          <p className="mt-4 max-w-3xl leading-relaxed text-graphite/80">Earthquakes send energy through the Earth and along its surface. These four wave types formed the science behind our challenge.</p>
           <div className="mt-8 grid gap-4 sm:grid-cols-2">
             {waves.map((wave) => (
               <article key={wave.name} className="rounded-sm border border-forest/15 bg-white/70 p-6">
@@ -78,7 +146,7 @@ export default function ScienceAtStockmensParkPage() {
         <section id="challenge" aria-labelledby="challenge-heading" className="scroll-mt-28">
           <div className="flex flex-wrap items-end justify-between gap-4">
             <div>
-              <p className="font-mono text-xs uppercase tracking-[0.2em] text-forest">The engineering challenge</p>
+              <p className="font-mono text-xs uppercase tracking-[0.2em] text-forest">Activity resources · The engineering challenge</p>
               <h2 id="challenge-heading" className="mt-3 font-display text-3xl text-forestdeep sm:text-4xl">Build it. Shake it. Test it.</h2>
             </div>
             <p className="rounded-sm border border-gold/40 bg-gold/10 px-5 py-3 font-mono text-sm text-forestdeep">Build time: <strong>10 minutes</strong></p>
@@ -95,25 +163,11 @@ export default function ScienceAtStockmensParkPage() {
           <SSPChallenge />
         </section>
 
-        <section aria-labelledby="photos-heading">
-          <p className="font-mono text-xs uppercase tracking-[0.2em] text-forest">From the park</p>
-          <h2 id="photos-heading" className="mt-3 font-display text-3xl text-forestdeep sm:text-4xl">Science in action</h2>
-          <p className="mt-4 text-graphite/80">Photos from our builds and shake-table tests will appear here.</p>
-          <a href="https://www.instagram.com/lhsgea/" target="_blank" rel="noopener noreferrer" className="mt-5 inline-flex min-h-11 items-center gap-3 rounded-sm border border-forest/25 px-5 py-3 text-sm font-medium text-forestdeep hover:bg-forest/5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-forest">
-            <SocialIcon icon="instagram" className="h-5 w-5" />
-            Follow us on Instagram @lhsgea ↗
-          </a>
-          {/* Replace these placeholders with event photos and descriptive alt text when available. */}
-          <div className="mt-8 grid gap-5 sm:grid-cols-3">
-            {["Building together", "The shake-table test", "Our finished designs"].map((caption) => (
-              <div key={caption} className="flex aspect-[4/3] flex-col items-center justify-center gap-3 rounded-sm border border-dashed border-forest/25 bg-forest/[0.03] px-5 text-center">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.25" className="h-9 w-9 text-forest/50" aria-hidden="true"><rect x="3" y="5" width="18" height="15" rx="2" /><circle cx="8" cy="10" r="1.5" /><path d="m3 17 5-4 4 3 4-5 5 6" /></svg>
-                <p className="font-display text-lg text-forestdeep">{caption}</p>
-                <p className="font-mono text-[10px] uppercase tracking-[0.15em] text-forest/65">Photos coming soon</p>
-              </div>
-            ))}
-          </div>
-        </section>
+        <div className="border-t border-forest/15 pt-8">
+          <Link href="/community" className="inline-flex min-h-11 items-center font-mono text-xs uppercase tracking-[0.15em] text-forest underline decoration-gold underline-offset-4">
+            <span aria-hidden="true" className="mr-2">←</span> Explore Community In Action
+          </Link>
+        </div>
       </div>
     </div>
   );

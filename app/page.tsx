@@ -1,6 +1,8 @@
 import { GEA_DONATION_URL } from "@/lib/donations";
 import Link from "next/link";
+import CommunityProjectCards from "@/components/CommunityProjectCards";
 import HomeHeroCarousel from "@/components/HomeHeroCarousel";
+import ROPSection from "@/components/ROPSection";
 import { SocialIcon, socialLinks } from "@/components/SocialIcons";
 
 const benefits = [
@@ -135,6 +137,19 @@ export default function HomePage() {
             See the full curriculum →
           </Link>
         </div>
+      </section>
+
+      <ROPSection className="mx-auto max-w-6xl px-4 pt-16 sm:px-6 md:pt-20" />
+
+      <section aria-labelledby="community-heading" className="mx-auto max-w-6xl px-4 pt-16 sm:px-6 md:pt-20">
+        <p className="font-mono text-xs uppercase tracking-[0.2em] text-forest/65">Beyond the classroom</p>
+        <h2 id="community-heading" className="mt-3 font-display text-3xl font-medium text-forestdeep sm:text-4xl">Community In Action</h2>
+        <p className="mt-4 max-w-2xl leading-relaxed text-graphite/75">Sharing engineering through hands-on projects with our community.</p>
+        <div className="dim-divider mt-6" />
+        <CommunityProjectCards />
+        <Link href="/community" className="mt-8 inline-flex min-h-11 items-center font-mono text-xs uppercase tracking-[0.15em] text-forest underline decoration-gold underline-offset-4 transition hover:text-forestdeep">
+          Explore Community In Action <span aria-hidden="true" className="ml-2">→</span>
+        </Link>
       </section>
 
       <section aria-labelledby="support-gea-heading" className="mx-auto max-w-6xl px-4 pt-16 sm:px-6 md:pt-20">

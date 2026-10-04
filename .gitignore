@@ -4,3 +4,6 @@ node_modules
 .env*.local
 .DS_Store
 tsconfig.tsbuildinfo
+
+# Keep the original header footage local; publish the compressed MP4 instead.
+public/images/ssp/headervideo/*.mov
