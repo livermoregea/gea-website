@@ -88,36 +88,36 @@ export default async function ApplyPage({
     <div className="mx-auto max-w-2xl px-4 py-16 sm:px-6 md:py-20">
       <Link
         href="/leadership"
-        className="inline-flex min-h-11 items-center font-mono text-xs uppercase tracking-[0.15em] text-forest/60 hover:text-forest"
+        className="inline-flex min-h-11 items-center font-mono text-xs uppercase tracking-[0.15em] text-forest/80 hover:text-forest"
       >
         ← Back to Leadership
       </Link>
-      <p className="mt-6 font-mono text-xs uppercase tracking-[0.3em] text-gold">
+      <p className="mt-6 font-mono text-xs uppercase tracking-[0.3em] text-accent">
         Leadership Application
       </p>
       <h1 className="mt-3 font-display text-2xl font-medium text-forest sm:text-3xl">{role.label}</h1>
-      <p className="mt-4 text-sm leading-relaxed text-graphite/70 sm:text-base">
+      <p className="mt-4 text-sm leading-relaxed text-graphite/80 sm:text-base">
         Submit the form below to apply. Applications are reviewed by the GEA officer team.
       </p>
-      <p className="mt-2 text-sm leading-relaxed text-graphite/60 sm:text-base">
+      <p className="mt-2 text-sm leading-relaxed text-graphite/80 sm:text-base">
         Applications close on {formatApplicationDeadline()}.
       </p>
-      <p className="mt-2 text-sm leading-relaxed text-graphite/60 sm:text-base">
+      <p className="mt-2 text-sm leading-relaxed text-graphite/80 sm:text-base">
         Applications cannot be edited after submission. If you need to add anything later, mention
         it during your interview.
       </p>
 
       <section className="mt-6 rounded-sm bg-forest/[0.04] p-5 ring-1 ring-forest/10">
-        <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-gold">
+        <p className="font-mono text-xs uppercase tracking-[0.2em] text-accent">
           Role Summary
         </p>
         <h2 className="mt-2 font-display text-xl text-forest">{role.label}</h2>
         {getRoleEligibilityLabel(role.slug) ? (
-          <p className="mt-2 text-xs uppercase tracking-[0.12em] text-graphite/55">
+          <p className="mt-2 text-xs uppercase tracking-[0.12em] text-graphite/80">
             {getRoleEligibilityLabel(role.slug)}
           </p>
         ) : null}
-        <ul className="mt-4 space-y-2 text-sm leading-relaxed text-graphite/75">
+        <ul className="mt-4 space-y-2 text-sm leading-relaxed text-graphite/80">
           {getResponsibilities(role.slug).map((item) => (
             <li key={item} className="flex gap-3">
               <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-gold" />
@@ -129,24 +129,24 @@ export default async function ApplyPage({
 
       {user ? (
         <div className="mt-6 rounded-sm bg-forest/[0.04] p-5 ring-1 ring-forest/10">
-          <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-gold">
+          <p className="font-mono text-xs uppercase tracking-[0.2em] text-accent">
             Signed In
           </p>
-          <p className="mt-2 text-sm text-graphite/70">
+          <p className="mt-2 text-sm text-graphite/80">
             This application will be linked to your account.
           </p>
         </div>
       ) : (
         <div className="mt-6 rounded-sm bg-forest/[0.04] p-5 ring-1 ring-forest/10">
-          <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-gold">
+          <p className="font-mono text-xs uppercase tracking-[0.2em] text-accent">
             Optional Sign In
           </p>
-          <p className="mt-2 text-sm text-graphite/70">
+          <p className="mt-2 text-sm text-graphite/80">
             Sign in to associate this application with your account.
           </p>
           <Link
             href="/leadership"
-            className="mt-3 inline-flex rounded-sm bg-forest px-4 py-2 font-mono text-xs uppercase tracking-[0.15em] text-gold transition hover:bg-forestdeep"
+            className="mt-3 inline-flex rounded-sm bg-forest px-4 py-2 font-mono text-xs uppercase tracking-[0.15em] text-accent transition hover:bg-forestdeep"
           >
             Sign In on Leadership Page
           </Link>
@@ -165,13 +165,13 @@ export default async function ApplyPage({
         />
       ) : (
         <div className="rounded-sm bg-forest/[0.04] p-6 ring-1 ring-forest/10">
-          <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-gold">
+          <p className="font-mono text-xs uppercase tracking-[0.2em] text-accent">
             Applications Closed
           </p>
-          <p className="mt-2 text-sm leading-relaxed text-graphite/70">
+          <p className="mt-2 text-sm leading-relaxed text-graphite/80">
             The deadline has passed, so new applications are no longer being accepted.
           </p>
-          <p className="mt-2 text-sm leading-relaxed text-graphite/60">
+          <p className="mt-2 text-sm leading-relaxed text-graphite/80">
             If you already applied, you can still check your status from the leadership page after
             signing in.
           </p>

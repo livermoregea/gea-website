@@ -23,9 +23,9 @@ export default async function EditProfilePage() {
   if (!hasSupabaseConfig()) {
     return (
       <div className="mx-auto max-w-3xl px-4 py-16 sm:px-6 md:py-20">
-        <p className="font-mono text-xs uppercase tracking-[0.3em] text-gold">Profile Requests</p>
+        <p className="font-mono text-xs uppercase tracking-[0.3em] text-accent">Profile Requests</p>
         <h1 className="mt-4 font-display text-2xl font-medium text-forest">Demo mode</h1>
-        <p className="mt-3 text-sm text-graphite/70">
+        <p className="mt-3 text-sm text-graphite/80">
           Profile editing is disabled until Supabase is configured.
         </p>
       </div>
@@ -70,9 +70,9 @@ export default async function EditProfilePage() {
 
   return (
     <div className="mx-auto max-w-3xl px-4 py-16 sm:px-6 md:py-20">
-      <p className="font-mono text-xs uppercase tracking-[0.3em] text-gold">Profile Requests</p>
+      <p className="font-mono text-xs uppercase tracking-[0.3em] text-accent">Profile Requests</p>
       <h1 className="mt-4 font-display text-2xl font-medium text-forest">Request profile changes</h1>
-      <p className="mt-3 text-sm text-graphite/70">
+      <p className="mt-3 text-sm text-graphite/80">
         Submit profile changes for review.
       </p>
 
@@ -84,7 +84,7 @@ export default async function EditProfilePage() {
         <ProfileEditor kind="teacher" profile={teacherProfile as TeacherProfile} latestRequest={latestRequest} />
       ) : (
         <div className="rounded-sm bg-forest/[0.03] p-6 ring-1 ring-forest/5">
-          <p className="text-sm text-graphite/70">
+          <p className="text-sm text-graphite/80">
             We could not find an editable student or teacher profile for this account.
           </p>
         </div>

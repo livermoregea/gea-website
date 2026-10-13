@@ -1,3 +1,4 @@
+import PageNotice from "@/components/PageNotice";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { hasSupabaseConfig } from "@/lib/supabase/config";
@@ -8,14 +9,15 @@ export default async function AdminApplicationPage({ params }: { params: Promise
   const supabase = await createClient();
 
   if (!hasSupabaseConfig()) {
-    return <p className="mx-auto max-w-5xl px-4 py-16 text-sm text-graphite/60 sm:px-6">Demo mode is enabled.</p>;
+    return <PageNotice title="Staff workspace unavailable"><p>Staff tools will be available once the site is connected.</p></PageNotice>;
   }
 
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) {
     return (
       <div className="mx-auto max-w-md px-4 py-16 text-center sm:px-6 md:py-24">
-        <p className="text-sm text-graphite/70">
+        <h1 className="mb-4 font-display text-2xl text-forestdeep">Staff sign-in required</h1>
+        <p className="text-sm text-graphite/80">
           <Link href="/admin-portal-x7k9/login" className="text-forest underline decoration-gold underline-offset-4">
             Sign in
           </Link>{" "}to access the admin portal.
@@ -30,7 +32,7 @@ export default async function AdminApplicationPage({ params }: { params: Promise
   ]);
 
   if (!adminRow && !teacherRow) {
-    return <p className="mx-auto max-w-md px-4 py-16 text-center text-sm text-graphite/70 sm:px-6">Your account does not have staff access.</p>;
+    return <PageNotice title="Staff access required"><p>Your account does not have staff access. Contact a GEA coordinator if you need help.</p></PageNotice>;
   }
 
   return <AdminApplicationDetail applicationId={id} />;

@@ -4,10 +4,20 @@ const config: Config = {
   content: ["./app/**/*.{ts,tsx}", "./components/**/*.{ts,tsx}"],
   theme: {
     extend: {
+      borderRadius: {
+        sm: "0.75rem",
+        DEFAULT: "1rem",
+        md: "1rem",
+        lg: "1.25rem",
+        xl: "1.5rem",
+        "2xl": "2rem",
+        "3xl": "2.5rem",
+      },
       colors: {
         forest: "#123524",
         forestdeep: "#0B2418",
         gold: "#C9A227",
+        accent: "rgb(var(--accent-text) / <alpha-value>)",
         goldlight: "#E4C766",
         paper: "#F6F3EC",
         graphite: "#1F2421",

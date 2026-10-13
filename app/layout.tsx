@@ -51,7 +51,7 @@ export default async function RootLayout({
 
   return (
     <html lang="en" className={`${display.variable} ${body.variable} ${mono.variable}`}>
-      <body className="min-h-screen font-body antialiased" suppressHydrationWarning>
+      <body className="flex min-h-screen flex-col font-body antialiased" suppressHydrationWarning>
         <a
           href="#content"
           className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-50 focus:rounded-sm focus:bg-gold focus:px-4 focus:py-2 focus:text-forestdeep"
@@ -60,7 +60,7 @@ export default async function RootLayout({
         </a>
         <Nav />
         <SiteAnnouncements initialAnnouncements={initialAnnouncements} />
-        <main id="content" className="min-h-screen">
+        <main id="content" tabIndex={-1} className="min-w-0 flex-1">
           {children}
         </main>
         <Footer />

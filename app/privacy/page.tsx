@@ -8,26 +8,26 @@ export const metadata = {
 export default function PrivacyPage() {
   return (
     <div className="mx-auto max-w-4xl px-4 py-16 sm:px-6 md:py-20">
-      <p className="font-mono text-xs uppercase tracking-[0.3em] text-gold">Student Privacy</p>
+      <p className="font-mono text-xs uppercase tracking-[0.3em] text-accent">Student Privacy</p>
       <h1 className="mt-4 font-display text-3xl font-medium text-forest sm:text-4xl">
         Student Data Privacy
       </h1>
-      <p className="mt-3 font-mono text-[11px] uppercase tracking-[0.18em] text-graphite/45">
+      <p className="mt-3 font-mono text-xs uppercase tracking-[0.18em] text-graphite/80">
         Effective August 26, 2026
       </p>
-      <p className="mt-1 font-mono text-[11px] uppercase tracking-[0.18em] text-graphite/45">
-        Last updated August 27, 2026
+      <p className="mt-1 font-mono text-xs uppercase tracking-[0.18em] text-graphite/80">
+        Last updated October 12, 2026
       </p>
-      <p className="mt-4 max-w-3xl text-sm leading-relaxed text-graphite/75 sm:text-base">
+      <p className="mt-4 max-w-3xl text-sm leading-relaxed text-graphite/80 sm:text-base">
         This notice explains how the Green Engineering Academy handles student information on this
         website and during the leadership application process.
       </p>
 
       <div className="mt-8 rounded-sm bg-forest/[0.04] p-5 ring-1 ring-forest/10">
-        <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-gold">
+        <p className="font-mono text-xs uppercase tracking-[0.2em] text-accent">
           Summary
         </p>
-        <div className="mt-3 space-y-3 text-sm leading-relaxed text-graphite/75">
+        <div className="mt-3 space-y-3 text-sm leading-relaxed text-graphite/80">
           <p>We do not sell student information.</p>
           <p>
             We do not use advertising cookies, tracking pixels, or website analytics tools on the
@@ -42,14 +42,19 @@ export default function PrivacyPage() {
 
       <section className="mt-8 space-y-6">
         <div className="rounded-sm bg-paper p-5 ring-1 ring-forest/10">
+          <h2 className="font-display text-xl text-forest">GEA Builders</h2>
+          <p className="mt-3 text-sm leading-relaxed text-graphite/80">Students and approved officers can access a student’s build submissions, revision history, points, and feedback. Officers also track earned certificates and meeting shout-outs. An approved project may appear on the public Builder Wall only when the student allows sharing and an officer publishes its edited story. Public stories include a first name, project title, location category, problem, and build description. Emails, video links, officer notes, and point totals stay private. Students can keep a build off the wall or change their sharing preference in My progress without losing points. Google Drive video access follows the file’s sharing settings.</p>
+        </div>
+        <div className="rounded-sm bg-paper p-5 ring-1 ring-forest/10">
           <h2 className="font-display text-xl text-forest">Information we collect</h2>
-          <div className="mt-3 space-y-3 text-sm leading-relaxed text-graphite/75">
+          <div className="mt-3 space-y-3 text-sm leading-relaxed text-graphite/80">
             <p>Depending on how you use the site, we may collect:</p>
             <ul className="list-disc space-y-2 pl-5">
               <li>Student name and contact information</li>
               <li>School email address</li>
               <li>Graduating class year</li>
               <li>Student ID number</li>
+              <li>GEA Builders project descriptions, team credits, video links, review feedback, and recognition records</li>
               <li>Leadership application answers and supporting information</li>
               <li>Leadership seat updates, officer notes, and other school program records</li>
             </ul>
@@ -58,7 +63,7 @@ export default function PrivacyPage() {
 
         <div className="rounded-sm bg-paper p-5 ring-1 ring-forest/10">
           <h2 className="font-display text-xl text-forest">How we use information</h2>
-          <div className="mt-3 space-y-3 text-sm leading-relaxed text-graphite/75">
+          <div className="mt-3 space-y-3 text-sm leading-relaxed text-graphite/80">
             <p>We use this information to:</p>
             <ul className="list-disc space-y-2 pl-5">
               <li>Review leadership applications</li>
@@ -72,7 +77,7 @@ export default function PrivacyPage() {
 
         <div className="rounded-sm bg-paper p-5 ring-1 ring-forest/10">
           <h2 className="font-display text-xl text-forest">Cookies and tracking</h2>
-          <div className="mt-3 space-y-3 text-sm leading-relaxed text-graphite/75">
+          <div className="mt-3 space-y-3 text-sm leading-relaxed text-graphite/80">
             <p>
               We do not use advertising cookies or website analytics tools to track visitors or
               collect statistics from the public site.
@@ -86,7 +91,7 @@ export default function PrivacyPage() {
 
         <div className="rounded-sm bg-paper p-5 ring-1 ring-forest/10">
           <h2 className="font-display text-xl text-forest">Security</h2>
-          <div className="mt-3 space-y-3 text-sm leading-relaxed text-graphite/75">
+          <div className="mt-3 space-y-3 text-sm leading-relaxed text-graphite/80">
             <p>
               Sensitive information is stored in a secure database and protected by our app and
               hosting providers.
@@ -103,7 +108,7 @@ export default function PrivacyPage() {
 
         <div className="rounded-sm bg-paper p-5 ring-1 ring-forest/10">
           <h2 className="font-display text-xl text-forest">Sharing and selling</h2>
-          <div className="mt-3 space-y-3 text-sm leading-relaxed text-graphite/75">
+          <div className="mt-3 space-y-3 text-sm leading-relaxed text-graphite/80">
             <p>We do not sell student information.</p>
             <p>
               We do not use student data for advertising. Information is only shared when needed to
@@ -115,7 +120,7 @@ export default function PrivacyPage() {
 
         <div className="rounded-sm bg-paper p-5 ring-1 ring-forest/10">
           <h2 className="font-display text-xl text-forest">Access, correction, and updates</h2>
-          <div className="mt-3 space-y-3 text-sm leading-relaxed text-graphite/75">
+          <div className="mt-3 space-y-3 text-sm leading-relaxed text-graphite/80">
             <p>
               If a student or parent needs help reviewing, correcting, or deleting information, they
               can contact the GEA staff team using the information below.
@@ -129,7 +134,7 @@ export default function PrivacyPage() {
 
       <section className="mt-8 rounded-sm bg-forest/[0.04] p-5 ring-1 ring-forest/10">
         <h2 className="font-display text-xl text-forest">Contact</h2>
-        <p className="mt-3 text-sm leading-relaxed text-graphite/75">
+        <p className="mt-3 text-sm leading-relaxed text-graphite/80">
           For privacy questions, please email{" "}
           <a
             href="mailto:livermoregea@gmail.com"

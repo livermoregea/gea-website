@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { isLvjusdStudentEmail } from "@/lib/student-email";
 import { hasSupabaseConfig } from "@/lib/supabase/config";
 
 type Payload = {
@@ -9,10 +10,6 @@ type Payload = {
   graduatingClassYear?: number;
   studentIdNumber?: string;
 };
-
-function isLvjusdEmail(email: string) {
-  return email.toLowerCase().endsWith("@lvjusd.org");
-}
 
 async function findAuthUserByEmail(supabase: ReturnType<typeof createAdminClient>, email: string) {
   const { data, error } = await supabase.auth.admin.listUsers({ page: 1, perPage: 1000 });
@@ -42,8 +39,8 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Missing student account details." }, { status: 400 });
   }
 
-  if (!isLvjusdEmail(schoolEmail)) {
-    return NextResponse.json({ error: "Student email must end in @lvjusd.org." }, { status: 400 });
+  if (!isLvjusdStudentEmail(schoolEmail)) {
+    return NextResponse.json({ error: "Accounts are for GEA and LVJUSD students only. Use a valid @lvjusd.org student email." }, { status: 400 });
   }
 
   const supabase = createAdminClient();

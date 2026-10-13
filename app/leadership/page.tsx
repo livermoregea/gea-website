@@ -39,7 +39,7 @@ export default async function LeadershipPage() {
   return (
     <LeadershipPhotoNotice>
     <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6 md:py-12">
-      <p className="font-mono text-xs uppercase tracking-[0.3em] text-gold">Student Leadership</p>
+      <p className="font-mono text-xs uppercase tracking-[0.3em] text-accent">Student Leadership</p>
       <h1 className="mt-2 font-display text-2xl font-medium text-forest sm:text-3xl md:text-4xl">
         GEA Leadership Board
       </h1>
@@ -77,7 +77,7 @@ export default async function LeadershipPage() {
                     <div className="mt-3">
                       <p className="text-sm font-medium text-graphite">{member.name}</p>
                       {member.contact_email && (
-                        <p className="mt-1 text-[11px] text-graphite/70">
+                        <p className="mt-1 text-xs text-graphite/80">
                           Contact:{" "}
                           <a
                             href={`mailto:${member.contact_email}`}
@@ -88,7 +88,7 @@ export default async function LeadershipPage() {
                         </p>
                       )}
                       {member.bio && (
-                        <p className="mt-1 text-[11px] leading-relaxed text-graphite/70">{member.bio}</p>
+                        <p className="mt-1 text-xs leading-relaxed text-graphite/80">{member.bio}</p>
                       )}
                     </div>
                   ) : null}
@@ -111,16 +111,16 @@ export default async function LeadershipPage() {
             draggable={false}
           />
         </ProtectedLeadershipPhoto>
-        <figcaption className="mt-3 text-center font-mono text-xs uppercase tracking-[0.15em] text-graphite/65">
+        <figcaption className="mt-3 text-center font-mono text-xs uppercase tracking-[0.15em] text-graphite/80">
           2026 Leadership Team
         </figcaption>
       </figure>
 
       {formerMembers && formerMembers.length > 0 ? (
         <section className="mt-14 border-t border-forest/10 pt-8">
-          <p className="font-mono text-xs uppercase tracking-[0.3em] text-gold">Former Leadership</p>
+          <p className="font-mono text-xs uppercase tracking-[0.3em] text-accent">Former Leadership</p>
           <h2 className="mt-2 font-display text-2xl text-forest sm:text-3xl">Past leadership teams</h2>
-          <p className="mt-3 max-w-2xl text-sm leading-relaxed text-graphite/65">
+          <p className="mt-3 max-w-2xl text-sm leading-relaxed text-graphite/80">
             A record of the students who helped lead GEA in previous school years.
           </p>
           <div className="mt-6 space-y-8">
@@ -137,12 +137,12 @@ export default async function LeadershipPage() {
                             <img src={member.photo_url} alt={member.name} draggable={false} className="h-full w-full object-cover" />
                           </ProtectedLeadershipPhoto>
                         ) : (
-                          <span className="font-mono text-xs uppercase tracking-[0.12em] text-gold">{member.name.split(" ").filter(Boolean).map((part) => part[0]).slice(0, 2).join("")}</span>
+                          <span className="font-mono text-xs uppercase tracking-[0.12em] text-accent">{member.name.split(" ").filter(Boolean).map((part) => part[0]).slice(0, 2).join("")}</span>
                         )}
                       </div>
                       <div>
                         <p className="font-medium text-forest">{member.name}</p>
-                        <p className="mt-1 text-xs text-graphite/60">{getRoleLabel(member.role, roles)}</p>
+                        <p className="mt-1 text-xs text-graphite/80">{getRoleLabel(member.role, roles)}</p>
                       </div>
                     </div>
                   ))}

@@ -35,6 +35,7 @@ export default function TeacherAuthForm({
 
   async function signIn(e: React.FormEvent) {
     e.preventDefault();
+    try {
     setLoginError(null);
 
     if (!hasSupabaseConfig()) {
@@ -58,10 +59,16 @@ export default function TeacherAuthForm({
 
     router.push(redirectTo);
     router.refresh();
+      } catch {
+      setLoginError("We couldn’t reach the sign-in service. Check your connection and try again.");
+    } finally {
+      setLoading(false);
+    }
   }
 
   async function signUp(e: React.FormEvent) {
     e.preventDefault();
+    try {
     setSignupError(null);
 
     if (!hasSupabaseConfig()) {
@@ -114,6 +121,11 @@ export default function TeacherAuthForm({
 
     router.push(redirectTo);
     router.refresh();
+      } catch {
+      setSignupError("We couldn’t reach the sign-in service. Check your connection and try again.");
+    } finally {
+      setLoading(false);
+    }
   }
 
   return (
@@ -123,7 +135,7 @@ export default function TeacherAuthForm({
           type="button"
           onClick={() => setMode("signin")}
           className={`rounded-sm px-3 py-2 font-mono text-xs uppercase tracking-[0.15em] transition ${
-            mode === "signin" ? "bg-forest text-gold" : "text-forest/70 hover:text-forest"
+            mode === "signin" ? "bg-forest text-accent" : "text-forest/80 hover:text-forest"
           }`}
         >
           Sign In
@@ -132,7 +144,7 @@ export default function TeacherAuthForm({
           type="button"
           onClick={() => setMode("signup")}
           className={`rounded-sm px-3 py-2 font-mono text-xs uppercase tracking-[0.15em] transition ${
-            mode === "signup" ? "bg-forest text-gold" : "text-forest/70 hover:text-forest"
+            mode === "signup" ? "bg-forest text-accent" : "text-forest/80 hover:text-forest"
           }`}
         >
           Create Account
@@ -142,7 +154,7 @@ export default function TeacherAuthForm({
       {mode === "signin" ? (
         <form onSubmit={signIn} className="mt-6 space-y-5">
           <div>
-            <label htmlFor={loginEmailId} className="font-mono text-xs uppercase tracking-[0.15em] text-graphite/70">
+            <label htmlFor={loginEmailId} className="font-mono text-xs uppercase tracking-[0.15em] text-graphite/80">
               School Email
             </label>
             <input
@@ -151,13 +163,13 @@ export default function TeacherAuthForm({
               type="email"
               value={loginEmail}
               onChange={(e) => setLoginEmail(e.target.value)}
-              className="mt-2 w-full rounded-sm border border-forest/15 bg-paper px-4 py-3 text-sm outline-none focus:border-gold"
-              placeholder="name@lvjusd.org"
+              className="mt-2 w-full rounded-sm border border-forest/65 bg-paper px-4 py-3 text-base outline-none focus:border-gold"
+              placeholder="name@lvjusd.org" autoComplete="username"
             />
           </div>
 
           <div>
-            <label htmlFor={loginPasswordId} className="font-mono text-xs uppercase tracking-[0.15em] text-graphite/70">
+            <label htmlFor={loginPasswordId} className="font-mono text-xs uppercase tracking-[0.15em] text-graphite/80">
               Password
             </label>
             <input
@@ -166,8 +178,8 @@ export default function TeacherAuthForm({
               type="password"
               value={loginPassword}
               onChange={(e) => setLoginPassword(e.target.value)}
-              className="mt-2 w-full rounded-sm border border-forest/15 bg-paper px-4 py-3 text-sm outline-none focus:border-gold"
-              placeholder="Your teacher password"
+              className="mt-2 w-full rounded-sm border border-forest/65 bg-paper px-4 py-3 text-base outline-none focus:border-gold"
+              placeholder="Your teacher password" autoComplete="current-password"
             />
           </div>
 
@@ -180,7 +192,7 @@ export default function TeacherAuthForm({
           <button
             type="submit"
             disabled={loading}
-            className="w-full rounded-sm bg-forest px-6 py-3 font-mono text-xs uppercase tracking-[0.15em] text-gold transition hover:bg-forestdeep disabled:opacity-50"
+            className="w-full rounded-sm bg-forest px-6 py-3 font-mono text-xs uppercase tracking-[0.15em] text-accent transition hover:bg-forestdeep disabled:opacity-50"
           >
             {loading ? "Signing in..." : "Sign In"}
           </button>
@@ -188,7 +200,7 @@ export default function TeacherAuthForm({
       ) : (
         <form onSubmit={signUp} className="mt-6 space-y-5">
           <div>
-            <label htmlFor={signupNameId} className="font-mono text-xs uppercase tracking-[0.15em] text-graphite/70">
+            <label htmlFor={signupNameId} className="font-mono text-xs uppercase tracking-[0.15em] text-graphite/80">
               Full Name
             </label>
             <input
@@ -196,13 +208,13 @@ export default function TeacherAuthForm({
               required
               value={signupName}
               onChange={(e) => setSignupName(e.target.value)}
-              className="mt-2 w-full rounded-sm border border-forest/15 bg-paper px-4 py-3 text-sm outline-none focus:border-gold"
+              className="mt-2 w-full rounded-sm border border-forest/65 bg-paper px-4 py-3 text-base outline-none focus:border-gold"
               placeholder="First and last name"
             />
           </div>
 
           <div>
-            <label htmlFor={signupEmailId} className="font-mono text-xs uppercase tracking-[0.15em] text-graphite/70">
+            <label htmlFor={signupEmailId} className="font-mono text-xs uppercase tracking-[0.15em] text-graphite/80">
               School Email
             </label>
             <input
@@ -211,13 +223,13 @@ export default function TeacherAuthForm({
               type="email"
               value={signupEmail}
               onChange={(e) => setSignupEmail(e.target.value)}
-              className="mt-2 w-full rounded-sm border border-forest/15 bg-paper px-4 py-3 text-sm outline-none focus:border-gold"
-              placeholder="name@lvjusd.org"
+              className="mt-2 w-full rounded-sm border border-forest/65 bg-paper px-4 py-3 text-base outline-none focus:border-gold"
+              placeholder="name@lvjusd.org" autoComplete="username"
             />
           </div>
 
           <div>
-            <label htmlFor={signupCodeId} className="font-mono text-xs uppercase tracking-[0.15em] text-graphite/70">
+            <label htmlFor={signupCodeId} className="font-mono text-xs uppercase tracking-[0.15em] text-graphite/80">
               Signup Code
             </label>
             <input
@@ -225,7 +237,7 @@ export default function TeacherAuthForm({
               required
               value={signupCode}
               onChange={(e) => setSignupCode(e.target.value)}
-              className="mt-2 w-full rounded-sm border border-forest/15 bg-paper px-4 py-3 text-sm outline-none focus:border-gold"
+              className="mt-2 w-full rounded-sm border border-forest/65 bg-paper px-4 py-3 text-base outline-none focus:border-gold"
               placeholder="Private teacher code"
             />
           </div>
@@ -233,7 +245,7 @@ export default function TeacherAuthForm({
           <div>
             <label
               htmlFor={signupPasswordId}
-              className="font-mono text-xs uppercase tracking-[0.15em] text-graphite/70"
+              className="font-mono text-xs uppercase tracking-[0.15em] text-graphite/80"
             >
               Password
             </label>
@@ -243,8 +255,8 @@ export default function TeacherAuthForm({
               type="password"
               value={signupPassword}
               onChange={(e) => setSignupPassword(e.target.value)}
-              className="mt-2 w-full rounded-sm border border-forest/15 bg-paper px-4 py-3 text-sm outline-none focus:border-gold"
-              placeholder="Choose a password"
+              className="mt-2 w-full rounded-sm border border-forest/65 bg-paper px-4 py-3 text-base outline-none focus:border-gold"
+              placeholder="Choose a password" autoComplete="new-password"
             />
           </div>
 
@@ -257,7 +269,7 @@ export default function TeacherAuthForm({
           <button
             type="submit"
             disabled={loading}
-            className="w-full rounded-sm bg-forest px-6 py-3 font-mono text-xs uppercase tracking-[0.15em] text-gold transition hover:bg-forestdeep disabled:opacity-50"
+            className="w-full rounded-sm bg-forest px-6 py-3 font-mono text-xs uppercase tracking-[0.15em] text-accent transition hover:bg-forestdeep disabled:opacity-50"
           >
             {loading ? "Creating account..." : "Create Teacher Account"}
           </button>

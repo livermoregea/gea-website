@@ -136,46 +136,46 @@ export default function AdminProfileChanges() {
     load();
   }
 
-  if (loading) return <p className="text-sm text-graphite/50">Loading profile change requests...</p>;
+  if (loading) return <p role="status" className="text-sm text-graphite/80">Loading profile change requests...</p>;
 
   return (
     <div className="space-y-6">
       <section className="rounded-sm bg-paper p-5 ring-1 ring-forest/10">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
           <div>
-            <p className="font-mono text-xs uppercase tracking-[0.2em] text-gold">Profile Changes</p>
+            <p className="font-mono text-xs uppercase tracking-[0.2em] text-accent">Profile Changes</p>
             <h3 className="mt-2 font-display text-2xl text-forest">Pending changes</h3>
           </div>
-          <p className="text-sm text-graphite/60">{requests.length} pending request{requests.length === 1 ? "" : "s"}</p>
+          <p className="text-sm text-graphite/80">{requests.length} pending request{requests.length === 1 ? "" : "s"}</p>
         </div>
       </section>
 
       <div className="space-y-4">
       {message && (
-        <p className="rounded-sm bg-forest/[0.05] p-4 text-sm text-graphite/80 ring-1 ring-forest/10">
+        <p className="rounded-sm bg-forest/[0.05] p-4 text-sm text-graphite/80 ring-1 ring-forest/10" role="status">
           {message}
         </p>
       )}
-      {requests.length === 0 && <p className="text-sm text-graphite/50">No pending profile changes.</p>}
+      {requests.length === 0 && <p className="text-sm text-graphite/80">No pending profile changes.</p>}
         {requests.map((request) => (
           <div key={request.id} className="rounded-sm bg-forest/[0.03] p-5 ring-1 ring-forest/10">
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div>
-                <p className="font-mono text-[11px] uppercase tracking-[0.2em] text-gold">
+                <p className="font-mono text-xs uppercase tracking-[0.2em] text-accent">
                   {request.profile_type} profile
                 </p>
                 <p className="mt-1 font-display text-lg text-forest">{request.requested_by_name}</p>
-                <p className="text-xs text-graphite/60">Requested {new Date(request.created_at).toLocaleString()}</p>
+                <p className="text-xs text-graphite/80">Requested {new Date(request.created_at).toLocaleString()}</p>
               </div>
             </div>
 
             <div className="mt-4 grid gap-3 sm:grid-cols-2">
               <div className="rounded-sm bg-paper/80 p-4 ring-1 ring-forest/10">
-                <p className="font-mono text-[10px] uppercase tracking-[0.15em] text-graphite/40">Current</p>
+                <p className="font-mono text-xs uppercase tracking-[0.15em] text-graphite/80">Current</p>
                 <div className="mt-2 space-y-1 text-sm text-graphite/80">
                   {Object.entries(request.current_fields).map(([key, value]) => (
                     <p key={key}>
-                      <span className="font-mono text-[10px] uppercase tracking-[0.12em] text-graphite/45">
+                      <span className="font-mono text-xs uppercase tracking-[0.12em] text-graphite/80">
                         {fieldLabel(key)}:
                       </span>{" "}
                       {toText(value)}
@@ -184,11 +184,11 @@ export default function AdminProfileChanges() {
                 </div>
               </div>
               <div className="rounded-sm bg-paper/80 p-4 ring-1 ring-forest/10">
-                <p className="font-mono text-[10px] uppercase tracking-[0.15em] text-graphite/40">Requested</p>
+                <p className="font-mono text-xs uppercase tracking-[0.15em] text-graphite/80">Requested</p>
                 <div className="mt-2 space-y-1 text-sm text-graphite/80">
                   {Object.entries(request.requested_fields).map(([key, value]) => (
                     <p key={key}>
-                      <span className="font-mono text-[10px] uppercase tracking-[0.12em] text-graphite/45">
+                      <span className="font-mono text-xs uppercase tracking-[0.12em] text-graphite/80">
                         {fieldLabel(key)}:
                       </span>{" "}
                       {toText(value)}
@@ -205,13 +205,14 @@ export default function AdminProfileChanges() {
             ) : null}
 
             <textarea
+              aria-label="Reason for rejecting this profile change"
               value={rejectionReasons[request.id] ?? ""}
               onChange={(e) =>
                 setRejectionReasons((current) => ({ ...current, [request.id]: e.target.value }))
               }
               rows={2}
               placeholder="Reason for rejection (required if you reject this request)"
-              className="mt-4 w-full rounded-sm border border-forest/15 bg-paper px-3 py-2 text-sm outline-none focus:border-gold"
+              className="mt-4 w-full rounded-sm border border-forest/65 bg-paper px-3 py-2 text-base outline-none focus:border-gold"
             />
 
             <div className="mt-3 flex gap-3">

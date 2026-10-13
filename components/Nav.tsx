@@ -1,5 +1,6 @@
 "use client";
 
+import { BUILDERS_ENABLED } from "@/lib/site-features";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
@@ -12,12 +13,10 @@ const links = [
   { href: "/", label: "Home" },
   { href: "/curriculum", label: "Curriculum" },
   { href: "/leadership", label: "Leadership" },
+  ...(BUILDERS_ENABLED ? [{ href: "/builders", label: "Builders" }] : []),
   { href: "/qa", label: "Q&A" },
   { href: "/contact", label: "Contact" },
 ];
-
-const academyApplicationUrl =
-  "https://docs.google.com/forms/d/e/1FAIpQLSdTDKvYr0IqeTOAl88It9BlaFNkUU359dHG5B6FBzN48W6yng/viewform";
 
 export default function Nav() {
   const [open, setOpen] = useState(false);
@@ -27,6 +26,8 @@ export default function Nav() {
   const pathname = usePathname();
   const router = useRouter();
   const accountRef = useRef<HTMLDivElement>(null);
+  const accountButtonRef = useRef<HTMLButtonElement>(null);
+  const mobileButtonRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     setOpen(false);
@@ -74,6 +75,25 @@ export default function Nav() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
+  useEffect(() => {
+    if (!open && !accountOpen) return;
+    function handleEscape(event: KeyboardEvent) {
+      if (event.key !== "Escape") return;
+      event.preventDefault();
+      if (accountOpen) { setAccountOpen(false); accountButtonRef.current?.focus(); }
+      if (open) { setOpen(false); mobileButtonRef.current?.focus(); }
+    }
+    function handleFocus(event: FocusEvent) {
+      if (accountOpen && accountRef.current && !accountRef.current.contains(event.target as Node)) setAccountOpen(false);
+    }
+    document.addEventListener("keydown", handleEscape);
+    document.addEventListener("focusin", handleFocus);
+    return () => {
+      document.removeEventListener("keydown", handleEscape);
+      document.removeEventListener("focusin", handleFocus);
+    };
+  }, [open, accountOpen]);
+
   async function handleSignOut() {
     if (!hasSupabaseConfig()) return;
     const supabase = createClient();
@@ -104,37 +124,31 @@ export default function Nav() {
               <span className="truncate font-display text-sm font-medium tracking-wide text-forestdeep sm:text-base">
                 Green Engineering Academy
               </span>
-              <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-graphite/65">
+              <span className="font-mono text-xs uppercase tracking-[0.2em] text-graphite/80">
                 Livermore High School
               </span>
             </span>
           </Link>
-          <nav className="hidden items-center gap-8 md:flex" aria-label="Primary">
+          <nav className="hidden shrink-0 items-center gap-6 lg:flex xl:gap-8" aria-label="Primary">
             {links.map((l) => (
               <Link
                 key={l.href}
                 href={l.href}
-                aria-current={pathname === l.href ? "page" : undefined}
-                className="rounded-sm font-mono text-xs uppercase tracking-[0.15em] text-forestdeep transition hover:text-forest aria-[current=page]:text-forest"
+                aria-current={pathname === l.href || (l.href !== "/" && pathname.startsWith(`${l.href}/`)) ? "page" : undefined}
+                className="inline-flex min-h-11 items-center rounded-sm font-mono text-xs uppercase tracking-[0.15em] text-forestdeep transition hover:text-forest aria-[current=page]:text-forest"
               >
                 {l.label}
               </Link>
             ))}
           </nav>
-          <div className="hidden items-center gap-3 sm:flex">
-            <Link
-              href={academyApplicationUrl}
-              target="_blank"
-              rel="noreferrer"
-              className="min-h-11 items-center rounded-sm bg-forest px-4 py-2 font-mono text-xs uppercase tracking-[0.15em] text-gold transition hover:bg-forestdeep sm:inline-flex"
-            >
-              Apply to GEA Now!
-            </Link>
+          <div className="hidden shrink-0 items-center sm:flex">
             <div ref={accountRef} className="relative">
               {accountReady && isSignedIn ? (
                 <>
                   <button
+                    ref={accountButtonRef}
                     type="button"
+                    aria-controls="account-links"
                     onClick={() => setAccountOpen((value) => !value)}
                     className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-forest/15 bg-paper text-forestdeep transition hover:border-forest/30 hover:bg-forest/[0.04]"
                     aria-label="Account menu"
@@ -148,7 +162,7 @@ export default function Nav() {
                     </svg>
                   </button>
                   {accountOpen && (
-                    <div className="absolute right-0 top-full z-50 mt-2 w-56 rounded-sm border border-forest/10 bg-paper p-2 shadow-lg shadow-forest/10">
+                    <div id="account-links" className="absolute right-0 top-full z-50 mt-2 w-56 rounded-sm border border-forest/10 bg-paper p-2 shadow-lg shadow-forest/10">
                       <Link
                         href="/profile"
                         onClick={() => setAccountOpen(false)}
@@ -177,8 +191,9 @@ export default function Nav() {
             </div>
           </div>
           <button
+            ref={mobileButtonRef}
             type="button"
-            className="inline-flex min-h-11 items-center rounded-sm border border-forest/15 px-4 font-mono text-xs uppercase tracking-[0.15em] text-forestdeep md:hidden"
+            className="inline-flex min-h-11 items-center rounded-sm border border-forest/15 px-4 font-mono text-xs uppercase tracking-[0.15em] text-forestdeep lg:hidden"
             aria-expanded={open}
             aria-controls="mobile-nav"
             onClick={() => setOpen((v) => !v)}
@@ -189,7 +204,7 @@ export default function Nav() {
         {open && (
           <nav
             id="mobile-nav"
-            className="mt-3 grid gap-2 rounded-sm border border-forest/10 bg-paper p-3 md:hidden"
+            className="mt-3 grid gap-2 rounded-sm border border-forest/10 bg-paper p-3 lg:hidden"
             aria-label="Mobile primary"
           >
             {links.map((l) => (
@@ -197,21 +212,12 @@ export default function Nav() {
                 key={l.href}
                 href={l.href}
                 onClick={() => setOpen(false)}
-                aria-current={pathname === l.href ? "page" : undefined}
+                aria-current={pathname === l.href || (l.href !== "/" && pathname.startsWith(`${l.href}/`)) ? "page" : undefined}
                 className="rounded-sm px-3 py-2 font-mono text-xs uppercase tracking-[0.15em] text-forestdeep transition hover:bg-forest/[0.06] aria-[current=page]:bg-forest/[0.08]"
               >
                 {l.label}
               </Link>
             ))}
-            <Link
-              href={academyApplicationUrl}
-              target="_blank"
-              rel="noreferrer"
-              onClick={() => setOpen(false)}
-              className="rounded-sm bg-forest px-3 py-2 text-center font-mono text-xs uppercase tracking-[0.15em] text-gold"
-            >
-              Apply to GEA Now!
-            </Link>
             {accountReady && isSignedIn ? (
               <>
                 <Link

@@ -94,6 +94,7 @@ export default function AdminApplicationDetail({ applicationId }: { applicationI
   }
 
   async function generateInviteDraft() {
+    try {
     if (!application || !hasSupabaseConfig()) {
       setMessage("Interview drafts are disabled in demo mode.");
       return;
@@ -116,19 +117,22 @@ export default function AdminApplicationDetail({ applicationId }: { applicationI
 
     setDraft(data as InterviewDraft);
     setMessage("Interview draft ready. Copy it and send it manually.");
+      } catch { setMessage("Couldn’t complete this request. Check your connection and try again."); } finally { setDraftLoading(false); }
   }
 
   async function copyText(value: string, key: string) {
+    try {
     await navigator.clipboard.writeText(value);
     setCopied(key);
     window.setTimeout(() => setCopied((current) => (current === key ? null : current)), 1500);
+      } catch { setMessage("Couldn’t copy the draft. Select the text and copy it manually."); }
   }
 
   if (loading) return <AdminLoading detail />;
   if (!application) {
     return (
       <div className="space-y-4">
-        <p className="text-sm text-graphite/60">This application could not be found.</p>
+        <p className="text-sm text-graphite/80">This application could not be found.</p>
         <Link href="/admin-portal-x7k9/applications" className="font-mono text-xs uppercase tracking-[0.15em] text-forest underline">
           Back to applications
         </Link>
@@ -151,7 +155,7 @@ export default function AdminApplicationDetail({ applicationId }: { applicationI
               id="jump-to-application"
               value={application?.id ?? applicationId}
               onChange={(event) => router.push(`/admin-portal-x7k9/applications/${event.target.value}`)}
-              className="min-h-10 max-w-52 rounded-sm border border-forest/15 bg-paper px-3 py-2 font-mono text-[10px] uppercase tracking-[0.08em] text-forest"
+              className="min-h-10 max-w-52 rounded-sm border border-forest/65 bg-paper px-3 py-2 font-mono text-xs uppercase tracking-[0.08em] text-forest"
             >
               {applicationSummaries.map((item) => (
                 <option key={item.id} value={item.id}>{item.name}</option>
@@ -159,14 +163,14 @@ export default function AdminApplicationDetail({ applicationId }: { applicationI
             </select>
           )}
           {previousApplication ? (
-            <Link href={`/admin-portal-x7k9/applications/${previousApplication.id}`} className="max-w-48 rounded-sm border border-forest/15 px-3 py-2 text-left font-mono text-[10px] uppercase tracking-[0.08em] text-forest hover:bg-forest/[0.04]">
-              <span className="block text-[9px] text-graphite/45">Previous</span>
+            <Link href={`/admin-portal-x7k9/applications/${previousApplication.id}`} className="max-w-48 rounded-sm border border-forest/15 px-3 py-2 text-left font-mono text-xs uppercase tracking-[0.08em] text-forest hover:bg-forest/[0.04]">
+              <span className="block text-xs text-graphite/80">Previous</span>
               <span className="block truncate">{previousApplication.name}</span>
             </Link>
           ) : null}
           {nextApplication ? (
-            <Link href={`/admin-portal-x7k9/applications/${nextApplication.id}`} className="max-w-48 rounded-sm bg-forest px-3 py-2 text-left font-mono text-[10px] uppercase tracking-[0.08em] text-gold hover:bg-forestdeep">
-              <span className="block text-[9px] text-gold/65">Next</span>
+            <Link href={`/admin-portal-x7k9/applications/${nextApplication.id}`} className="max-w-48 rounded-sm bg-forest px-3 py-2 text-left font-mono text-xs uppercase tracking-[0.08em] text-accent hover:bg-forestdeep">
+              <span className="block text-xs text-accent">Next</span>
               <span className="block truncate">{nextApplication.name}</span>
             </Link>
           ) : null}
@@ -176,28 +180,28 @@ export default function AdminApplicationDetail({ applicationId }: { applicationI
       <div className="mt-8 grid gap-6 lg:grid-cols-[minmax(0,1fr)_18rem]">
         <main className="space-y-6">
           <header>
-            <p className="font-mono text-xs uppercase tracking-[0.2em] text-gold">Application review</p>
+            <p className="font-mono text-xs uppercase tracking-[0.2em] text-accent">Application review</p>
             <h1 className="mt-2 font-display text-3xl text-forest sm:text-4xl">{application.name}</h1>
-            <p className="mt-3 text-sm text-graphite/60">Submitted {formatDate(application.created_at)}</p>
+            <p className="mt-3 text-sm text-graphite/80">Submitted {formatDate(application.created_at)}</p>
           </header>
 
           <section className="grid gap-4 sm:grid-cols-3">
-            <div className="rounded-sm bg-forest/[0.04] p-4"><p className="font-mono text-[10px] uppercase tracking-[0.15em] text-gold">Position</p><p className="mt-2 text-sm text-forest">{getRoleLabel(application.role, roles)}</p></div>
-            <div className="rounded-sm bg-forest/[0.04] p-4"><p className="font-mono text-[10px] uppercase tracking-[0.15em] text-gold">Class year</p><p className="mt-2 text-sm text-forest">{application.graduating_class_year ?? "Not provided"}</p></div>
-            <div className="rounded-sm bg-forest/[0.04] p-4"><p className="font-mono text-[10px] uppercase tracking-[0.15em] text-gold">Email</p><p className="mt-2 break-all text-sm text-forest">{application.school_email}</p></div>
+            <div className="rounded-sm bg-forest/[0.04] p-4"><p className="font-mono text-xs uppercase tracking-[0.15em] text-accent">Position</p><p className="mt-2 text-sm text-forest">{getRoleLabel(application.role, roles)}</p></div>
+            <div className="rounded-sm bg-forest/[0.04] p-4"><p className="font-mono text-xs uppercase tracking-[0.15em] text-accent">Class year</p><p className="mt-2 text-sm text-forest">{application.graduating_class_year ?? "Not provided"}</p></div>
+            <div className="rounded-sm bg-forest/[0.04] p-4"><p className="font-mono text-xs uppercase tracking-[0.15em] text-accent">Email</p><p className="mt-2 break-all text-sm text-forest">{application.school_email}</p></div>
           </section>
 
           <section className="space-y-6 rounded-sm border border-forest/10 bg-paper p-5 sm:p-7">
-            <div><p className="font-mono text-[10px] uppercase tracking-[0.15em] text-gold">Why apply</p><p className="mt-2 whitespace-pre-wrap text-sm leading-7 text-graphite/80">{application.why_apply}</p></div>
-            <div><p className="font-mono text-[10px] uppercase tracking-[0.15em] text-gold">Why are you a good fit?</p><p className="mt-2 whitespace-pre-wrap text-sm leading-7 text-graphite/80">{application.why_fit}</p></div>
-            {application.proof_of_work ? <div><p className="font-mono text-[10px] uppercase tracking-[0.15em] text-gold">Proof of work</p><p className="mt-2 whitespace-pre-wrap text-sm leading-7 text-graphite/80">{application.proof_of_work}</p></div> : null}
+            <div><p className="font-mono text-xs uppercase tracking-[0.15em] text-accent">Why apply</p><p className="mt-2 whitespace-pre-wrap text-sm leading-7 text-graphite/80">{application.why_apply}</p></div>
+            <div><p className="font-mono text-xs uppercase tracking-[0.15em] text-accent">Why are you a good fit?</p><p className="mt-2 whitespace-pre-wrap text-sm leading-7 text-graphite/80">{application.why_fit}</p></div>
+            {application.proof_of_work ? <div><p className="font-mono text-xs uppercase tracking-[0.15em] text-accent">Proof of work</p><p className="mt-2 whitespace-pre-wrap text-sm leading-7 text-graphite/80">{application.proof_of_work}</p></div> : null}
           </section>
         </main>
 
         <aside className="h-fit space-y-4 lg:sticky lg:top-24">
           <section className="rounded-sm bg-forest/[0.04] p-5 ring-1 ring-forest/10">
-            <p className="font-mono text-[10px] uppercase tracking-[0.15em] text-gold">Review actions</p>
-            <p className="mt-4 text-sm text-graphite/70">Progress</p>
+            <p className="font-mono text-xs uppercase tracking-[0.15em] text-accent">Review actions</p>
+            <p className="mt-4 text-sm text-graphite/80">Progress</p>
             <div className="mt-2 grid gap-2">
               {STATUSES.map((status) => (
                 <button
@@ -205,9 +209,9 @@ export default function AdminApplicationDetail({ applicationId }: { applicationI
                   type="button"
                   disabled={saving || application.status === status}
                   onClick={() => updateStatus(status)}
-                  className={`min-h-10 rounded-sm border px-3 py-2 text-left font-mono text-[10px] uppercase tracking-[0.1em] transition ${
+                  className={`min-h-10 rounded-sm border px-3 py-2 text-left font-mono text-xs uppercase tracking-[0.1em] transition ${
                     application.status === status
-                      ? "border-forest bg-forest text-gold shadow-[0_0_0_2px_rgba(18,53,36,0.12)]"
+                      ? "border-forest bg-forest text-accent shadow-[0_0_0_2px_rgba(18,53,36,0.12)]"
                       : "border-forest/20 bg-paper text-forest hover:border-forest hover:bg-forest/[0.05]"
                   } disabled:cursor-not-allowed disabled:opacity-60`}
                 >
@@ -219,33 +223,33 @@ export default function AdminApplicationDetail({ applicationId }: { applicationI
               type="button"
               onClick={generateInviteDraft}
               disabled={draftLoading}
-              className="mt-5 inline-flex min-h-11 w-full items-center justify-center rounded-sm bg-forest px-4 py-2 font-mono text-xs uppercase tracking-[0.12em] text-gold transition hover:bg-forestdeep disabled:cursor-not-allowed disabled:opacity-60"
+              className="mt-5 inline-flex min-h-11 w-full items-center justify-center rounded-sm bg-forest px-4 py-2 font-mono text-xs uppercase tracking-[0.12em] text-accent transition hover:bg-forestdeep disabled:cursor-not-allowed disabled:opacity-60"
             >
               {draftLoading ? "Generating..." : "Generate Interview Link"}
             </button>
-            {message ? <p className="mt-3 text-xs text-graphite/65">{message}</p> : null}
+            {message ? <p className="mt-3 text-xs text-graphite/80">{message}</p> : null}
           </section>
           {draft ? (
             <section className="rounded-sm border border-forest/10 bg-paper p-5">
               <div className="flex items-center justify-between gap-3">
-                <p className="font-mono text-[10px] uppercase tracking-[0.15em] text-gold">Interview draft</p>
-                <button type="button" onClick={() => copyText(draft.bookingLink, "link")} className="font-mono text-[10px] uppercase tracking-[0.1em] text-forest underline underline-offset-4">
+                <p className="font-mono text-xs uppercase tracking-[0.15em] text-accent">Interview draft</p>
+                <button type="button" onClick={() => copyText(draft.bookingLink, "link")} className="font-mono text-xs uppercase tracking-[0.1em] text-forest underline underline-offset-4">
                   {copied === "link" ? "Copied" : "Copy link"}
                 </button>
               </div>
               <a href={draft.bookingLink} target="_blank" rel="noreferrer" className="mt-3 block break-all text-xs text-forest underline decoration-gold underline-offset-2">
                 {draft.bookingLink}
               </a>
-              <button type="button" onClick={() => copyText(`Subject: ${draft.email.subject}\n\n${draft.email.body}`, "email")} className="mt-4 w-full rounded-sm border border-forest/15 px-3 py-2 font-mono text-[10px] uppercase tracking-[0.1em] text-forest hover:bg-forest/[0.04]">
+              <button type="button" onClick={() => copyText(`Subject: ${draft.email.subject}\n\n${draft.email.body}`, "email")} className="mt-4 w-full rounded-sm border border-forest/15 px-3 py-2 font-mono text-xs uppercase tracking-[0.1em] text-forest hover:bg-forest/[0.04]">
                 {copied === "email" ? "Copied email" : "Copy email"}
               </button>
-              <p className="mt-4 text-xs font-medium text-graphite/70">{draft.email.subject}</p>
-              <textarea readOnly value={draft.email.body} className="mt-2 min-h-40 w-full rounded-sm border border-forest/10 bg-forest/[0.02] p-3 text-xs leading-5 text-graphite/75 outline-none" aria-label="Interview email draft" />
+              <p className="mt-4 text-xs font-medium text-graphite/80">{draft.email.subject}</p>
+              <textarea readOnly value={draft.email.body} className="mt-2 min-h-40 w-full rounded-sm border border-forest/65 bg-forest/[0.02] p-3 text-xs leading-5 text-graphite/80 outline-none" aria-label="Interview email draft" />
             </section>
           ) : null}
           <section className="rounded-sm border border-forest/10 p-5">
-            <p className="font-mono text-[10px] uppercase tracking-[0.15em] text-gold">Profile</p>
-            <div className="mt-3 space-y-2 text-sm text-graphite/75">
+            <p className="font-mono text-xs uppercase tracking-[0.15em] text-accent">Profile</p>
+            <div className="mt-3 space-y-2 text-sm text-graphite/80">
               <p>Username: {application.display_username ?? "None"}</p>
               <p>Student ID: {application.student_id_number ?? "None"}</p>
               <p>Interview: {bookedSlot?.label ?? "Not booked"}</p>

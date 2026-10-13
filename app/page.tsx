@@ -1,9 +1,11 @@
 import { GEA_DONATION_URL } from "@/lib/donations";
 import Link from "next/link";
+import ComingSoonTeaser from "@/components/ComingSoonTeaser";
+import AcademyPhotoGallery from "@/components/AcademyPhotoGallery";
 import CommunityProjectCards from "@/components/CommunityProjectCards";
+import HomeHighlights from "@/components/HomeHighlights";
 import HomeHeroCarousel from "@/components/HomeHeroCarousel";
 import ROPSection from "@/components/ROPSection";
-import { SocialIcon, socialLinks } from "@/components/SocialIcons";
 
 const benefits = [
   {
@@ -31,9 +33,6 @@ const sequence = [
   { year: "Senior", focus: "Engineering Capstone", note: "An independent, portfolio-defining project from concept to presentation." },
 ];
 
-const academyApplicationUrl =
-  "https://docs.google.com/forms/d/e/1FAIpQLSdTDKvYr0IqeTOAl88It9BlaFNkUU359dHG5B6FBzN48W6yng/viewform";
-
 function HeroCopy() {
   return (
     <div className="max-w-3xl">
@@ -41,14 +40,13 @@ function HeroCopy() {
         LHS Green Engineering Academy · Est. 2010
       </p>
       <h1 className="mt-5 max-w-3xl font-display text-3xl font-medium leading-[1.08] text-white drop-shadow-[0_2px_20px_rgba(0,0,0,0.35)] sm:text-4xl md:mt-6 md:text-6xl">
-        Engineering, design, and sustainability in one four-year pathway.
+        Curiosity today.
+        Engineering tomorrow.
       </h1>
       <p className="mt-5 max-w-xl text-sm leading-relaxed text-gray-200 drop-shadow-[0_2px_12px_rgba(0,0,0,0.28)] sm:text-base md:mt-6 md:text-lg">
-        STEM careers are the fastest-growing segment of the workforce, and the shift toward
-        renewable energy, sustainable design, and advanced manufacturing isn&apos;t slowing down.
-        GEA gives Livermore High students a four-year head start: real engineering software, a
-        dedicated cohort, and a curriculum built around the industries that will define the next
-        decade.
+        At Livermore High School’s Green Engineering Academy, students turn ideas into designs,
+        learn professional tools, and grow together through a four-year engineering pathway.
+        Start with a question. See where it takes you.
       </p>
       <div className="mt-8 flex flex-col gap-3 sm:mt-10 sm:flex-row sm:flex-wrap">
         <Link
@@ -56,14 +54,6 @@ function HeroCopy() {
           className="inline-flex min-h-11 w-full items-center justify-center rounded-sm bg-[#C8963E] px-6 py-3 font-mono text-xs font-semibold uppercase tracking-[0.15em] text-gray-900 transition hover:bg-goldlight sm:w-auto"
         >
           Explore the Curriculum
-        </Link>
-        <Link
-          href={academyApplicationUrl}
-          target="_blank"
-          rel="noreferrer"
-          className="inline-flex min-h-11 w-full items-center justify-center rounded-sm border border-white/30 px-6 py-3 font-mono text-xs uppercase tracking-[0.15em] text-white transition hover:border-white hover:text-white sm:w-auto"
-        >
-          Apply to GEA Now!
         </Link>
       </div>
       </div>
@@ -74,7 +64,7 @@ export default function HomePage() {
   return (
     <div>
       {/* Hero */}
-      <section className="relative flex min-h-[calc(100svh-4.375rem)] w-full flex-col justify-center overflow-hidden bg-forest">
+      <section className="relative flex min-h-[560px] sm:min-h-[620px] lg:min-h-[680px] w-full flex-col justify-center overflow-hidden bg-forest">
         <div className="absolute inset-0">
           <HomeHeroCarousel />
         </div>
@@ -84,34 +74,36 @@ export default function HomePage() {
           </div>
         </div>
       </section>
+      <HomeHighlights />
 
-      {/* Benefits */}
-      <section className="mx-auto max-w-6xl px-4 py-16 sm:px-6 md:py-20">
-        <div className="flex items-end justify-between">
-          <h2 className="font-display text-2xl font-medium text-gray-900 sm:text-3xl md:text-5xl">
-            Why a partnership academy, not just a class
-          </h2>
-        </div>
-        <div className="dim-divider mt-6" />
-        <div className="mt-10 grid gap-8 sm:grid-cols-2">
-          {benefits.map((b) => (
-            <div key={b.label} className="border-l-2 border-gold/60 pl-5">
-              <p className="font-mono text-xs uppercase tracking-[0.2em] text-[#1A362B]">
-                {b.label}
-              </p>
-              <p className="mt-2 text-base leading-relaxed text-graphite/80">{b.body}</p>
-            </div>
-          ))}
+      <AcademyPhotoGallery />
+
+      <section aria-labelledby="academy-difference-heading" className="mx-auto max-w-6xl px-4 pb-12 sm:px-6 md:pb-16">
+        <div className="grid gap-8 rounded-3xl bg-forestdeep bg-blueprintgrid bg-grid p-6 text-paper sm:p-10 lg:grid-cols-[0.8fr_1.2fr]">
+          <div className="lg:pr-4">
+            <p className="font-mono text-xs uppercase tracking-[0.18em] text-goldlight">The academy difference</p>
+            <h2 id="academy-difference-heading" className="mt-4 font-display text-3xl leading-tight sm:text-4xl">A place to learn.<br/>A team to grow with.</h2>
+            <p className="mt-5 text-base leading-relaxed text-paper/85">Engineering is part of your whole high school experience—from the people beside you to the tools in your hands.</p>
+            <Link href="/curriculum" className="mt-6 inline-flex min-h-11 items-center rounded-full bg-goldlight px-5 py-3 text-sm font-medium text-forestdeep transition hover:bg-paper">Get to know the pathway <span aria-hidden="true" className="ml-3">→</span></Link>
+          </div>
+          <div className="grid gap-6 sm:grid-cols-2">
+            {benefits.map(b => (
+              <div key={b.label} className="border-t border-paper/20 pt-4">
+                <h3 className="font-display text-xl text-goldlight">{b.label}</h3>
+                <p className="mt-3 text-sm leading-relaxed text-paper/85">{b.body}</p>
+              </div>
+            ))}
+          </div>
         </div>
       </section>
 
       {/* Course Sequence */}
-      <section className="bg-forest/[0.03] py-16 md:py-20">
+      <section className="bg-gold/[0.08] py-12 md:py-16">
         <div className="mx-auto max-w-6xl px-4 sm:px-6">
-          <h2 className="font-display text-xl font-medium text-gray-900 sm:text-2xl md:text-3xl">
+          <h2 className="font-display text-xl font-medium text-forestdeep sm:text-3xl md:text-4xl">
             A four-year pathway, one cohort
           </h2>
-          <p className="mt-3 max-w-2xl text-base leading-relaxed text-graphite/75 sm:text-lg">
+          <p className="mt-3 max-w-2xl text-base leading-relaxed text-graphite/80 sm:text-lg">
             Every GEA student takes the PLTW engineering pathway alongside their other classes.
             That keeps the cohort together for four years while leaving room for AP, honors, and a
             full college-prep schedule.
@@ -120,13 +112,13 @@ export default function HomePage() {
             {sequence.map((s, i) => (
               <div
                 key={s.year}
-                className="flex h-full min-h-[180px] flex-col rounded-sm bg-paper p-5 shadow-sm ring-1 ring-forest/5"
+                className="flex h-full flex-col rounded-xl bg-white p-6 shadow-sm ring-1 ring-forest/10"
               >
-                <p className="font-mono text-[11px] uppercase tracking-[0.2em] text-[#1A362B]">
-                  Year {i + 1} — {s.year}
+                <p className="font-mono text-xs uppercase tracking-[0.2em] text-[#1A362B]">
+                  {s.year} · Year {i + 1}
                 </p>
                 <p className="mt-3 font-display text-lg text-gray-900">{s.focus}</p>
-                <p className="mt-2 text-sm leading-relaxed text-graphite/70">{s.note}</p>
+                <p className="mt-2 text-sm leading-relaxed text-graphite/80">{s.note}</p>
               </div>
             ))}
           </div>
@@ -139,12 +131,12 @@ export default function HomePage() {
         </div>
       </section>
 
-      <ROPSection className="mx-auto max-w-6xl px-4 pt-16 sm:px-6 md:pt-20" />
+      <ROPSection className="mx-auto max-w-6xl px-4 pt-12 sm:px-6 md:pt-16" />
 
-      <section aria-labelledby="community-heading" className="mx-auto max-w-6xl px-4 pt-16 sm:px-6 md:pt-20">
-        <p className="font-mono text-xs uppercase tracking-[0.2em] text-forest/65">Beyond the classroom</p>
+      <section aria-labelledby="community-heading" className="mx-auto max-w-6xl px-4 pt-12 sm:px-6 md:pt-16">
+        <p className="font-mono text-xs uppercase tracking-[0.2em] text-forest/80">Beyond the classroom</p>
         <h2 id="community-heading" className="mt-3 font-display text-3xl font-medium text-forestdeep sm:text-4xl">Community In Action</h2>
-        <p className="mt-4 max-w-2xl leading-relaxed text-graphite/75">Sharing engineering through hands-on projects with our community.</p>
+        <p className="mt-4 max-w-2xl leading-relaxed text-graphite/80">Sharing engineering through hands-on projects with our community.</p>
         <div className="dim-divider mt-6" />
         <CommunityProjectCards />
         <Link href="/community" className="mt-8 inline-flex min-h-11 items-center font-mono text-xs uppercase tracking-[0.15em] text-forest underline decoration-gold underline-offset-4 transition hover:text-forestdeep">
@@ -152,111 +144,32 @@ export default function HomePage() {
         </Link>
       </section>
 
-      <section aria-labelledby="support-gea-heading" className="mx-auto max-w-6xl px-4 pt-16 sm:px-6 md:pt-20">
+      <section aria-labelledby="support-gea-heading" className="mx-auto max-w-6xl px-4 pt-12 sm:px-6 md:pt-16">
         <div className="flex flex-col gap-6 rounded-sm border border-forest/10 bg-paper p-6 sm:p-8 md:flex-row md:items-center md:justify-between">
           <div className="max-w-2xl">
-            <p className="font-mono text-xs uppercase tracking-[0.2em] text-forest/65">Give to GEA</p>
+            <p className="font-mono text-xs uppercase tracking-[0.2em] text-forest/80">Give to GEA</p>
             <h2 id="support-gea-heading" className="mt-3 font-display text-2xl text-forest sm:text-3xl">Support Green Engineering Academy</h2>
-            <p className="mt-3 text-sm leading-relaxed text-graphite/75 sm:text-base">
+            <p className="mt-3 text-sm leading-relaxed text-graphite/80 sm:text-base">
               Want to support GEA? Families, alumni, and community members can donate through the LVJUSD online store.
               Thank you for supporting our academy.
             </p>
           </div>
-          <a href={GEA_DONATION_URL} target="_blank" rel="noopener noreferrer" className="inline-flex min-h-11 shrink-0 items-center justify-center rounded-sm bg-forest px-6 py-3 font-mono text-xs uppercase tracking-[0.15em] text-gold transition hover:bg-forestdeep">
+          <a href={GEA_DONATION_URL} target="_blank" rel="noopener noreferrer" className="inline-flex min-h-11 shrink-0 items-center justify-center rounded-sm bg-forest px-6 py-3 font-mono text-xs uppercase tracking-[0.15em] text-accent transition hover:bg-forestdeep">
             Donate to GEA<span className="sr-only"> (opens in a new tab)</span>
           </a>
         </div>
       </section>
 
-      {/* CTA */}
-      <section className="mx-auto max-w-6xl px-4 py-16 sm:px-6 md:py-20">
-        <div className="rounded-sm bg-forest px-6 py-10 text-center sm:px-8 md:px-16 md:py-12">
-          <h2 className="font-display text-xl font-medium text-paper sm:text-2xl md:text-3xl">
-            Want to join GEA?
-          </h2>
-          <p className="mx-auto mt-4 max-w-3xl text-base leading-relaxed text-paper/75 sm:text-lg">
-            Apply, view leadership, or visit Q&amp;A.
-          </p>
-          <div className="mt-7 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:justify-center">
-            <Link
-              href={academyApplicationUrl}
-              target="_blank"
-              rel="noreferrer"
-              className="inline-flex items-center justify-center rounded-sm bg-[#C8963E] px-6 py-3 font-mono text-xs font-semibold uppercase tracking-[0.15em] text-gray-900 transition hover:bg-goldlight"
-            >
-              Apply to GEA
-            </Link>
-            <Link
-              href="/leadership"
-              className="inline-flex items-center justify-center rounded-sm border border-paper/30 px-6 py-3 font-mono text-xs uppercase tracking-[0.15em] text-paper transition hover:border-gold hover:text-gold"
-            >
-              View Leadership
-            </Link>
-            <Link
-              href="/qa"
-              className="inline-flex items-center justify-center rounded-sm border border-paper/30 px-6 py-3 font-mono text-xs uppercase tracking-[0.15em] text-paper transition hover:border-gold hover:text-gold"
-            >
-              Q&amp;A
-            </Link>
+      <section aria-labelledby="admissions-heading" className="mx-auto max-w-6xl px-4 py-8 sm:px-6 md:py-10">
+        <div className="flex flex-col gap-5 rounded-xl border border-forest/15 bg-forest/[0.04] px-6 py-5 sm:flex-row sm:items-center sm:justify-between sm:gap-8">
+          <div>
+            <h2 id="admissions-heading" className="font-display text-xl text-forestdeep sm:text-2xl">Interested in GEA?</h2>
+            <p className="mt-2 max-w-2xl text-sm leading-relaxed text-graphite/80"><strong className="font-semibold text-forest">Applications open in late November.</strong> Have questions about the program? Get in touch.</p>
           </div>
-
-          <div className="mt-8 grid gap-4 lg:grid-cols-2">
-            <div className="rounded-sm border border-paper/12 bg-paper/5 px-5 py-5 text-left text-paper/75">
-              <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-paper/45">
-                Transfer and enrollment
-              </p>
-              <p className="mt-2 text-sm leading-relaxed sm:text-base">
-                For transfer or enrollment details, check the LVJUSD enrollment page for the latest
-                information.
-              </p>
-              <Link
-                href="https://www.livermoreschools.org/departments/educational-services/student-services/enrollment-transfers"
-                target="_blank"
-                rel="noreferrer"
-                className="mt-3 inline-flex font-mono text-[11px] uppercase tracking-[0.16em] text-paper/85 underline decoration-paper/30 underline-offset-4 transition hover:text-paper"
-              >
-                Open transfer page
-              </Link>
-            </div>
-
-            <div className="rounded-sm border border-paper/12 bg-paper/5 px-5 py-5 text-left text-paper/75">
-              <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-paper/45">
-                Questions
-              </p>
-              <p className="mt-2 text-sm leading-relaxed sm:text-base">
-                Need contact information? Visit the Contact Us page for GEA coordinators, the
-                official counseling-services page, GEA email, and social links.
-              </p>
-              <Link
-                href="/contact"
-                className="mt-4 inline-flex rounded-sm border border-paper/20 px-4 py-2 font-mono text-[11px] uppercase tracking-[0.15em] text-paper transition hover:border-gold hover:text-gold"
-              >
-                Contact Us
-              </Link>
-            </div>
-          </div>
-          <div className="mt-8 flex flex-col items-center gap-3">
-            <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-paper/50">
-              Follow GEA
-            </p>
-            <div className="flex flex-wrap justify-center gap-3">
-              {socialLinks.map((social) => (
-                <Link
-                  key={social.label}
-                  href={social.href}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-paper/20 bg-paper/5 text-paper/90 transition hover:border-gold hover:text-gold"
-                  aria-label={social.label}
-                  title={social.label}
-                >
-                  <SocialIcon icon={social.icon} className="h-5 w-5" />
-                </Link>
-              ))}
-            </div>
-          </div>
+          <Link href="/contact" className="inline-flex min-h-11 w-fit shrink-0 items-center justify-center rounded-full bg-forest px-5 py-3 text-sm font-medium text-paper transition hover:bg-forestdeep focus-visible:outline-forest">Ask a question <span aria-hidden="true" className="ml-3">→</span></Link>
         </div>
       </section>
+      <ComingSoonTeaser />
     </div>
   );
 }

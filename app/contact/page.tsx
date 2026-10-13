@@ -20,11 +20,11 @@ export default function ContactPage() {
   return (
     <div className="mx-auto max-w-6xl px-4 py-16 sm:px-6 md:py-20">
       <div className="max-w-3xl">
-        <p className="font-mono text-xs uppercase tracking-[0.3em] text-gold">Contact Us</p>
+        <p className="font-mono text-xs uppercase tracking-[0.3em] text-accent">Contact Us</p>
         <h1 className="mt-4 font-display text-3xl font-medium text-forest sm:text-4xl md:text-5xl">
           GEA contact page
         </h1>
-        <p className="mt-4 max-w-2xl text-sm leading-relaxed text-graphite/75 sm:text-base">
+        <p className="mt-4 max-w-2xl text-sm leading-relaxed text-graphite/80 sm:text-base">
           Use this page for GEA coordinators, the GEA email, the official counseling-services
           page, and our social media links.
         </p>
@@ -33,25 +33,25 @@ export default function ContactPage() {
       <div className="mt-10 grid gap-6 lg:grid-cols-[1.05fr_0.95fr]">
         <div className="space-y-6">
           <section className="rounded-sm bg-paper p-5 ring-1 ring-forest/10">
-            <p className="font-mono text-xs uppercase tracking-[0.2em] text-gold">GEA Coordinators</p>
+            <p className="font-mono text-xs uppercase tracking-[0.2em] text-accent">GEA Coordinators</p>
             <div className="mt-5 grid gap-4">
               {geaCoordinators.map((contact) => (
                 <div key={contact.email} className="rounded-sm border border-forest/10 bg-forest/[0.03] p-4">
                   <p className="font-display text-lg text-forest">{contact.name}</p>
-                  <p className="mt-1 text-xs uppercase tracking-[0.15em] text-gold">GEA Coordinator</p>
-                  <p className="mt-2 text-sm text-graphite/70">{contact.email}</p>
+                  <p className="mt-1 text-xs uppercase tracking-[0.15em] text-accent">GEA Coordinator</p>
+                  <p className="mt-2 text-sm text-graphite/80">{contact.email}</p>
                 </div>
               ))}
             </div>
           </section>
 
           <section className="rounded-sm bg-paper p-5 ring-1 ring-forest/10">
-            <p className="font-mono text-xs uppercase tracking-[0.2em] text-gold">
+            <p className="font-mono text-xs uppercase tracking-[0.2em] text-accent">
               Livermore High Counseling Services
             </p>
             <div className="mt-4 rounded-sm border border-forest/10 bg-forest/[0.03] p-4">
               <p className="font-display text-lg text-forest">Official counselor list</p>
-              <p className="mt-2 text-sm leading-relaxed text-graphite/70">
+              <p className="mt-2 text-sm leading-relaxed text-graphite/80">
                 Visit the school counseling page for the current academic counselors and student
                 last-name assignments.
               </p>
@@ -63,14 +63,18 @@ export default function ContactPage() {
               >
                 Open Counseling Page
               </Link>
+              <div className="mt-5 border-t border-forest/15 pt-4">
+                <p className="text-sm leading-relaxed text-graphite/80">For school enrollment or transfers, visit the district’s official information page.</p>
+                <a href="https://www.livermoreschools.org/departments/educational-services/student-services/enrollment-transfers" target="_blank" rel="noopener noreferrer" className="mt-2 inline-flex min-h-11 items-center text-sm font-medium text-forest underline underline-offset-4">Enrollment and transfers <span aria-hidden="true" className="ml-2">↗</span><span className="sr-only"> (opens in a new tab)</span></a>
+              </div>
             </div>
           </section>
 
           <section className="rounded-sm bg-paper p-5 ring-1 ring-forest/10">
-            <p className="font-mono text-xs uppercase tracking-[0.2em] text-gold">General Contact</p>
+            <p className="font-mono text-xs uppercase tracking-[0.2em] text-accent">General Contact</p>
             <div className="mt-4 rounded-sm border border-forest/10 bg-forest/[0.03] p-4">
               <p className="font-display text-lg text-forest">Green Engineering Academy</p>
-              <p className="mt-1 text-sm text-graphite/70">livermoregea@gmail.com</p>
+              <p className="mt-1 text-sm text-graphite/80">livermoregea@gmail.com</p>
             </div>
           </section>
         </div>
@@ -78,17 +82,17 @@ export default function ContactPage() {
         <aside className="space-y-5">
           <section aria-labelledby="donate-heading" className="rounded-sm bg-forest p-5 text-paper">
             <h2 id="donate-heading" className="font-display text-xl">Support GEA</h2>
-            <p className="mt-3 text-sm leading-relaxed text-paper/75">
+            <p className="mt-3 text-sm leading-relaxed text-paper/85">
               You can donate to Green Engineering Academy through the LVJUSD online store.
               Thank you for supporting GEA!
             </p>
-            <a href={GEA_DONATION_URL} target="_blank" rel="noopener noreferrer" className="mt-4 inline-flex min-h-11 items-center justify-center rounded-sm border border-gold/60 px-4 py-2.5 font-mono text-xs uppercase tracking-[0.15em] text-gold transition hover:border-gold hover:bg-paper/5">
+            <a href={GEA_DONATION_URL} target="_blank" rel="noopener noreferrer" className="mt-4 inline-flex min-h-11 items-center justify-center rounded-sm border border-gold/60 px-4 py-2.5 font-mono text-xs uppercase tracking-[0.15em] text-accent transition hover:border-gold hover:bg-paper/5">
               Donate to GEA<span className="sr-only"> (opens in a new tab)</span>
             </a>
           </section>
           <div className="rounded-sm bg-forest/[0.03] p-5 ring-1 ring-forest/10">
-            <p className="font-mono text-xs uppercase tracking-[0.2em] text-gold">Social Media</p>
-            <p className="mt-2 text-sm leading-relaxed text-graphite/70">
+            <p className="font-mono text-xs uppercase tracking-[0.2em] text-accent">Social Media</p>
+            <p className="mt-2 text-sm leading-relaxed text-graphite/80">
               Follow GEA on our official channels.
             </p>
             <div className="mt-4 flex flex-wrap gap-3">
@@ -102,15 +106,15 @@ export default function ContactPage() {
                   aria-label={social.label}
                 >
                   <SocialIcon icon={social.icon} className="h-5 w-5" />
-                  <span className="font-mono text-[10px] uppercase tracking-[0.15em]">{social.label}</span>
+                  <span className="font-mono text-xs uppercase tracking-[0.15em]">{social.label}</span>
                 </Link>
               ))}
             </div>
           </div>
 
           <div className="rounded-sm bg-paper p-5 ring-1 ring-forest/10">
-            <p className="font-mono text-xs uppercase tracking-[0.2em] text-gold">Need Help?</p>
-            <p className="mt-2 text-sm leading-relaxed text-graphite/70">
+            <p className="font-mono text-xs uppercase tracking-[0.2em] text-accent">Need Help?</p>
+            <p className="mt-2 text-sm leading-relaxed text-graphite/80">
               If you are not sure who to contact, start with the general GEA email and we will point
               you in the right direction.
             </p>
@@ -123,7 +127,7 @@ export default function ContactPage() {
               </Link>
               <Link
                 href="/"
-                className="inline-flex min-h-11 items-center justify-center rounded-sm bg-forest px-4 py-2.5 font-mono text-xs uppercase tracking-[0.15em] text-gold transition hover:bg-forestdeep"
+                className="inline-flex min-h-11 items-center justify-center rounded-sm bg-forest px-4 py-2.5 font-mono text-xs uppercase tracking-[0.15em] text-accent transition hover:bg-forestdeep"
               >
                 Home
               </Link>

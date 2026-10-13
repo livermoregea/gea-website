@@ -21,6 +21,7 @@ export default function LoginForm({
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    try {
     if (disabled) {
       setError("Login is disabled until Supabase is configured.");
       return;
@@ -36,12 +37,17 @@ export default function LoginForm({
     }
     router.push(redirectTo);
     router.refresh();
+      } catch {
+      setError("We couldn’t reach the sign-in service. Check your connection and try again.");
+    } finally {
+      setLoading(false);
+    }
   }
 
   return (
     <form onSubmit={handleSubmit} className="space-y-5">
       <div>
-        <label htmlFor={emailId} className="font-mono text-xs uppercase tracking-[0.15em] text-graphite/70">
+        <label htmlFor={emailId} className="font-mono text-xs uppercase tracking-[0.15em] text-graphite/80">
           Officer Email
         </label>
         <input
@@ -50,11 +56,11 @@ export default function LoginForm({
           type="email"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
-          className="mt-2 w-full rounded-sm border border-forest/15 bg-paper px-4 py-3 text-sm outline-none focus:border-gold"
+          className="mt-2 w-full rounded-sm border border-forest/65 bg-paper px-4 py-3 text-base outline-none focus:border-gold" autoComplete="username"
         />
       </div>
       <div>
-        <label htmlFor={passwordId} className="font-mono text-xs uppercase tracking-[0.15em] text-graphite/70">
+        <label htmlFor={passwordId} className="font-mono text-xs uppercase tracking-[0.15em] text-graphite/80">
           Password
         </label>
         <input
@@ -63,7 +69,7 @@ export default function LoginForm({
           type="password"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
-          className="mt-2 w-full rounded-sm border border-forest/15 bg-paper px-4 py-3 text-sm outline-none focus:border-gold"
+          className="mt-2 w-full rounded-sm border border-forest/65 bg-paper px-4 py-3 text-base outline-none focus:border-gold" autoComplete="current-password"
         />
       </div>
       {error && (
@@ -74,7 +80,7 @@ export default function LoginForm({
       <button
         type="submit"
         disabled={loading || disabled}
-        className="w-full rounded-sm bg-forest px-6 py-3 font-mono text-xs uppercase tracking-[0.15em] text-gold transition hover:bg-forestdeep disabled:opacity-50"
+        className="w-full rounded-sm bg-forest px-6 py-3 font-mono text-xs uppercase tracking-[0.15em] text-accent transition hover:bg-forestdeep disabled:opacity-50"
       >
         {disabled ? "Disabled in Demo Mode" : loading ? "Signing in..." : "Sign In"}
       </button>

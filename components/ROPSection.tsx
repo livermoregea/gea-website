@@ -6,7 +6,7 @@ export default function ROPSection({ className = "" }: ROPSectionProps) {
   return (
     <section aria-labelledby="rop-heading" className={className}>
       <div className="rounded-sm border border-gold/30 border-l-4 border-l-gold bg-gold/[0.06] p-6 sm:p-8">
-        <p className="font-mono text-xs uppercase tracking-[0.2em] text-forest/65">Explore ROP</p>
+        <p className="font-mono text-xs uppercase tracking-[0.2em] text-forest/80">Explore ROP</p>
         <h2 id="rop-heading" className="mt-3 max-w-3xl font-display text-2xl text-forestdeep sm:text-3xl">
           Don&apos;t live in the Livermore school district?
         </h2>
@@ -16,7 +16,7 @@ export default function ROPSection({ className = "" }: ROPSectionProps) {
           and Livermore Valley Joint Unified. Students can explore classes at school sites beyond
           their own campus.
         </p>
-        <p className="mt-3 max-w-3xl text-sm leading-relaxed text-graphite/75">
+        <p className="mt-3 max-w-3xl text-sm leading-relaxed text-graphite/80">
           Civil Engineering &amp; Architecture at Livermore High is offered as an ROP course.
           Ask your school&apos;s College &amp; Career Specialist about eligibility, course availability,
           and scheduling.

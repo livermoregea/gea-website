@@ -3,18 +3,20 @@
 import { useId, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import { isLvjusdStudentEmail } from "@/lib/student-email";
 import { hasSupabaseConfig } from "@/lib/supabase/config";
 
 type Mode = "signin" | "signup";
 
-export default function StudentAuthForm({ redirectTo }: { redirectTo: string }) {
-  const [mode, setMode] = useState<Mode>("signin");
+export default function StudentAuthForm({ redirectTo, initialMode = "signin" }: { redirectTo: string; initialMode?: Mode }) {
+  const [mode, setMode] = useState<Mode>(initialMode);
   const [loginEmail, setLoginEmail] = useState("");
   const [loginPassword, setLoginPassword] = useState("");
   const [loginError, setLoginError] = useState<string | null>(null);
   const [signupName, setSignupName] = useState("");
   const [signupUsername, setSignupUsername] = useState("");
   const [signupEmail, setSignupEmail] = useState("");
+  const [signupEmailTouched, setSignupEmailTouched] = useState(false);
   const [signupClassYear, setSignupClassYear] = useState("");
   const [signupStudentId, setSignupStudentId] = useState("");
   const [signupError, setSignupError] = useState<string | null>(null);
@@ -32,6 +34,7 @@ export default function StudentAuthForm({ redirectTo }: { redirectTo: string }) 
 
   async function signIn(e: React.FormEvent) {
     e.preventDefault();
+    try {
     setLoginError(null);
 
     if (!hasSupabaseConfig()) {
@@ -88,11 +91,18 @@ export default function StudentAuthForm({ redirectTo }: { redirectTo: string }) 
 
     setLoading(false);
     setLoginError("We couldn't match that account to a student, teacher, or admin profile.");
+      } catch {
+      setLoginError("We couldn’t reach the sign-in service. Check your connection and try again.");
+    } finally {
+      setLoading(false);
+    }
   }
 
   async function signUp(e: React.FormEvent) {
     e.preventDefault();
+    try {
     setSignupError(null);
+    setSignupEmailTouched(true);
     setSignupSuccess(null);
 
     if (!hasSupabaseConfig()) {
@@ -107,8 +117,8 @@ export default function StudentAuthForm({ redirectTo }: { redirectTo: string }) 
     const studentIdNumber = signupStudentId.trim();
 
     if (!fullName || !displayUsername || !schoolEmail || !signupClassYear.trim() || !studentIdNumber) return;
-    if (!schoolEmail.endsWith("@lvjusd.org")) {
-      setSignupError("Please use your @lvjusd.org student email address.");
+    if (!isLvjusdStudentEmail(schoolEmail)) {
+      setSignupError("Accounts are for GEA and LVJUSD students only. Use your @lvjusd.org student email.");
       return;
     }
     if (!Number.isInteger(graduatingClassYear) || graduatingClassYear < 2000) {
@@ -143,6 +153,11 @@ export default function StudentAuthForm({ redirectTo }: { redirectTo: string }) 
     setSignupEmail("");
     setSignupClassYear("");
     setSignupStudentId("");
+      } catch {
+      setSignupError("We couldn’t reach the sign-in service. Check your connection and try again.");
+    } finally {
+      setLoading(false);
+    }
   }
 
   return (
@@ -152,7 +167,7 @@ export default function StudentAuthForm({ redirectTo }: { redirectTo: string }) 
           type="button"
           onClick={() => setMode("signin")}
           className={`rounded-sm px-3 py-2 font-mono text-xs uppercase tracking-[0.15em] transition ${
-            mode === "signin" ? "bg-forest text-gold" : "text-forest/70 hover:text-forest"
+            mode === "signin" ? "bg-forest text-accent" : "text-forest/80 hover:text-forest"
           }`}
         >
           Sign In
@@ -161,7 +176,7 @@ export default function StudentAuthForm({ redirectTo }: { redirectTo: string }) 
           type="button"
           onClick={() => setMode("signup")}
           className={`rounded-sm px-3 py-2 font-mono text-xs uppercase tracking-[0.15em] transition ${
-            mode === "signup" ? "bg-forest text-gold" : "text-forest/70 hover:text-forest"
+            mode === "signup" ? "bg-forest text-accent" : "text-forest/80 hover:text-forest"
           }`}
         >
           Create Account
@@ -171,7 +186,7 @@ export default function StudentAuthForm({ redirectTo }: { redirectTo: string }) 
       {mode === "signin" ? (
         <form onSubmit={signIn} className="mt-6 space-y-5">
           <div>
-            <label htmlFor={loginEmailId} className="font-mono text-xs uppercase tracking-[0.15em] text-graphite/70">
+            <label htmlFor={loginEmailId} className="font-mono text-xs uppercase tracking-[0.15em] text-graphite/80">
               Email
             </label>
             <input
@@ -180,13 +195,13 @@ export default function StudentAuthForm({ redirectTo }: { redirectTo: string }) 
               type="email"
               value={loginEmail}
               onChange={(e) => setLoginEmail(e.target.value)}
-              className="mt-2 w-full rounded-sm border border-forest/15 bg-paper px-4 py-3 text-sm outline-none focus:border-gold"
-              placeholder="Email"
+              className="mt-2 w-full rounded-sm border border-forest/65 bg-paper px-4 py-3 text-base outline-none focus:border-gold"
+              placeholder="Email" autoComplete="username"
             />
           </div>
 
           <div>
-            <label htmlFor={loginPasswordId} className="font-mono text-xs uppercase tracking-[0.15em] text-graphite/70">
+            <label htmlFor={loginPasswordId} className="font-mono text-xs uppercase tracking-[0.15em] text-graphite/80">
               Password
             </label>
             <input
@@ -195,8 +210,8 @@ export default function StudentAuthForm({ redirectTo }: { redirectTo: string }) 
               type="password"
               value={loginPassword}
               onChange={(e) => setLoginPassword(e.target.value)}
-              className="mt-2 w-full rounded-sm border border-forest/15 bg-paper px-4 py-3 text-sm outline-none focus:border-gold"
-              placeholder="Password"
+              className="mt-2 w-full rounded-sm border border-forest/65 bg-paper px-4 py-3 text-base outline-none focus:border-gold"
+              placeholder="Password" autoComplete="current-password"
             />
           </div>
 
@@ -209,7 +224,7 @@ export default function StudentAuthForm({ redirectTo }: { redirectTo: string }) 
           <button
             type="submit"
             disabled={loading}
-            className="w-full rounded-sm bg-forest px-6 py-3 font-mono text-xs uppercase tracking-[0.15em] text-gold transition hover:bg-forestdeep disabled:opacity-50"
+            className="w-full rounded-sm bg-forest px-6 py-3 font-mono text-xs uppercase tracking-[0.15em] text-accent transition hover:bg-forestdeep disabled:opacity-50"
           >
             {loading ? "Signing in..." : "Sign In"}
           </button>
@@ -217,7 +232,7 @@ export default function StudentAuthForm({ redirectTo }: { redirectTo: string }) 
       ) : (
         <form onSubmit={signUp} className="mt-6 space-y-5">
           <div>
-            <label htmlFor={signupNameId} className="font-mono text-xs uppercase tracking-[0.15em] text-graphite/70">
+            <label htmlFor={signupNameId} className="font-mono text-xs uppercase tracking-[0.15em] text-graphite/80">
               Full Name
             </label>
             <input
@@ -225,13 +240,13 @@ export default function StudentAuthForm({ redirectTo }: { redirectTo: string }) 
               required
               value={signupName}
               onChange={(e) => setSignupName(e.target.value)}
-              className="mt-2 w-full rounded-sm border border-forest/15 bg-paper px-4 py-3 text-sm outline-none focus:border-gold"
+              className="mt-2 w-full rounded-sm border border-forest/65 bg-paper px-4 py-3 text-base outline-none focus:border-gold"
               placeholder="First and last name"
             />
           </div>
 
       <div>
-            <label htmlFor={signupUsernameId} className="font-mono text-xs uppercase tracking-[0.15em] text-graphite/70">
+            <label htmlFor={signupUsernameId} className="font-mono text-xs uppercase tracking-[0.15em] text-graphite/80">
               Display Username
             </label>
             <input
@@ -239,32 +254,37 @@ export default function StudentAuthForm({ redirectTo }: { redirectTo: string }) 
               required
               value={signupUsername}
               onChange={(e) => setSignupUsername(e.target.value)}
-              className="mt-2 w-full rounded-sm border border-forest/15 bg-paper px-4 py-3 text-sm outline-none focus:border-gold"
+              className="mt-2 w-full rounded-sm border border-forest/65 bg-paper px-4 py-3 text-base outline-none focus:border-gold"
               placeholder="The name you want shown publicly"
             />
           </div>
 
           <div>
-            <label htmlFor={signupEmailId} className="font-mono text-xs uppercase tracking-[0.15em] text-graphite/70">
+            <label htmlFor={signupEmailId} className="font-mono text-xs uppercase tracking-[0.15em] text-graphite/80">
               Student Email
             </label>
             <input
               id={signupEmailId}
+              onBlur={() => setSignupEmailTouched(true)}
+              aria-invalid={signupEmailTouched && Boolean(signupEmail) && !isLvjusdStudentEmail(signupEmail)}
+              aria-describedby={`${signupEmailId}-help`}
               required
               type="email"
               value={signupEmail}
               onChange={(e) => setSignupEmail(e.target.value)}
-              className="mt-2 w-full rounded-sm border border-forest/15 bg-paper px-4 py-3 text-sm outline-none focus:border-gold"
-              placeholder="name@lvjusd.org"
+              className="mt-2 w-full rounded-sm border border-forest/65 bg-paper px-4 py-3 text-base outline-none focus:border-gold"
+              placeholder="name@lvjusd.org" autoComplete="username"
             />
-            <p className="mt-1 text-xs text-graphite/50">
-              This must be your @lvjusd.org student email. We do not send a verification link.
+            <p id={`${signupEmailId}-help`} className="mt-1 text-xs text-graphite/80">
+              {signupEmailTouched && signupEmail && !isLvjusdStudentEmail(signupEmail)
+                ? "Use a valid @lvjusd.org student email address."
+                : "GEA and LVJUSD students only. Use your own @lvjusd.org student email."}
             </p>
           </div>
 
           <div className="grid gap-5 sm:grid-cols-2">
             <div>
-              <label htmlFor={signupClassYearId} className="font-mono text-xs uppercase tracking-[0.15em] text-graphite/70">
+              <label htmlFor={signupClassYearId} className="font-mono text-xs uppercase tracking-[0.15em] text-graphite/80">
                 Graduating Class Year
               </label>
               <input
@@ -273,16 +293,16 @@ export default function StudentAuthForm({ redirectTo }: { redirectTo: string }) 
                 inputMode="numeric"
                 value={signupClassYear}
                 onChange={(e) => setSignupClassYear(e.target.value)}
-                className="mt-2 w-full rounded-sm border border-forest/15 bg-paper px-4 py-3 text-sm outline-none focus:border-gold"
+                className="mt-2 w-full rounded-sm border border-forest/65 bg-paper px-4 py-3 text-base outline-none focus:border-gold"
                 placeholder="2028"
               />
             </div>
 
             <div>
-              <label htmlFor={signupStudentIdId} className="font-mono text-xs uppercase tracking-[0.15em] text-graphite/70">
+              <label htmlFor={signupStudentIdId} className="font-mono text-xs uppercase tracking-[0.15em] text-graphite/80">
                 Student ID Number
               </label>
-              <p className="mt-1 text-xs leading-relaxed text-graphite/50">
+              <p className="mt-1 text-xs leading-relaxed text-graphite/80">
                 This becomes your password.
               </p>
               <input
@@ -291,8 +311,8 @@ export default function StudentAuthForm({ redirectTo }: { redirectTo: string }) 
                 type="password"
                 value={signupStudentId}
                 onChange={(e) => setSignupStudentId(e.target.value)}
-              className="mt-2 w-full rounded-sm border border-forest/15 bg-paper px-4 py-3 text-sm outline-none focus:border-gold"
-              placeholder="Your student ID number"
+              className="mt-2 w-full rounded-sm border border-forest/65 bg-paper px-4 py-3 text-base outline-none focus:border-gold"
+              placeholder="Your student ID number" autoComplete="new-password"
             />
           </div>
           </div>
@@ -311,7 +331,7 @@ export default function StudentAuthForm({ redirectTo }: { redirectTo: string }) 
           <button
             type="submit"
             disabled={loading}
-            className="w-full rounded-sm bg-forest px-6 py-3 font-mono text-xs uppercase tracking-[0.15em] text-gold transition hover:bg-forestdeep disabled:opacity-50"
+            className="w-full rounded-sm bg-forest px-6 py-3 font-mono text-xs uppercase tracking-[0.15em] text-accent transition hover:bg-forestdeep disabled:opacity-50"
           >
             {loading ? "Creating account..." : "Create Student Account"}
           </button>

@@ -6,11 +6,11 @@ export default function AdminLoginPage() {
 
   return (
     <div className="mx-auto max-w-md px-4 py-16 sm:px-6 md:py-24">
-      <p className="font-mono text-xs uppercase tracking-[0.3em] text-gold">Admin Portal</p>
+      <p className="font-mono text-xs uppercase tracking-[0.3em] text-accent">Admin Portal</p>
       <h1 className="mt-4 font-display text-2xl font-medium text-forest">
         {demoMode ? "Demo staff sign-in" : "Staff Sign In"}
       </h1>
-      <p className="mt-3 text-sm text-graphite/70">
+      <p className="mt-3 text-sm text-graphite/80">
         {demoMode
           ? "Supabase isn&apos;t configured, so staff sign-in is disabled."
           : "Keep this page private. Only teacher or officer accounts added in Supabase can sign in."}

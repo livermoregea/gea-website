@@ -188,9 +188,9 @@ function VotePill({
         type="button"
         onClick={() => onVote(value === 1 ? 0 : 1)}
         disabled={!canVote}
-        className={`flex min-h-10 items-center gap-1.5 px-3.5 py-2 font-mono text-[10px] uppercase tracking-[0.15em] transition ${
+        className={`flex min-h-10 items-center gap-1.5 px-3.5 py-2 font-mono text-xs uppercase tracking-[0.15em] transition ${
           value === 1
-            ? "bg-forest text-gold"
+            ? "bg-forest text-accent"
             : "text-forest hover:bg-forest/[0.04] disabled:cursor-not-allowed disabled:opacity-40"
         }`}
         aria-label={`Upvote. Current count ${upCount}`}
@@ -198,16 +198,16 @@ function VotePill({
         <span aria-hidden="true">▲</span>
         <span>Up</span>
       </button>
-      <div className="flex min-w-16 items-center justify-center border-x border-forest/10 bg-forest/[0.03] px-3 py-2 text-[10px] font-mono uppercase tracking-[0.14em] text-forest/80">
+      <div className="flex min-w-16 items-center justify-center border-x border-forest/10 bg-forest/[0.03] px-3 py-2 text-xs font-mono uppercase tracking-[0.14em] text-forest/80">
         {score}
       </div>
       <button
         type="button"
         onClick={() => onVote(value === -1 ? 0 : -1)}
         disabled={!canVote}
-        className={`flex min-h-10 items-center gap-1.5 px-3.5 py-2 font-mono text-[10px] uppercase tracking-[0.15em] transition ${
+        className={`flex min-h-10 items-center gap-1.5 px-3.5 py-2 font-mono text-xs uppercase tracking-[0.15em] transition ${
           value === -1
-            ? "bg-forest text-gold"
+            ? "bg-forest text-accent"
             : "text-forest hover:bg-forest/[0.04] disabled:cursor-not-allowed disabled:opacity-40"
         }`}
         aria-label={`Downvote. Current count ${downCount}`}
@@ -232,6 +232,22 @@ function ReportMenu({
 }) {
   const [open, setOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement | null>(null);
+  const triggerRef = useRef<HTMLButtonElement | null>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const action = menuRef.current?.querySelector<HTMLButtonElement>("button:not(:disabled):not([aria-expanded])");
+    action?.focus();
+    function escape(event: KeyboardEvent) {
+      if (event.key === "Escape") { setOpen(false); triggerRef.current?.focus(); }
+    }
+    function leave(event: FocusEvent) {
+      if (!menuRef.current?.contains(event.target as Node)) setOpen(false);
+    }
+    document.addEventListener("keydown", escape);
+    document.addEventListener("focusin", leave);
+    return () => { document.removeEventListener("keydown", escape); document.removeEventListener("focusin", leave); };
+  }, [open]);
 
   useEffect(() => {
     function handlePointerDown(event: MouseEvent) {
@@ -253,8 +269,8 @@ function ReportMenu({
           setOpen((current) => !current);
         }}
         className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-forest/10 bg-paper text-lg leading-none text-forest transition hover:bg-forest/[0.04]"
+        ref={triggerRef}
         aria-label="More actions"
-        aria-haspopup="menu"
         aria-expanded={open}
       >
         ⋯
@@ -271,7 +287,7 @@ function ReportMenu({
             className="flex w-full items-center justify-between rounded-sm px-3 py-2 text-left text-sm text-forest transition hover:bg-forest/[0.04] disabled:cursor-not-allowed disabled:opacity-50"
           >
             <span>{reported ? "Reported" : "Report"}</span>
-            <span className="font-mono text-[10px] uppercase tracking-[0.15em] text-graphite/45">
+            <span className="font-mono text-xs uppercase tracking-[0.15em] text-graphite/80">
               {reportCount}
             </span>
           </button>
@@ -336,11 +352,11 @@ function QuestionCard({
         className="block w-full px-5 py-4 text-left transition hover:bg-forest/[0.02]"
       >
           <div className="flex items-start gap-3">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-sm bg-forest text-sm font-semibold text-gold">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-sm bg-forest text-sm font-semibold text-accent">
               {post.asked_by_name.slice(0, 1).toUpperCase()}
             </div>
           <div className="min-w-0 flex-1">
-            <div className="flex flex-wrap items-center gap-2 text-[10px] uppercase tracking-[0.18em] text-graphite/50">
+            <div className="flex flex-wrap items-center gap-2 text-xs uppercase tracking-[0.18em] text-graphite/80">
               <span className="rounded-sm border border-gold/20 bg-gold/10 px-2.5 py-1 text-forest">
                 {getForumBoardLabel(post.forum_board)}
               </span>
@@ -352,11 +368,11 @@ function QuestionCard({
               {post.question}
             </h3>
             {!expanded && (
-              <p className="mt-3 line-clamp-2 text-sm leading-relaxed text-graphite/70">
+              <p className="mt-3 line-clamp-2 text-sm leading-relaxed text-graphite/80">
                 {preview}
               </p>
             )}
-            <div className="mt-4 flex flex-wrap items-center gap-3 text-xs text-graphite/50">
+            <div className="mt-4 flex flex-wrap items-center gap-3 text-xs text-graphite/80">
               <span className="rounded-sm bg-forest/[0.05] px-3 py-1">{commentCount} comments</span>
               <span className="rounded-sm bg-forest/[0.05] px-3 py-1">Open thread</span>
               <span className="rounded-sm bg-forest/[0.05] px-3 py-1">
@@ -372,8 +388,8 @@ function QuestionCard({
           <div className="space-y-5">
             <div className="flex flex-wrap items-start justify-between gap-3 rounded-sm border border-forest/10 bg-forest/[0.02] p-4">
               <div>
-                <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-gold">Post actions</p>
-                <p className="mt-1 text-sm text-graphite/60">
+                <p className="font-mono text-xs uppercase tracking-[0.2em] text-accent">Post actions</p>
+                <p className="mt-1 text-sm text-graphite/80">
                   Vote on the post or open the menu to report it.
                 </p>
               </div>
@@ -397,7 +413,7 @@ function QuestionCard({
 
             {canReply ? (
               <div className="rounded-sm bg-forest/[0.03] p-4 ring-1 ring-forest/10">
-                <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-gold">
+                <p className="font-mono text-xs uppercase tracking-[0.2em] text-accent">
                   Add a comment
                 </p>
                 <AnswerForm
@@ -410,20 +426,20 @@ function QuestionCard({
                 />
               </div>
             ) : (
-              <div className="rounded-sm border border-forest/10 bg-forest/[0.03] p-4 text-sm text-graphite/65">
+              <div className="rounded-sm border border-forest/10 bg-forest/[0.03] p-4 text-sm text-graphite/80">
                 Sign in with an approved student account to comment on posts.
               </div>
             )}
 
             <div className="flex flex-wrap items-center justify-between gap-3">
-              <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-gold">Comments</p>
-              <p className="text-sm text-graphite/60">
+              <p className="font-mono text-xs uppercase tracking-[0.2em] text-accent">Comments</p>
+              <p className="text-sm text-graphite/80">
                 {comments.length} top-level comment{comments.length === 1 ? "" : "s"}
               </p>
             </div>
 
             {comments.length === 0 ? (
-              <p className="text-sm text-graphite/50">No comments yet. Be the first to reply.</p>
+              <p className="text-sm text-graphite/80">No comments yet. Be the first to reply.</p>
             ) : (
               <div className="space-y-4">
                 {comments.map((comment) => (
@@ -487,7 +503,7 @@ function CommentCard({
       <div className="flex items-start justify-between gap-3">
         <div>
           <p className="font-semibold text-forest">{comment.answered_by_name}</p>
-          <p className="mt-1 text-xs text-graphite/50">Posted {formatDate(comment.created_at)}</p>
+          <p className="mt-1 text-xs text-graphite/80">Posted {formatDate(comment.created_at)}</p>
         </div>
         <div className="flex items-start gap-2">
           <VotePill
@@ -513,7 +529,7 @@ function CommentCard({
         <button
           type="button"
           onClick={() => setReplying((current) => !current)}
-          className="mt-4 inline-flex rounded-full border border-forest/10 bg-forest/[0.03] px-4 py-2 font-mono text-[10px] uppercase tracking-[0.15em] text-forest transition hover:bg-forest/[0.06]"
+          className="mt-4 inline-flex rounded-full border border-forest/10 bg-forest/[0.03] px-4 py-2 font-mono text-xs uppercase tracking-[0.15em] text-forest transition hover:bg-forest/[0.06]"
         >
           {replying ? "Cancel Reply" : "Reply"}
         </button>
@@ -919,6 +935,7 @@ export default function QAHub({
   }
 
   async function submitReport(targetType: "question" | "answer", targetId: string) {
+    try {
     if (!hasSupabaseConfig()) return;
 
     const key = reporterKey ?? authUserId;
@@ -956,6 +973,7 @@ export default function QAHub({
     }
 
     setRefreshTick((tick) => tick + 1);
+      } catch { setMutationError("Couldn’t complete this request. Check your connection and try again."); }
   }
 
   return (
@@ -963,11 +981,11 @@ export default function QAHub({
       <section className="rounded-sm bg-paper/85 px-5 py-6 ring-1 ring-forest/10 sm:px-6">
         <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
           <div className="max-w-3xl">
-            <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-gold">GEA Forum</p>
+            <p className="font-mono text-xs uppercase tracking-[0.2em] text-accent">GEA Forum</p>
             <h2 className="mt-3 font-display text-2xl font-medium text-forest sm:text-3xl">
               Ask, answer, and follow the discussion
             </h2>
-            <p className="mt-3 max-w-2xl text-sm leading-relaxed text-graphite/70 sm:text-base">
+            <p className="mt-3 max-w-2xl text-sm leading-relaxed text-graphite/80 sm:text-base">
               Ask questions, browse posts, and reply in the forum.
             </p>
           </div>
@@ -977,18 +995,18 @@ export default function QAHub({
               <button
                 type="button"
                 onClick={() => setComposerOpen(true)}
-                className="inline-flex min-h-11 items-center rounded-sm bg-forest px-5 py-2.5 font-mono text-xs uppercase tracking-[0.15em] text-gold transition hover:bg-forestdeep"
+                className="inline-flex min-h-11 items-center rounded-sm bg-forest px-5 py-2.5 font-mono text-xs uppercase tracking-[0.15em] text-accent transition hover:bg-forestdeep"
               >
                 Create Post
               </button>
             ) : authUserId ? (
-              <span className="inline-flex min-h-11 items-center rounded-sm border border-forest/15 px-5 py-2.5 font-mono text-xs uppercase tracking-[0.15em] text-forest/60">
+              <span className="inline-flex min-h-11 items-center rounded-sm border border-forest/15 px-5 py-2.5 font-mono text-xs uppercase tracking-[0.15em] text-forest/80">
                 Posting disabled
               </span>
             ) : (
               <Link
                 href="/login"
-                className="inline-flex min-h-11 items-center rounded-sm bg-forest px-5 py-2.5 font-mono text-xs uppercase tracking-[0.15em] text-gold transition hover:bg-forestdeep"
+                className="inline-flex min-h-11 items-center rounded-sm bg-forest px-5 py-2.5 font-mono text-xs uppercase tracking-[0.15em] text-accent transition hover:bg-forestdeep"
               >
                 Sign in to post
               </Link>
@@ -1004,7 +1022,7 @@ export default function QAHub({
       </section>
 
       {!canCreatePost && authUserId && (
-        <section className="rounded-sm border border-forest/10 bg-forest/[0.03] px-5 py-4 text-sm leading-relaxed text-graphite/70 ring-1 ring-forest/5">
+        <section className="rounded-sm border border-forest/10 bg-forest/[0.03] px-5 py-4 text-sm leading-relaxed text-graphite/80 ring-1 ring-forest/5">
           Your account is currently not allowed to post. You can read the forum and report content,
           but you cannot post, reply, or vote yet.
         </section>
@@ -1018,7 +1036,7 @@ export default function QAHub({
                 Search posts
               </label>
               <div className="flex items-center gap-3 rounded-sm border border-forest/15 bg-paper px-4 py-3">
-                <svg aria-hidden="true" viewBox="0 0 24 24" className="h-5 w-5 text-graphite/50">
+                <svg aria-hidden="true" viewBox="0 0 24 24" className="h-5 w-5 text-graphite/80">
                   <path
                     fill="currentColor"
                     d="M10.5 4a6.5 6.5 0 1 0 4.03 11.6l4.43 4.43 1.41-1.41-4.43-4.43A6.5 6.5 0 0 0 10.5 4Zm0 2a4.5 4.5 0 1 1 0 9 4.5 4.5 0 0 1 0-9Z"
@@ -1029,7 +1047,7 @@ export default function QAHub({
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   placeholder="Search posts, replies, or names..."
-                  className="w-full bg-transparent text-sm text-graphite outline-none placeholder:text-graphite/45"
+                  className="w-full bg-transparent text-base text-graphite outline-none placeholder:text-graphite/80"
                 />
               </div>
             </div>
@@ -1040,7 +1058,7 @@ export default function QAHub({
                 onClick={() => setSortMode("best")}
                 className={`min-h-11 rounded-sm px-4 py-2 font-mono text-xs uppercase tracking-[0.15em] transition ${
                   sortMode === "best"
-                    ? "bg-forest text-gold"
+                    ? "bg-forest text-accent"
                     : "bg-paper text-forest hover:bg-forest/[0.03]"
                 }`}
               >
@@ -1051,7 +1069,7 @@ export default function QAHub({
                 onClick={() => setSortMode("new")}
                 className={`min-h-11 rounded-sm px-4 py-2 font-mono text-xs uppercase tracking-[0.15em] transition ${
                   sortMode === "new"
-                    ? "bg-forest text-gold"
+                    ? "bg-forest text-accent"
                     : "bg-paper text-forest hover:bg-forest/[0.03]"
                 }`}
               >
@@ -1064,7 +1082,7 @@ export default function QAHub({
             <button
               type="button"
               onClick={() => setSelectedBoard("all")}
-              className={`rounded-sm border px-4 py-2 font-mono text-[11px] uppercase tracking-[0.12em] transition ${
+              className={`rounded-sm border px-4 py-2 font-mono text-xs uppercase tracking-[0.12em] transition ${
                 selectedBoard === "all"
                   ? "border-gold/40 bg-gold/10 text-forest"
                   : "border-forest/10 bg-paper text-forest hover:bg-forest/[0.03]"
@@ -1077,7 +1095,7 @@ export default function QAHub({
                 key={board.value}
                 type="button"
                 onClick={() => setSelectedBoard(board.value)}
-                className={`rounded-sm border px-4 py-2 font-mono text-[11px] uppercase tracking-[0.12em] transition ${
+                className={`rounded-sm border px-4 py-2 font-mono text-xs uppercase tracking-[0.12em] transition ${
                   selectedBoard === board.value
                     ? "border-gold/40 bg-gold/10 text-forest"
                     : "border-forest/10 bg-paper text-forest hover:bg-forest/[0.03]"
@@ -1098,11 +1116,11 @@ export default function QAHub({
         >
           <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
             <div className="max-w-3xl">
-              <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-gold">
+              <p className="font-mono text-xs uppercase tracking-[0.2em] text-accent">
                 Write a new post
               </p>
               <h3 className="mt-3 font-display text-2xl font-medium text-forest">Start a thread</h3>
-              <p className="mt-3 max-w-2xl text-sm leading-relaxed text-graphite/70 sm:text-base">
+              <p className="mt-3 max-w-2xl text-sm leading-relaxed text-graphite/80 sm:text-base">
                 Pick a board, write your post, and publish it to the forum without leaving the page.
               </p>
             </div>
@@ -1128,7 +1146,7 @@ export default function QAHub({
       )}
 
       {mutationError && (
-        <p className="rounded-sm bg-forest/[0.05] p-4 text-sm text-graphite/75 ring-1 ring-forest/10">
+        <p className="rounded-sm bg-forest/[0.05] p-4 text-sm text-graphite/80 ring-1 ring-forest/10" role="alert">
           {mutationError}
         </p>
       )}
@@ -1136,14 +1154,14 @@ export default function QAHub({
       <section id="feed" className="space-y-5">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
           <div>
-            <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-gold">Feed</p>
+            <p className="font-mono text-xs uppercase tracking-[0.2em] text-accent">Feed</p>
             <h2 className="mt-2 font-display text-2xl font-medium text-forest sm:text-3xl">
               What everybody has posted
             </h2>
           </div>
           <div className="rounded-sm bg-forest/[0.03] px-4 py-3 ring-1 ring-forest/10">
-            <p className="text-[10px] uppercase tracking-[0.15em] text-graphite/40">Showing</p>
-            <p className="mt-1 text-sm text-graphite/70">
+            <p className="text-xs uppercase tracking-[0.15em] text-graphite/80">Showing</p>
+            <p className="mt-1 text-sm text-graphite/80">
               {visiblePosts.length} post{visiblePosts.length === 1 ? "" : "s"}
             </p>
           </div>
@@ -1151,9 +1169,9 @@ export default function QAHub({
 
         <div className="space-y-4">
           {loading ? (
-            <p className="text-sm text-graphite/50">Loading posts...</p>
+            <p className="text-sm text-graphite/80">Loading posts...</p>
           ) : visiblePosts.length === 0 ? (
-            <div className="rounded-sm bg-paper p-5 text-sm text-graphite/60 ring-1 ring-forest/10">
+            <div className="rounded-sm bg-paper p-5 text-sm text-graphite/80 ring-1 ring-forest/10">
               No posts match that board or search yet.
             </div>
           ) : (
@@ -1185,19 +1203,19 @@ export default function QAHub({
 
       <section className="grid gap-4 lg:grid-cols-2">
         <div className="rounded-sm bg-paper p-5 ring-1 ring-forest/10">
-          <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-gold">Your History</p>
+          <p className="font-mono text-xs uppercase tracking-[0.2em] text-accent">Your History</p>
           <h2 className="mt-3 font-display text-xl text-forest">Posts, replies, votes</h2>
           <div className="mt-4 grid grid-cols-3 gap-3">
             <div className="rounded-sm bg-forest/[0.03] p-3 ring-1 ring-forest/10">
-              <p className="text-[10px] uppercase tracking-[0.15em] text-graphite/45">Posts</p>
+              <p className="text-xs uppercase tracking-[0.15em] text-graphite/80">Posts</p>
               <p className="mt-2 text-2xl font-semibold text-forest">{myQuestions.length}</p>
             </div>
             <div className="rounded-sm bg-forest/[0.03] p-3 ring-1 ring-forest/10">
-              <p className="text-[10px] uppercase tracking-[0.15em] text-graphite/45">Replies</p>
+              <p className="text-xs uppercase tracking-[0.15em] text-graphite/80">Replies</p>
               <p className="mt-2 text-2xl font-semibold text-forest">{myAnswers.length}</p>
             </div>
             <div className="rounded-sm bg-forest/[0.03] p-3 ring-1 ring-forest/10">
-              <p className="text-[10px] uppercase tracking-[0.15em] text-graphite/45">Votes</p>
+              <p className="text-xs uppercase tracking-[0.15em] text-graphite/80">Votes</p>
               <p className="mt-2 text-2xl font-semibold text-forest">{myVotes.length}</p>
             </div>
           </div>
@@ -1206,7 +1224,7 @@ export default function QAHub({
         <div className="rounded-sm bg-paper p-5 ring-1 ring-forest/10">
           <div className="flex items-center justify-between gap-3">
             <div>
-              <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-gold">
+              <p className="font-mono text-xs uppercase tracking-[0.2em] text-accent">
                 Recent Activity
               </p>
               <h2 className="mt-3 font-display text-xl text-forest">Your latest moves</h2>
@@ -1222,18 +1240,18 @@ export default function QAHub({
 
           <div className="mt-4 space-y-3">
             {recentActivity.length === 0 ? (
-              <p className="text-sm text-graphite/50">No recent activity yet.</p>
+              <p className="text-sm text-graphite/80">No recent activity yet.</p>
             ) : (
               recentActivity.slice(0, 10).map((item) => (
                 <div key={item.key} className="rounded-sm border border-forest/10 bg-forest/[0.03] p-4">
                   <div className="flex items-start justify-between gap-3">
-                    <p className="text-[10px] uppercase tracking-[0.15em] text-graphite/40">
+                    <p className="text-xs uppercase tracking-[0.15em] text-graphite/80">
                       {item.type}
                     </p>
-                    <p className="text-xs text-graphite/50">{formatDate(item.created_at)}</p>
+                    <p className="text-xs text-graphite/80">{formatDate(item.created_at)}</p>
                   </div>
                   <p className="mt-2 font-medium text-forest">{item.label}</p>
-                  <p className="mt-1 whitespace-pre-wrap text-sm leading-relaxed text-graphite/70">
+                  <p className="mt-1 whitespace-pre-wrap text-sm leading-relaxed text-graphite/80">
                     {item.detail}
                   </p>
                 </div>

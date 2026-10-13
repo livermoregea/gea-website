@@ -1,7 +1,8 @@
 export default function AdminLoading({ detail = false }: { detail?: boolean }) {
   return (
-    <div className="mx-auto max-w-[92rem] px-4 py-8 sm:px-6 md:py-10" aria-busy="true" aria-label="Loading admin page">
-      <div className="animate-pulse space-y-6">
+    <div className="mx-auto max-w-[92rem] px-4 py-8 sm:px-6 md:py-10" role="status" aria-busy="true" aria-label="Loading admin page">
+      <span className="sr-only">Loading admin page…</span>
+      <div className="animate-pulse space-y-6" aria-hidden="true">
         <div className="rounded-sm border border-forest/10 bg-paper p-3">
           <div className="grid gap-2 sm:grid-cols-3">
             <div className="h-16 rounded-sm bg-forest/[0.06]" />

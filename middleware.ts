@@ -1,8 +1,17 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
+import { BUILDERS_ENABLED } from "@/lib/site-features";
 import { hasSupabaseConfig } from "@/lib/supabase/config";
 
 export async function middleware(request: NextRequest) {
+  // Return an actual 404 before streaming or authentication begins.
+  if (!BUILDERS_ENABLED && (request.nextUrl.pathname === "/builders" || request.nextUrl.pathname.startsWith("/builders/"))) {
+    const unavailable = request.nextUrl.clone();
+    unavailable.pathname = "/_not-found";
+    unavailable.search = "";
+    return NextResponse.rewrite(unavailable, { status: 404, headers: { "X-Robots-Tag": "noindex" } });
+  }
+
   if (!hasSupabaseConfig()) {
     return NextResponse.next();
   }

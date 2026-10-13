@@ -2,153 +2,57 @@
 
 import { useEffect, useState } from "react";
 import Image from "next/image";
+import { useReducedMotion } from "@/lib/use-reduced-motion";
 
 const slides = [
-  {
-    src: "/images/homepage/IMG_3673.jpg",
-    alt: "",
-  },
-  {
-    src: "/images/homepage/IMG_6537.jpg",
-    alt: "",
-  },
-  {
-    src: "/images/homepage/IMG_6218.JPG",
-    alt: "",
-  },
-  {
-    src: "/images/homepage/IMG_3809.jpg",
-    alt: "",
-  },
-  {
-    src: "/images/homepage/IMG_6195.JPG",
-    alt: "",
-  },
-  {
-    src: "/images/homepage/IMG_6546.jpg",
-    alt: "",
-  },
-  {
-    src: "/images/homepage/IMG_6589.jpg",
-    alt: "",
-  },
-  {
-    src: "/images/homepage/IMG_3813.jpg",
-    alt: "",
-  },
+  { src: "/images/homepage/IMG_3673.jpg", alt: "GEA students presenting hands-on activities in a school auditorium" },
+  { src: "/images/homepage/IMG_6537.jpg", alt: "GEA students working together at a classroom laptop" },
+  { src: "/images/homepage/IMG_6218.JPG", alt: "A GEA student developing a CAD model in class" },
+  { src: "/images/homepage/IMG_3809.jpg", alt: "GEA students collaborating around laptops at a classroom table" },
+  { src: "/images/homepage/IMG_6195.JPG", alt: "Two GEA students assembling a wooden shelving unit outside a classroom" },
+  { src: "/images/homepage/IMG_6546.jpg", alt: "A GEA student working on an architectural design" },
+  { src: "/images/homepage/IMG_6589.jpg", alt: "A GEA student working on an architectural elevation in Revit" },
+  { src: "/images/homepage/IMG_3813.jpg", alt: "GEA students working in small groups throughout a science classroom" },
 ];
 
-type HomeHeroCarouselProps = {
-  className?: string;
-};
-
-export default function HomeHeroCarousel({ className = "" }: HomeHeroCarouselProps) {
+export default function HomeHeroCarousel({ className = "" }: { className?: string }) {
   const [active, setActive] = useState(0);
+  const [paused, setPaused] = useState<boolean | null>(null);
+  const reducedMotion = useReducedMotion();
+  const isPaused = paused ?? reducedMotion;
   const total = slides.length;
-  const images = slides;
-
-  const visibleIndices = new Set([
-    active,
-    (active + 1) % total,
-    (active - 1 + total) % total,
-  ]);
-
-  function goToSlide(index: number) {
-    setActive(index);
-  }
-
-  function goToNext() {
-    setActive((current) => (current + 1) % total);
-  }
-
   useEffect(() => {
+    if (isPaused) return;
     const timer = window.setInterval(() => {
-      setActive((index) => (index + 1) % total);
+      if (!document.hidden) setActive(index => (index + 1) % total);
     }, 6500);
-
     return () => window.clearInterval(timer);
-  }, [total]);
+  }, [isPaused, total]);
 
-  const slideStage = (
-    <div className="absolute inset-0 w-full h-full -z-20 overflow-hidden">
-      {slides.map((slide, index) => {
-        if (!visibleIndices.has(index)) return null;
-
-        const isActive = active === index;
-
-        return (
-          <Image
-            key={slide.src}
-            src={slide.src}
-            alt={`GEA Slide ${index + 1}`}
-            fill
-            priority={index === 0}
-            sizes="100vw"
-            className={`object-cover object-center transition-all duration-1000 ease-in-out ${
-              isActive ? "opacity-100 scale-100" : "opacity-0 scale-105"
-            }`}
-            aria-hidden={!isActive}
-          />
-        );
-      })}
-    </div>
-  );
-
-  const controls = (
-    <div className="absolute bottom-4 right-4 z-50 md:bottom-6 md:right-12">
-      <div className="pointer-events-auto rounded-full border border-white/15 bg-[#102419]/45 px-3 py-2 shadow-[0_12px_30px_rgba(0,0,0,0.22)] backdrop-blur-md">
-        <div className="flex items-center gap-2">
-          {images.map((_, index) => {
-            const isActive = active === index;
-            return (
-              <button
-                key={index}
-                type="button"
-                onClick={(event) => {
-                  event.stopPropagation();
-                  goToSlide(index);
-                }}
-                style={{ minHeight: 0 }}
-                className={`h-1.5 rounded-full transition-all duration-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#C8963E] ${
-                  isActive ? "w-8 bg-[#C8963E]" : "w-2.5 bg-white/35 hover:bg-white/60"
-                }`}
-                aria-label={`Go to slide ${index + 1}`}
-                aria-pressed={isActive}
-              />
-            );
-          })}
-        </div>
-      </div>
-    </div>
-  );
-
+  const visible = new Set([active, (active + 1) % total, (active - 1 + total) % total]);
+  const controls = "inline-flex h-11 min-w-11 items-center justify-center rounded-full text-paper transition hover:bg-white/15";
+  function changeSlide(direction: number) {
+    setPaused(true);
+    setActive(index => (index + direction + total) % total);
+  }
   return (
-    <div
-      className={`absolute inset-0 z-0 h-full w-full ${className}`}
-      onClick={goToNext}
-      onKeyDown={(event) => {
-        if (event.key === "Enter" || event.key === " ") {
-          event.preventDefault();
-          goToNext();
-        }
-      }}
-      role="region"
-      aria-label="Homepage hero image carousel"
-      tabIndex={0}
-    >
-      {slideStage}
-
-      {/* Duo-Tone Brand Color Overlay */}
-      <div className="absolute inset-0 z-10 bg-gradient-to-tr from-[#1A362B]/90 via-[#1A362B]/70 to-[#C8963E]/30 mix-blend-multiply" />
-
-      {/* Dark Contrast Scrim for Text Legibility */}
-      <div className="absolute inset-0 z-10 bg-gradient-to-t from-[#1A362B] via-transparent to-black/40" />
-
-      {controls}
-
-      <p className="sr-only" aria-live="polite">
-        Showing slide {active + 1} of {total}
-      </p>
+    <div className={`absolute inset-0 z-0 h-full w-full ${className}`} role="region" aria-roledescription="carousel" aria-label="GEA photographs">
+      <div className="absolute inset-0 overflow-hidden">
+        {slides.map((slide, index) => visible.has(index) && (
+          <Image key={slide.src} src={slide.src} alt={slide.alt} fill priority={index === 0} sizes="100vw" className={`object-cover object-center transition-opacity duration-700 ${active === index ? "opacity-100" : "opacity-0"}`} aria-hidden={active !== index} />
+        ))}
+      </div>
+      <div aria-hidden="true" className="absolute inset-0 z-10 bg-gradient-to-r from-[#0B2418]/95 via-[#0B2418]/65 to-[#0B2418]/10" />
+      <div aria-hidden="true" className="absolute inset-0 z-10 bg-gradient-to-t from-[#0B2418]/70 via-transparent to-black/20" />
+      <div className="absolute bottom-4 right-4 z-20 flex items-center gap-1 rounded-full border border-white/25 bg-forestdeep/95 p-1 text-paper sm:bottom-6 sm:right-6" onFocusCapture={event => {
+        if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setPaused(true);
+      }}>
+        <button type="button" onClick={() => changeSlide(-1)} className={controls} aria-label="Previous photo">←</button>
+        <span className="min-w-12 text-center text-xs tabular-nums" aria-hidden="true">{active + 1} / {total}</span>
+        <button type="button" onClick={() => changeSlide(1)} className={controls} aria-label="Next photo">→</button>
+        <button type="button" onClick={() => setPaused(!isPaused)} className={`${controls} px-3 text-xs`} aria-label={isPaused ? "Play photo slideshow" : "Pause photo slideshow"}>{isPaused ? "Play" : "Pause"}</button>
+      </div>
+      <p className="sr-only" aria-live={isPaused ? "polite" : "off"} aria-atomic="true">Photo {active + 1} of {total}: {slides[active].alt}</p>
     </div>
   );
 }

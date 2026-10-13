@@ -90,14 +90,14 @@ export default function InterviewBookingPage({
   }
 
   if (status === "loading") {
-    return <div className="mx-auto max-w-xl px-4 py-16 text-sm text-graphite/50 sm:px-6 md:py-24">Loading...</div>;
+    return <div role="status" className="mx-auto max-w-xl px-4 py-16 text-sm text-graphite/80 sm:px-6 md:py-24">Loading interview options…</div>;
   }
 
   if (status === "invalid") {
     return (
       <div className="mx-auto max-w-xl px-4 py-16 sm:px-6 md:py-24">
-        <p className="font-display text-lg text-forest sm:text-xl">This interview link isn&apos;t valid.</p>
-        <p className="mt-3 text-sm text-graphite/70 sm:text-base">
+        <h1 className="font-display text-xl text-forest sm:text-2xl">This interview link isn&apos;t valid.</h1>
+        <p className="mt-3 text-sm text-graphite/80 sm:text-base">
           Double check the link from your email, or reach out to the GEA officer team.
         </p>
       </div>
@@ -107,9 +107,9 @@ export default function InterviewBookingPage({
   if (status === "booked") {
     return (
       <div className="mx-auto max-w-xl px-4 py-16 sm:px-6 md:py-24">
-        <p className="font-mono text-xs uppercase tracking-[0.3em] text-gold">Interview Confirmed</p>
+        <p className="font-mono text-xs uppercase tracking-[0.3em] text-accent">Interview Confirmed</p>
         <h1 className="mt-4 font-display text-xl text-forest sm:text-2xl">You&apos;re booked.</h1>
-        <p className="mt-3 text-sm text-graphite/70 sm:text-base">
+        <p className="mt-3 text-sm text-graphite/80 sm:text-base">
           Your interview for {role} is scheduled for <strong>{bookedLabel}</strong> during lunch.
           See you then. Be sure to check your email every once in a while for any important
           updates, like last-minute scheduling changes.
@@ -120,18 +120,18 @@ export default function InterviewBookingPage({
 
   return (
     <div className="mx-auto max-w-xl px-4 py-16 sm:px-6 md:py-24">
-      <p className="font-mono text-xs uppercase tracking-[0.3em] text-gold">Book Your Interview</p>
+      <p className="font-mono text-xs uppercase tracking-[0.3em] text-accent">Book Your Interview</p>
       <h1 className="mt-4 font-display text-xl text-forest sm:text-2xl">{role} Interview</h1>
-      <p className="mt-3 text-sm text-graphite/70 sm:text-base">
+      <p className="mt-3 text-sm text-graphite/80 sm:text-base">
         Pick an available lunch-period slot below. Once booked, it&apos;s reserved just for you.
       </p>
 
       <div className="dim-divider my-8" />
 
-      {error && <p className="mb-4 text-sm text-red-700">{error}</p>}
+      {error && <p className="mb-4 text-sm text-red-700" role="alert">{error}</p>}
 
       {slots.length === 0 && (
-        <p className="text-sm text-graphite/50">
+        <p className="text-sm text-graphite/80">
           No interview times are open right now — check back soon or contact an officer.
         </p>
       )}
@@ -146,11 +146,11 @@ export default function InterviewBookingPage({
           >
             <span>
               <span className="block font-display text-base text-forest">{s.label}</span>
-              <span className="block font-mono text-xs text-graphite/50">
+              <span className="block font-mono text-xs text-graphite/80">
                 {new Date(s.slot_time).toLocaleString()}
               </span>
             </span>
-            <span className="font-mono text-xs uppercase tracking-[0.15em] text-gold">
+            <span className="font-mono text-xs uppercase tracking-[0.15em] text-accent">
               {booking === s.id ? "Booking..." : "Book"}
             </span>
           </button>

@@ -14,11 +14,11 @@ const resources = [
     label: "Open Q&A Hub",
   },
   {
-    title: "Academy Application",
-    body: "Official GEA application form.",
-    href: "https://docs.google.com/forms/d/e/1FAIpQLSdTDKvYr0IqeTOAl88It9BlaFNkUU359dHG5B6FBzN48W6yng/viewform",
-    label: "Apply to GEA",
-    external: true,
+    title: "Academy Admissions",
+    body: "Academy applications open in late November. Contact GEA with questions about the program.",
+    href: "/contact",
+    label: "Contact GEA",
+    external: false,
   },
   {
     title: "Curriculum",
@@ -31,7 +31,7 @@ const resources = [
 export default function StudentResourcesPage() {
   return (
     <div className="mx-auto max-w-5xl px-4 py-16 sm:px-6 md:py-20">
-      <p className="font-mono text-xs uppercase tracking-[0.3em] text-gold">GEA Students</p>
+      <p className="font-mono text-xs uppercase tracking-[0.3em] text-accent">GEA Students</p>
       <h1 className="mt-4 font-display text-2xl font-medium text-forest sm:text-3xl md:text-4xl">
         Student resources
       </h1>
@@ -43,12 +43,12 @@ export default function StudentResourcesPage() {
         {resources.map((resource) => (
           <div key={resource.title} className="rounded-sm bg-forest/[0.03] p-5 ring-1 ring-forest/5">
             <h2 className="font-display text-lg text-forest">{resource.title}</h2>
-            <p className="mt-2 text-sm leading-relaxed text-graphite/70">{resource.body}</p>
+            <p className="mt-2 text-sm leading-relaxed text-graphite/80">{resource.body}</p>
             <Link
               href={resource.href}
               target={resource.external ? "_blank" : undefined}
               rel={resource.external ? "noreferrer" : undefined}
-              className="mt-4 inline-flex min-h-11 items-center rounded-sm bg-forest px-4 py-2.5 font-mono text-xs uppercase tracking-[0.15em] text-gold"
+              className="mt-4 inline-flex min-h-11 items-center rounded-sm bg-forest px-4 py-2.5 font-mono text-xs uppercase tracking-[0.15em] text-accent"
             >
               {resource.label}
             </Link>

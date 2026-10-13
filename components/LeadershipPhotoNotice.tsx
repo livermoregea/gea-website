@@ -80,7 +80,7 @@ export default function LeadershipPhotoNotice({ children }: { children: ReactNod
         <h2 id="photo-notice-title" className="font-display text-2xl text-forest">
           Let’s share our best shot!
         </h2>
-        <p id="photo-notice-description" className="mt-3 text-sm leading-relaxed text-graphite/75">
+        <p id="photo-notice-description" className="mt-3 text-sm leading-relaxed text-graphite/80">
           Our team is pretty photogenic, right? Reach out to GEA if you’d like a
           leadership portrait or team photo—we’re happy to help!
         </p>

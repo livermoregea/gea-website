@@ -151,12 +151,14 @@ export default function AdminStudents() {
   }
 
   async function removeAndBlacklist() {
+    try {
     if (!selectedId || !hasSupabaseConfig()) return;
     if (removalReason === "other" && removalNote.trim().length === 0) {
       setMessage("Please add a short note for the removal reason.");
       return;
     }
 
+    if (!window.confirm(`Remove ${fullName || "this student"} and block their email? Their account will be deleted. This cannot be undone.`)) return;
     setSaving(true);
     setMessage(null);
     const res = await fetch("/api/student-accounts/manage", {
@@ -186,9 +188,11 @@ export default function AdminStudents() {
     setRemovalNote("");
     setMessage("Student removed and email blacklisted.");
     load();
+      } catch { setMessage("Couldn’t complete this request. Check your connection and try again."); } finally { setSaving(false); }
   }
 
   async function unblacklist(schoolEmailValue: string) {
+    try {
     if (!hasSupabaseConfig()) return;
 
     setSaving(true);
@@ -211,6 +215,7 @@ export default function AdminStudents() {
 
     setMessage("Email removed from blacklist.");
     load();
+      } catch { setMessage("Couldn’t complete this request. Check your connection and try again."); } finally { setSaving(false); }
   }
 
   return (
@@ -218,15 +223,15 @@ export default function AdminStudents() {
       <section className="rounded-sm bg-paper p-5 ring-1 ring-forest/10">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
           <div>
-            <p className="font-mono text-xs uppercase tracking-[0.2em] text-gold">Students</p>
+            <p className="font-mono text-xs uppercase tracking-[0.2em] text-accent">Students</p>
             <h3 className="mt-2 font-display text-2xl text-forest">Student profiles</h3>
           </div>
-          <p className="text-sm text-graphite/60">
+          <p className="text-sm text-graphite/80">
             {students.length} student{students.length === 1 ? "" : "s"} · {blocks.length} blocked email
             {blocks.length === 1 ? "" : "s"}
           </p>
         </div>
-        <p className="mt-3 max-w-2xl text-sm leading-relaxed text-graphite/70">
+        <p className="mt-3 max-w-2xl text-sm leading-relaxed text-graphite/80">
           Students can create accounts right away. Use the blacklist below if someone is not in GEA
           or needs to be removed for inappropriate behavior.
         </p>
@@ -237,25 +242,27 @@ export default function AdminStudents() {
           <div className="rounded-sm bg-paper p-5 ring-1 ring-forest/10">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
               <div>
-                <p className="font-mono text-xs uppercase tracking-[0.2em] text-gold">Roster</p>
+                <p className="font-mono text-xs uppercase tracking-[0.2em] text-accent">Roster</p>
                 <h3 className="mt-2 font-display text-2xl text-forest">Student profiles</h3>
               </div>
-              <p className="text-sm text-graphite/60">
+              <p className="text-sm text-graphite/80">
                 {filteredStudents.length} shown of {students.length}
               </p>
             </div>
             <input
+              type="search"
+              aria-label="Search students"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search by name, username, email, or class year"
-              className="mt-5 w-full rounded-sm border border-forest/15 bg-paper px-4 py-3 text-sm outline-none placeholder:text-graphite/40 focus:border-gold"
+              className="mt-5 w-full rounded-sm border border-forest/65 bg-paper px-4 py-3 text-base outline-none placeholder:text-graphite/80 focus:border-gold"
             />
           </div>
 
           <div className="space-y-4">
             {filteredStudents.length > 0 && (
               <div className="flex flex-col gap-3 rounded-sm bg-paper px-4 py-3 ring-1 ring-forest/10 sm:flex-row sm:items-center sm:justify-between">
-                <p className="font-mono text-[10px] uppercase tracking-[0.15em] text-graphite/50">
+                <p className="font-mono text-xs uppercase tracking-[0.15em] text-graphite/80">
                   Showing {showingStart}-{showingEnd} of {filteredStudents.length}
                 </p>
                 <div className="flex items-center gap-2">
@@ -263,18 +270,18 @@ export default function AdminStudents() {
                     type="button"
                     onClick={() => setPage((current) => Math.max(1, current - 1))}
                     disabled={currentPage <= 1}
-                    className="rounded-sm border border-forest/15 px-3 py-2 font-mono text-[11px] uppercase tracking-[0.12em] text-forest transition hover:bg-forest/[0.03] disabled:cursor-not-allowed disabled:opacity-40"
+                    className="rounded-sm border border-forest/15 px-3 py-2 font-mono text-xs uppercase tracking-[0.12em] text-forest transition hover:bg-forest/[0.03] disabled:cursor-not-allowed disabled:opacity-40"
                   >
                     Previous
                   </button>
-                  <span className="font-mono text-[10px] uppercase tracking-[0.15em] text-graphite/50">
+                  <span className="font-mono text-xs uppercase tracking-[0.15em] text-graphite/80">
                     Page {currentPage} of {totalPages}
                   </span>
                   <button
                     type="button"
                     onClick={() => setPage((current) => Math.min(totalPages, current + 1))}
                     disabled={currentPage >= totalPages}
-                    className="rounded-sm border border-forest/15 px-3 py-2 font-mono text-[11px] uppercase tracking-[0.12em] text-forest transition hover:bg-forest/[0.03] disabled:cursor-not-allowed disabled:opacity-40"
+                    className="rounded-sm border border-forest/15 px-3 py-2 font-mono text-xs uppercase tracking-[0.12em] text-forest transition hover:bg-forest/[0.03] disabled:cursor-not-allowed disabled:opacity-40"
                   >
                     Next
                   </button>
@@ -283,9 +290,9 @@ export default function AdminStudents() {
             )}
 
           <div className="max-h-[65vh] space-y-3 overflow-y-auto pr-1">
-            {loading && <p className="text-sm text-graphite/50">Loading student profiles...</p>}
+            {loading && <p className="text-sm text-graphite/80" role="status">Loading student profiles...</p>}
             {!loading && filteredStudents.length === 0 && (
-              <p className="text-sm text-graphite/50">No student profiles match that search.</p>
+              <p className="text-sm text-graphite/80" role="status">No student profiles match that search.</p>
             )}
             {pagedStudents.map((student) => (
               <button
@@ -304,7 +311,7 @@ export default function AdminStudents() {
                     )}
                     <p className="font-display text-lg text-forest">{student.full_name}</p>
                   </div>
-                  <p className="font-mono text-[10px] uppercase tracking-[0.15em] text-gold">
+                  <p className="font-mono text-xs uppercase tracking-[0.15em] text-accent">
                     Class of {student.graduating_class_year}
                   </p>
                 </div>
@@ -316,24 +323,24 @@ export default function AdminStudents() {
           <div className="rounded-sm bg-paper p-5 ring-1 ring-forest/10">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
               <div>
-                <p className="font-mono text-xs uppercase tracking-[0.2em] text-gold">Blacklist</p>
+                <p className="font-mono text-xs uppercase tracking-[0.2em] text-accent">Blacklist</p>
                 <h3 className="mt-2 font-display text-2xl text-forest">Blocked emails</h3>
               </div>
             </div>
             <div className="mt-4 space-y-3">
-              {loading && <p className="text-sm text-graphite/50">Loading blocked emails...</p>}
+              {loading && <p className="text-sm text-graphite/80" role="status">Loading blocked emails...</p>}
               {!loading && blocks.length === 0 && (
-                <p className="text-sm text-graphite/50">No emails are blocked right now.</p>
+                <p className="text-sm text-graphite/80" role="status">No emails are blocked right now.</p>
               )}
               {blocks.map((block) => (
                 <div key={block.school_email} className="rounded-sm border border-forest/10 bg-forest/[0.02] p-4">
                   <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                     <div>
                       <p className="font-medium text-forest">{block.school_email}</p>
-                      <p className="mt-1 text-xs uppercase tracking-[0.12em] text-graphite/50">
+                      <p className="mt-1 text-xs uppercase tracking-[0.12em] text-graphite/80">
                         {getStudentEmailBlockReasonLabel(block.reason)}
                       </p>
-                      {block.note ? <p className="mt-1 text-sm text-graphite/65">{block.note}</p> : null}
+                      {block.note ? <p className="mt-1 text-sm text-graphite/80">{block.note}</p> : null}
                     </div>
                     <button
                       type="button"
@@ -351,52 +358,52 @@ export default function AdminStudents() {
         </div>
 
         <form onSubmit={save} className="space-y-4 rounded-sm bg-forest/[0.03] p-5 ring-1 ring-forest/5">
-          <p className="font-mono text-xs uppercase tracking-[0.2em] text-gold">Edit Profile</p>
-          <p className="text-sm text-graphite/60">
+          <p className="font-mono text-xs uppercase tracking-[0.2em] text-accent">Edit Profile</p>
+          <p className="text-sm text-graphite/80">
             Select a student to update their profile or remove them from GEA.
           </p>
           <div>
-            <label htmlFor={fullNameId} className="font-mono text-xs uppercase tracking-[0.15em] text-graphite/70">
+            <label htmlFor={fullNameId} className="font-mono text-xs uppercase tracking-[0.15em] text-graphite/80">
               Full Name
             </label>
             <input
               id={fullNameId}
               value={fullName}
               onChange={(e) => setFullName(e.target.value)}
-              className="mt-2 w-full rounded-sm border border-forest/15 bg-paper px-3 py-2 text-sm"
+              className="mt-2 w-full rounded-sm border border-forest/65 bg-paper px-3 py-2 text-base"
             />
           </div>
           <div>
-            <label htmlFor={displayUsernameId} className="font-mono text-xs uppercase tracking-[0.15em] text-graphite/70">
+            <label htmlFor={displayUsernameId} className="font-mono text-xs uppercase tracking-[0.15em] text-graphite/80">
               Display Username
             </label>
             <input
               id={displayUsernameId}
               value={displayUsername}
               onChange={(e) => setDisplayUsername(e.target.value)}
-              className="mt-2 w-full rounded-sm border border-forest/15 bg-paper px-3 py-2 text-sm"
+              className="mt-2 w-full rounded-sm border border-forest/65 bg-paper px-3 py-2 text-base"
             />
           </div>
           <div>
-            <label htmlFor={graduatingClassYearId} className="font-mono text-xs uppercase tracking-[0.15em] text-graphite/70">
+            <label htmlFor={graduatingClassYearId} className="font-mono text-xs uppercase tracking-[0.15em] text-graphite/80">
               Graduating Class Year
             </label>
             <input
               id={graduatingClassYearId}
               value={graduatingClassYear}
               onChange={(e) => setGraduatingClassYear(e.target.value)}
-              className="mt-2 w-full rounded-sm border border-forest/15 bg-paper px-3 py-2 text-sm"
+              className="mt-2 w-full rounded-sm border border-forest/65 bg-paper px-3 py-2 text-base"
             />
           </div>
           <div>
-            <label htmlFor={schoolEmailId} className="font-mono text-xs uppercase tracking-[0.15em] text-graphite/70">
+            <label htmlFor={schoolEmailId} className="font-mono text-xs uppercase tracking-[0.15em] text-graphite/80">
               School Email
             </label>
             <input
               id={schoolEmailId}
               value={schoolEmail}
               onChange={(e) => setSchoolEmail(e.target.value)}
-              className="mt-2 w-full rounded-sm border border-forest/15 bg-paper px-3 py-2 text-sm"
+              className="mt-2 w-full rounded-sm border border-forest/65 bg-paper px-3 py-2 text-base"
             />
           </div>
 
@@ -406,13 +413,14 @@ export default function AdminStudents() {
               Removing a student will delete their account and add their email to the blacklist until you unblacklist it.
             </p>
             <div className="mt-4">
-              <label className="font-mono text-xs uppercase tracking-[0.15em] text-red-700">
+              <label htmlFor="student-removal-reason" className="font-mono text-xs uppercase tracking-[0.15em] text-red-700">
                 Why are you removing them?
               </label>
               <select
+                id="student-removal-reason"
                 value={removalReason}
                 onChange={(e) => setRemovalReason(e.target.value as StudentEmailBlockReason)}
-                className="mt-2 w-full rounded-sm border border-red-200 bg-white px-3 py-2 text-sm outline-none focus:border-red-400"
+                className="mt-2 w-full rounded-sm border border-red-200 bg-white px-3 py-2 text-base outline-none focus:border-red-400"
               >
                 {STUDENT_EMAIL_BLOCK_REASONS.map((reason) => (
                   <option key={reason.value} value={reason.value}>
@@ -423,14 +431,15 @@ export default function AdminStudents() {
             </div>
             {removalReason === "other" ? (
               <div className="mt-4">
-                <label className="font-mono text-xs uppercase tracking-[0.15em] text-red-700">
+                <label htmlFor="student-removal-note" className="font-mono text-xs uppercase tracking-[0.15em] text-red-700">
                   Note
                 </label>
                 <textarea
+                  id="student-removal-note"
                   value={removalNote}
                   onChange={(e) => setRemovalNote(e.target.value)}
                   rows={3}
-                  className="mt-2 w-full rounded-sm border border-red-200 bg-white px-3 py-2 text-sm outline-none focus:border-red-400"
+                  className="mt-2 w-full rounded-sm border border-red-200 bg-white px-3 py-2 text-base outline-none focus:border-red-400"
                   placeholder="Add a short reason"
                 />
               </div>
@@ -445,11 +454,11 @@ export default function AdminStudents() {
             </button>
           </div>
 
-          {message && <p className="text-sm text-graphite/70">{message}</p>}
+          {message && <p className="text-sm text-graphite/80" role="status">{message}</p>}
           <button
             type="submit"
             disabled={!selectedId || saving}
-            className="w-full rounded-sm bg-forest px-4 py-2.5 font-mono text-xs uppercase tracking-[0.15em] text-gold transition hover:bg-forestdeep disabled:opacity-50"
+            className="w-full rounded-sm bg-forest px-4 py-2.5 font-mono text-xs uppercase tracking-[0.15em] text-accent transition hover:bg-forestdeep disabled:opacity-50"
           >
             {saving ? "Saving..." : selectedId ? "Save Profile" : "Select a Student"}
           </button>

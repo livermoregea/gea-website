@@ -8,9 +8,9 @@ export default async function TeacherPage() {
   if (!hasSupabaseConfig()) {
       return (
         <div className="mx-auto max-w-4xl px-4 py-16 sm:px-6 md:py-20">
-        <p className="font-mono text-xs uppercase tracking-[0.3em] text-gold">Teacher Portal</p>
+        <p className="font-mono text-xs uppercase tracking-[0.3em] text-accent">Teacher Portal</p>
         <h1 className="mt-4 font-display text-2xl font-medium text-forest">Demo mode</h1>
-        <p className="mt-3 text-sm text-graphite/70">
+        <p className="mt-3 text-sm text-graphite/80">
           Supabase isn&apos;t configured, so the teacher portal is showing placeholder content.
         </p>
       </div>
@@ -41,14 +41,15 @@ export default async function TeacherPage() {
   if (!isTeacher && !isAdmin) {
     return (
       <div className="mx-auto max-w-md px-4 py-16 text-center sm:px-6 md:py-24">
-        <p className="text-sm text-graphite/70">
+        <h1 className="mb-4 font-display text-2xl text-forestdeep">Account access</h1>
+        <p className="text-sm text-graphite/80">
           This account doesn&apos;t have teacher access yet. If you&apos;re staff, use the private
           teacher signup page.
         </p>
         <div className="mt-4 flex flex-wrap justify-center gap-3">
           <Link
             href="/teacher/signup"
-            className="rounded-sm bg-forest px-4 py-2.5 font-mono text-xs uppercase tracking-[0.15em] text-gold"
+            className="rounded-sm bg-forest px-4 py-2.5 font-mono text-xs uppercase tracking-[0.15em] text-accent"
           >
             Teacher Signup
           </Link>

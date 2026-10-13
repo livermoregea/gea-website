@@ -138,9 +138,9 @@ export default function ProfileEditor(props: Props) {
   if (hasPendingRequest) {
     return (
       <div className="rounded-sm bg-forest/[0.03] p-6 ring-1 ring-forest/5">
-        <p className="font-mono text-xs uppercase tracking-[0.2em] text-gold">Pending Review</p>
+        <p className="font-mono text-xs uppercase tracking-[0.2em] text-accent">Pending Review</p>
         <h2 className="mt-2 font-display text-xl text-forest">Your change request is waiting</h2>
-        <p className="mt-3 text-sm text-graphite/70">
+        <p className="mt-3 text-sm text-graphite/80">
           You already have a profile change request in the queue. An admin needs to approve it
           before the update is applied.
         </p>
@@ -157,10 +157,10 @@ export default function ProfileEditor(props: Props) {
     <form onSubmit={handleSubmit} className="space-y-5 rounded-sm bg-forest/[0.03] p-6 ring-1 ring-forest/5">
       {props.latestRequest && props.latestRequest.status !== "pending" ? (
         <div className="rounded-sm bg-paper p-4 ring-1 ring-forest/10">
-          <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-gold">
+          <p className="font-mono text-xs uppercase tracking-[0.2em] text-accent">
             Last Request
           </p>
-          <p className="mt-2 text-sm text-graphite/70">
+          <p className="mt-2 text-sm text-graphite/80">
             Your most recent request was {props.latestRequest.status}.
           </p>
           {props.latestRequest.rejection_reason ? (
@@ -172,44 +172,49 @@ export default function ProfileEditor(props: Props) {
       ) : null}
 
       <div>
-        <label htmlFor={fullNameId} className="font-mono text-xs uppercase tracking-[0.15em] text-graphite/70">
+        <label htmlFor={fullNameId} className="font-mono text-xs uppercase tracking-[0.15em] text-graphite/80">
           Full Name
         </label>
         <input
           id={fullNameId}
+          required
+          autoComplete="name"
           value={fullName}
           onChange={(e) => setFullName(e.target.value)}
-          className="mt-2 w-full rounded-sm border border-forest/15 bg-paper px-4 py-3 text-sm outline-none focus:border-gold"
+          className="mt-2 w-full rounded-sm border border-forest/65 bg-paper px-4 py-3 text-base outline-none focus:border-gold"
         />
       </div>
 
       <div>
-        <label htmlFor={schoolEmailId} className="font-mono text-xs uppercase tracking-[0.15em] text-graphite/70">
+        <label htmlFor={schoolEmailId} className="font-mono text-xs uppercase tracking-[0.15em] text-graphite/80">
           School Email
         </label>
         <input
           id={schoolEmailId}
+          type="email"
+          required
+          autoComplete="email"
           value={schoolEmail}
           onChange={(e) => setSchoolEmail(e.target.value)}
-          className="mt-2 w-full rounded-sm border border-forest/15 bg-paper px-4 py-3 text-sm outline-none focus:border-gold"
+          className="mt-2 w-full rounded-sm border border-forest/65 bg-paper px-4 py-3 text-base outline-none focus:border-gold"
         />
       </div>
 
       {props.kind === "student" ? (
         <>
           <div>
-            <label htmlFor={displayUsernameId} className="font-mono text-xs uppercase tracking-[0.15em] text-graphite/70">
+            <label htmlFor={displayUsernameId} className="font-mono text-xs uppercase tracking-[0.15em] text-graphite/80">
               Display Username
             </label>
             <input
               id={displayUsernameId}
               value={displayUsername}
               onChange={(e) => setDisplayUsername(e.target.value)}
-              className="mt-2 w-full rounded-sm border border-forest/15 bg-paper px-4 py-3 text-sm outline-none focus:border-gold"
+              className="mt-2 w-full rounded-sm border border-forest/65 bg-paper px-4 py-3 text-base outline-none focus:border-gold"
             />
           </div>
           <div>
-            <label htmlFor={graduatingClassYearId} className="font-mono text-xs uppercase tracking-[0.15em] text-graphite/70">
+            <label htmlFor={graduatingClassYearId} className="font-mono text-xs uppercase tracking-[0.15em] text-graphite/80">
               Graduating Class Year
             </label>
             <input
@@ -217,18 +222,18 @@ export default function ProfileEditor(props: Props) {
               inputMode="numeric"
               value={graduatingClassYear}
               onChange={(e) => setGraduatingClassYear(e.target.value)}
-              className="mt-2 w-full rounded-sm border border-forest/15 bg-paper px-4 py-3 text-sm outline-none focus:border-gold"
+              className="mt-2 w-full rounded-sm border border-forest/65 bg-paper px-4 py-3 text-base outline-none focus:border-gold"
             />
           </div>
         </>
       ) : null}
 
-      {message && <p className="text-sm text-graphite/70">{message}</p>}
+      {message && <p className="text-sm text-graphite/80" role="status">{message}</p>}
 
       <button
         type="submit"
         disabled={saving}
-        className="rounded-sm bg-forest px-5 py-2.5 font-mono text-xs uppercase tracking-[0.15em] text-gold transition hover:bg-forestdeep disabled:opacity-50"
+        className="rounded-sm bg-forest px-5 py-2.5 font-mono text-xs uppercase tracking-[0.15em] text-accent transition hover:bg-forestdeep disabled:opacity-50"
       >
         {saving ? "Submitting..." : "Request Approval"}
       </button>

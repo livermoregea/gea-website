@@ -12,6 +12,7 @@ import AdminStudents from "@/components/admin/AdminStudents";
 import AdminProfileChanges from "@/components/admin/AdminProfileChanges";
 import AdminTeacherInvites from "@/components/admin/AdminTeacherInvites";
 import AdminWebsite from "@/components/admin/AdminWebsite";
+import AdminBuilders from "@/components/admin/AdminBuilders";
 import AdminDashboard from "@/components/admin/AdminDashboard";
 import { ADMIN_SECTIONS, type AdminSectionKey } from "@/components/admin/admin-sections";
 import {
@@ -27,6 +28,7 @@ const EMPTY_ALERTS: TabAlertCounts = {
   dashboard: 0,
   applications: 0,
   students: 0,
+  builders: 0,
   website: 0,
   leadership: 0,
   "profile-changes": 0,
@@ -44,7 +46,7 @@ export default function AdminTabs({ section = "dashboard" }: { section?: AdminSe
     async function loadAlerts() {
       if (!hasSupabaseConfig()) return;
       const supabase = createClient();
-      const [applications, students, websiteAnnouncements, profileChanges, pendingQuestions, pendingAnswers] =
+      const [applications, students, websiteAnnouncements, profileChanges, pendingQuestions, pendingAnswers, pendingBuilds] =
         await Promise.all([
           supabase.from("applications").select("id"),
           supabase.from("student_profiles").select("id"),
@@ -52,9 +54,11 @@ export default function AdminTabs({ section = "dashboard" }: { section?: AdminSe
           supabase.from("profile_change_requests").select("id").eq("status", "pending"),
           supabase.from("qa_questions").select("id", { count: "exact", head: true }).eq("status", "pending"),
           supabase.from("qa_answers").select("id", { count: "exact", head: true }).eq("status", "pending"),
+          supabase.from("builder_submissions").select("id", { count: "exact", head: true }).eq("status", "pending"),
         ]);
       setAlertCounts({
         ...EMPTY_ALERTS,
+        builders: pendingBuilds.count ?? 0,
         applications: getUnreadAdminNotificationCount("applications", ((applications.data as { id: string }[] | null) ?? []).map((item) => item.id)),
         students: getUnreadAdminNotificationCount("students", ((students.data as { id: string }[] | null) ?? []).map((item) => item.id)),
         "profile-changes": getUnreadAdminNotificationCount("profile-changes", ((profileChanges.data as { id: string }[] | null) ?? []).map((item) => item.id)),
@@ -69,6 +73,7 @@ export default function AdminTabs({ section = "dashboard" }: { section?: AdminSe
   function renderSection() {
     switch (section) {
       case "applications": return <AdminApplications />;
+      case "builders": return <AdminBuilders />;
       case "students": return <AdminStudents />;
       case "website": return <AdminWebsite />;
       case "leadership": return <AdminLeadership />;
@@ -86,7 +91,7 @@ export default function AdminTabs({ section = "dashboard" }: { section?: AdminSe
         <div className="grid gap-2 sm:grid-cols-3">
           {(["Workspace", "Website", "Operations"] as const).map((group) => (
             <div key={group} className="min-w-0 rounded-sm bg-forest/[0.025] px-2 py-2">
-              <span className="px-2 font-mono text-[9px] uppercase tracking-[0.15em] text-graphite/40">{group}</span>
+              <span className="px-2 font-mono text-xs uppercase tracking-[0.15em] text-graphite/80">{group}</span>
               <div className="mt-1 flex flex-wrap gap-1">
                 {ADMIN_SECTIONS.filter((item) => item.group === group).map((item) => {
                 const selected = section === item.key;
@@ -96,7 +101,7 @@ export default function AdminTabs({ section = "dashboard" }: { section?: AdminSe
                     key={item.key}
                     href={item.key === "dashboard" ? "/admin-portal-x7k9" : `/admin-portal-x7k9/${item.key}`}
                     aria-current={selected ? "page" : undefined}
-                    className={`relative flex min-h-10 shrink-0 items-center gap-2 rounded-sm px-3 py-2 font-mono text-[10px] uppercase tracking-[0.1em] transition sm:px-4 ${selected ? "bg-forest text-gold" : "text-graphite/65 hover:bg-forest/[0.05] hover:text-forest"}`}
+                    className={`relative flex min-h-10 shrink-0 items-center gap-2 rounded-sm px-3 py-2 font-mono text-xs uppercase tracking-[0.1em] transition sm:px-4 ${selected ? "bg-forest text-accent" : "text-graphite/80 hover:bg-forest/[0.05] hover:text-forest"}`}
                   >
                     {item.label}
                     {item.key === "website" && websiteActive && (
@@ -104,7 +109,7 @@ export default function AdminTabs({ section = "dashboard" }: { section?: AdminSe
                     )}
                     {count > 0 && (
                       <span
-                        className="flex h-5 min-w-5 items-center justify-center rounded-full bg-red-600 px-1.5 text-[9px] font-semibold leading-none text-white shadow-sm"
+                        className="flex h-5 min-w-5 items-center justify-center rounded-full bg-red-600 px-1.5 text-xs font-semibold leading-none text-white shadow-sm"
                         aria-label={`${count} notifications`}
                       >
                         {count > 9 ? "9+" : count}
@@ -122,10 +127,10 @@ export default function AdminTabs({ section = "dashboard" }: { section?: AdminSe
       <div className="min-w-0">
         <div className="mb-5 flex flex-col gap-1 border-b border-forest/10 pb-4 sm:flex-row sm:items-end sm:justify-between">
           <div>
-            <p className="font-mono text-[10px] uppercase tracking-[0.25em] text-gold">Admin workspace</p>
+            <p className="font-mono text-xs uppercase tracking-[0.25em] text-accent">Admin workspace</p>
             <h2 className="mt-1 font-display text-2xl text-forest sm:text-3xl">{activeSection.label}</h2>
           </div>
-          {section !== "dashboard" && <Link href="/admin-portal-x7k9" className="text-xs text-graphite/50 underline decoration-gold underline-offset-4 hover:text-forest">Back to dashboard</Link>}
+          {section !== "dashboard" && <Link href="/admin-portal-x7k9" className="text-xs text-graphite/80 underline decoration-gold underline-offset-4 hover:text-forest">Back to dashboard</Link>}
         </div>
         {renderSection()}
       </div>

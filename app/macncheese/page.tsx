@@ -93,7 +93,7 @@ export default function MacNCheesePage() {
             disabled
             className="absolute right-4 top-4 w-[calc(100%-2rem)] max-w-[18rem] rounded-sm border border-gold/35 bg-gold/10 px-3 py-2 text-left text-forestdeep disabled:cursor-not-allowed sm:right-6 sm:top-6 sm:w-60 lg:right-8"
           >
-            <span className="block font-mono text-[9px] uppercase tracking-[0.18em] text-forest/65">
+            <span className="block font-mono text-xs uppercase tracking-[0.18em] text-forest/80">
               Next?
             </span>
             <span className="mt-1 block text-xs leading-snug">
@@ -101,7 +101,7 @@ export default function MacNCheesePage() {
               that. Sorry... better luck next time.
             </span>
           </button>
-          <p className="font-mono text-[11px] uppercase tracking-[0.35em] text-forest/70">
+          <p className="font-mono text-xs uppercase tracking-[0.35em] text-forest/80">
             Hidden route detected
           </p>
           <h1 className="mt-4 font-display text-4xl font-medium tracking-tight text-forestdeep sm:text-5xl">
@@ -122,7 +122,7 @@ export default function MacNCheesePage() {
               <a
                 key={href}
                 href={href}
-                className="rounded-sm border border-forest/20 bg-white/70 px-4 py-2 font-mono text-[11px] uppercase tracking-[0.16em] text-forestdeep transition-colors hover:border-gold hover:bg-gold/10 focus:outline-none focus:ring-2 focus:ring-gold/60"
+                className="rounded-sm border border-forest/20 bg-white/70 px-4 py-2 font-mono text-xs uppercase tracking-[0.16em] text-forestdeep transition-colors hover:border-gold hover:bg-gold/10 focus:outline-none focus:ring-2 focus:ring-gold/60"
               >
                 {label}
               </a>
@@ -136,13 +136,13 @@ export default function MacNCheesePage() {
           <article className="rounded-sm border border-gold/15 bg-white/70 p-6 shadow-[0_10px_40px_rgba(31,36,33,0.06)] backdrop-blur-sm sm:p-8">
             <div className="flex flex-wrap items-start justify-between gap-4">
               <div>
-                <p className="font-mono text-[11px] uppercase tracking-[0.28em] text-forest/70">
+                <p className="font-mono text-xs uppercase tracking-[0.28em] text-forest/80">
                   Recipe card
                 </p>
                 <h2 className="mt-2 font-display text-3xl text-forestdeep">Mac & Cheese</h2>
               </div>
               <div className="rounded-sm border border-gold/25 bg-paper px-4 py-2 text-right">
-                <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-forest/55">
+                <p className="font-mono text-xs uppercase tracking-[0.2em] text-forest/80">
                   Serves
                 </p>
                 <p className="font-display text-2xl text-forestdeep">4</p>
@@ -177,16 +177,16 @@ export default function MacNCheesePage() {
           </article>
 
           <aside className="rounded-sm border border-gold/15 bg-forestdeep px-6 py-6 text-paper shadow-[0_10px_40px_rgba(18,53,36,0.18)] sm:px-8">
-            <p className="font-mono text-[11px] uppercase tracking-[0.28em] text-goldlight/80">
+            <p className="font-mono text-xs uppercase tracking-[0.28em] text-goldlight/80">
               Quick note
             </p>
-            <p className="mt-3 text-base leading-relaxed text-paper/82">
+            <p className="mt-3 text-base leading-relaxed text-paper/85">
               This page is intentionally hidden unless someone guesses the route. A tiny reward
               for curiosity. Don&apos;t tell anyone else about this.
             </p>
             <div className="mt-6 rounded-sm border border-paper/12 bg-paper/6 p-4">
               <p className="font-display text-xl text-paper">Pro tip</p>
-              <p className="mt-2 text-sm leading-relaxed text-paper/78">
+              <p className="mt-2 text-sm leading-relaxed text-paper/85">
                 Use a sharp cheddar for the boldest flavor, and don&apos;t rush the sauce while it
                 thickens.
               </p>
@@ -241,7 +241,7 @@ export default function MacNCheesePage() {
             </ul>
             <div className="mt-6 rounded-sm border border-gold/20 bg-forestdeep px-4 py-4 text-paper">
               <h4 className="text-lg font-semibold">Crock Pot</h4>
-              <p className="mt-2 text-sm leading-relaxed text-paper/82">
+              <p className="mt-2 text-sm leading-relaxed text-paper/85">
                 If you want a slow-cooker version, this recipe is a good starting point for a
                 crock pot mac and cheese experiment.
               </p>

@@ -209,24 +209,24 @@ export default function AdminWebsite() {
     load();
   }
 
-  if (loading) return <p className="text-sm text-graphite/50">Loading website settings...</p>;
+  if (loading) return <p role="status" className="text-sm text-graphite/80">Loading website settings...</p>;
 
   return (
     <div className="space-y-6">
       <section className="rounded-sm bg-paper p-5 ring-1 ring-forest/10">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
           <div>
-            <p className="font-mono text-xs uppercase tracking-[0.2em] text-gold">Website</p>
+            <p className="font-mono text-xs uppercase tracking-[0.2em] text-accent">Website</p>
             <h3 className="mt-2 font-display text-2xl text-forest">Popup and banner content</h3>
           </div>
-          <p className="text-sm text-graphite/60">
+          <p className="text-sm text-graphite/80">
             Edit what visitors see before sign-in and what appears across the site.
           </p>
         </div>
       </section>
 
       {message && (
-        <p className="rounded-sm bg-forest/[0.05] p-4 text-sm text-graphite/80 ring-1 ring-forest/10">
+        <p className="rounded-sm bg-forest/[0.05] p-4 text-sm text-graphite/80 ring-1 ring-forest/10" role="status">
           {message}
         </p>
       )}
@@ -237,21 +237,21 @@ export default function AdminWebsite() {
           <section key={kind} className="rounded-sm bg-forest/[0.03] p-5 ring-1 ring-forest/10">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
               <div>
-                <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-gold">
+                <p className="font-mono text-xs uppercase tracking-[0.2em] text-accent">
                   {fieldLabel(kind)}
                 </p>
                 <h4 className="mt-2 font-display text-xl text-forest">
                   {kind === "popup" ? "Visitor popup" : "Site banner"}
                 </h4>
               </div>
-              <label className="flex items-center gap-2 rounded-sm bg-paper px-3 py-2 text-sm text-graphite/75 ring-1 ring-forest/10">
+              <label className="flex items-center gap-2 rounded-sm bg-paper px-3 py-2 text-sm text-graphite/80 ring-1 ring-forest/10">
                 <input
                   type="checkbox"
                   checked={draft.is_enabled}
                   onChange={(event) =>
                     updateDraft(kind, (current) => ({ ...current, is_enabled: event.target.checked }))
                   }
-                  className="h-4 w-4 rounded border-forest/25 text-forest focus:ring-gold"
+                  className="h-4 w-4 rounded border-forest/65 text-forest focus:ring-gold"
                 />
                 <span>Enabled</span>
               </label>
@@ -259,24 +259,26 @@ export default function AdminWebsite() {
 
             <div className="mt-4 grid gap-4 lg:grid-cols-2">
               <div>
-                <label className="font-mono text-[10px] uppercase tracking-[0.18em] text-graphite/50">
+                <label htmlFor={`announcement-${kind}-title`} className="font-mono text-xs uppercase tracking-[0.18em] text-graphite/80">
                   Title
                 </label>
                 <input
+                  id={`announcement-${kind}-title`}
                   value={draft.title}
                   onChange={(event) =>
                     updateDraft(kind, (current) => ({ ...current, title: event.target.value }))
                   }
                   placeholder={kind === "popup" ? "Welcome to GEA" : "Important update"}
-                  className="mt-2 w-full rounded-sm border border-forest/15 bg-paper px-4 py-3 text-sm outline-none focus:border-gold"
+                  className="mt-2 w-full rounded-sm border border-forest/65 bg-paper px-4 py-3 text-base outline-none focus:border-gold"
                 />
               </div>
 
               <div>
-                <label className="font-mono text-[10px] uppercase tracking-[0.18em] text-graphite/50">
+                <label htmlFor={`announcement-${kind}-scope`} className="font-mono text-xs uppercase tracking-[0.18em] text-graphite/80">
                   Show where?
                 </label>
                 <select
+                  id={`announcement-${kind}-scope`}
                   value={draft.scope}
                   onChange={(event) =>
                     updateDraft(kind, (current) => ({
@@ -284,7 +286,7 @@ export default function AdminWebsite() {
                       scope: event.target.value === "home" ? "home" : "site",
                     }))
                   }
-                  className="mt-2 w-full rounded-sm border border-forest/15 bg-paper px-4 py-3 text-sm outline-none focus:border-gold"
+                  className="mt-2 w-full rounded-sm border border-forest/65 bg-paper px-4 py-3 text-base outline-none focus:border-gold"
                 >
                   <option value="site">Entire site</option>
                   <option value="home">Main page only</option>
@@ -293,10 +295,11 @@ export default function AdminWebsite() {
             </div>
 
             <div className="mt-4">
-              <label className="font-mono text-[10px] uppercase tracking-[0.18em] text-graphite/50">
+              <label htmlFor={`announcement-${kind}-body`} className="font-mono text-xs uppercase tracking-[0.18em] text-graphite/80">
                 Message
               </label>
               <textarea
+                id={`announcement-${kind}-body`}
                 value={draft.body}
                 onChange={(event) =>
                   updateDraft(kind, (current) => ({ ...current, body: event.target.value }))
@@ -307,12 +310,12 @@ export default function AdminWebsite() {
                     ? "Write a detailed message for first-time visitors."
                     : "Write a short announcement for the banner."
                 }
-                className="mt-2 w-full rounded-sm border border-forest/15 bg-paper px-4 py-3 text-sm outline-none focus:border-gold"
+                className="mt-2 w-full rounded-sm border border-forest/65 bg-paper px-4 py-3 text-base outline-none focus:border-gold"
               />
             </div>
 
             {kind === "popup" && (
-              <label className="mt-4 flex cursor-pointer items-center gap-3 rounded-sm bg-paper px-4 py-3 text-sm text-graphite/75 ring-1 ring-forest/10">
+              <label className="mt-4 flex cursor-pointer items-center gap-3 rounded-sm bg-paper px-4 py-3 text-sm text-graphite/80 ring-1 ring-forest/10">
                 <input
                   type="checkbox"
                   checked={draft.allow_dont_show_again}
@@ -322,7 +325,7 @@ export default function AdminWebsite() {
                       allow_dont_show_again: event.target.checked,
                     }))
                   }
-                  className="h-4 w-4 rounded border-forest/25 text-forest focus:ring-gold"
+                  className="h-4 w-4 rounded border-forest/65 text-forest focus:ring-gold"
                 />
                 <span>Allow “Don&apos;t show again”</span>
               </label>
@@ -330,13 +333,13 @@ export default function AdminWebsite() {
 
             <div className="mt-4">
               <div className="flex items-center justify-between gap-3">
-                <label className="font-mono text-[10px] uppercase tracking-[0.18em] text-graphite/50">
+                <label className="font-mono text-xs uppercase tracking-[0.18em] text-graphite/80">
                   Buttons
                 </label>
                 <button
                   type="button"
                   onClick={() => addButton(kind)}
-                  className="rounded-sm border border-forest/15 px-3 py-1.5 font-mono text-[10px] uppercase tracking-[0.15em] text-forest transition hover:bg-forest/[0.04]"
+                  className="rounded-sm border border-forest/15 px-3 py-1.5 font-mono text-xs uppercase tracking-[0.15em] text-forest transition hover:bg-forest/[0.04]"
                 >
                   Add Button
                 </button>
@@ -344,18 +347,19 @@ export default function AdminWebsite() {
 
               <div className="mt-3 space-y-3">
                 {draft.buttons.length === 0 && (
-                  <p className="text-sm text-graphite/50">No buttons yet.</p>
+                  <p className="text-sm text-graphite/80">No buttons yet.</p>
                 )}
                 {draft.buttons.map((button, index) => (
                   <div key={`${kind}-button-${index}`} className="rounded-sm bg-paper p-4 ring-1 ring-forest/10">
                     <div className="grid gap-3 md:grid-cols-2">
                       <input
+                        aria-label={`Button ${index + 1} label`}
                         value={button.label}
                         onChange={(event) => updateButton(kind, index, "label", event.target.value)}
                         placeholder="Button label"
-                        className="w-full rounded-sm border border-forest/15 bg-paper px-3 py-2 text-sm outline-none focus:border-gold"
+                        className="w-full rounded-sm border border-forest/65 bg-paper px-3 py-2 text-base outline-none focus:border-gold"
                       />
-                      <label className="text-sm text-graphite/70">
+                      <label className="text-sm text-graphite/80">
                         <span className="mb-1 block">Button link</span>
                         <input
                           type="text"
@@ -365,16 +369,16 @@ export default function AdminWebsite() {
                           value={button.href}
                           onChange={(event) => updateButton(kind, index, "href", event.target.value)}
                           placeholder="https://example.com"
-                          className="w-full rounded-sm border border-forest/15 bg-paper px-3 py-2 text-sm outline-none focus:border-gold"
+                          className="w-full rounded-sm border border-forest/65 bg-paper px-3 py-2 text-base outline-none focus:border-gold"
                         />
-                        <span className="mt-2 block text-xs text-graphite/55">
+                        <span className="mt-2 block text-xs text-graphite/80">
                           Paste a link to any website. Addresses like example.com work too. You can also use /leadership for a page on this site.
                         </span>
                       </label>
                     </div>
                     <div className="mt-3 grid gap-3 md:grid-cols-[1fr_1fr_auto] md:items-end">
-                      <label className="text-sm text-graphite/70">
-                        <span className="mb-1 block font-mono text-[10px] uppercase tracking-[0.15em] text-graphite/50">
+                      <label className="text-sm text-graphite/80">
+                        <span className="mb-1 block font-mono text-xs uppercase tracking-[0.15em] text-graphite/80">
                           Style
                         </span>
                         <select
@@ -382,25 +386,25 @@ export default function AdminWebsite() {
                           onChange={(event) =>
                             updateButton(kind, index, "variant", event.target.value)
                           }
-                          className="w-full rounded-sm border border-forest/15 bg-paper px-3 py-2 text-sm outline-none focus:border-gold"
+                          className="w-full rounded-sm border border-forest/65 bg-paper px-3 py-2 text-base outline-none focus:border-gold"
                         >
                           <option value="primary">Primary</option>
                           <option value="secondary">Secondary</option>
                         </select>
                       </label>
-                      <label className="flex items-center gap-2 rounded-sm bg-forest/[0.03] px-3 py-2 text-sm text-graphite/70">
+                      <label className="flex items-center gap-2 rounded-sm bg-forest/[0.03] px-3 py-2 text-sm text-graphite/80">
                         <input
                           type="checkbox"
                           checked={button.newTab}
                           onChange={(event) => updateButton(kind, index, "newTab", event.target.checked)}
-                          className="h-4 w-4 rounded border-forest/25 text-forest focus:ring-gold"
+                          className="h-4 w-4 rounded border-forest/65 text-forest focus:ring-gold"
                         />
                         <span>Open in new tab</span>
                       </label>
                       <button
                         type="button"
                         onClick={() => removeButton(kind, index)}
-                        className="rounded-sm border border-red-700/20 px-3 py-2 font-mono text-[10px] uppercase tracking-[0.15em] text-red-700 transition hover:bg-red-50"
+                        className="rounded-sm border border-red-700/20 px-3 py-2 font-mono text-xs uppercase tracking-[0.15em] text-red-700 transition hover:bg-red-50"
                       >
                         Remove
                       </button>
@@ -415,7 +419,7 @@ export default function AdminWebsite() {
                 type="button"
                 onClick={() => saveAnnouncement(kind)}
                 disabled={savingKind === kind}
-                className="inline-flex min-h-11 items-center rounded-sm bg-forest px-4 py-2 font-mono text-xs uppercase tracking-[0.15em] text-gold transition hover:bg-forestdeep disabled:opacity-50"
+                className="inline-flex min-h-11 items-center rounded-sm bg-forest px-4 py-2 font-mono text-xs uppercase tracking-[0.15em] text-accent transition hover:bg-forestdeep disabled:opacity-50"
               >
                 {savingKind === kind ? "Saving..." : `Save ${fieldLabel(kind)}`}
               </button>

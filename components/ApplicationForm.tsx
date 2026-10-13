@@ -131,15 +131,15 @@ export default function ApplicationForm({
   if (done) {
     return (
       <div className="rounded-sm bg-forest/[0.04] p-8 text-center ring-1 ring-forest/10" aria-live="polite">
-        <p className="font-mono text-xs uppercase tracking-[0.2em] text-gold">Application Received</p>
+        <p className="font-mono text-xs uppercase tracking-[0.2em] text-accent">Application Received</p>
         <h2 className="mt-3 font-display text-xl text-forest">Thanks, {name.split(" ")[0]}.</h2>
-        <p className="mt-3 text-sm text-graphite/70">
+        <p className="mt-3 text-sm text-graphite/80">
           Your application for {roleLabel} has been submitted. If the officer team would like to
           move forward, we&apos;ll email you at the school address you provided with a link to
           book an interview during lunch.
         </p>
         {authUserId ? (
-          <p className="mt-3 text-sm text-graphite/70">
+          <p className="mt-3 text-sm text-graphite/80">
             You can come back to the{" "}
             <Link href="/leadership" className="text-forest underline decoration-gold underline-offset-4">
               leadership page
@@ -147,7 +147,7 @@ export default function ApplicationForm({
             after signing in to check this application&apos;s status anytime.
           </p>
         ) : (
-          <p className="mt-3 text-sm text-graphite/70">
+          <p className="mt-3 text-sm text-graphite/80">
             If you want the site to remember this application, sign in before applying next time so
             we can show your status on the leadership page.
           </p>
@@ -162,8 +162,8 @@ export default function ApplicationForm({
     <form onSubmit={handleSubmit} className="space-y-6">
       {!applicationsOpen ? (
         <div className="rounded-sm bg-forest/[0.04] p-4 ring-1 ring-forest/10" aria-live="polite">
-          <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-gold">Applications Closed</p>
-          <p className="mt-2 text-sm text-graphite/70">
+          <p className="font-mono text-xs uppercase tracking-[0.2em] text-accent">Applications Closed</p>
+          <p className="mt-2 text-sm text-graphite/80">
             The deadline passed on {formatApplicationDeadline()}.
           </p>
         </div>
@@ -171,7 +171,7 @@ export default function ApplicationForm({
 
       {profile && (
         <div className="rounded-sm bg-paper p-4 ring-1 ring-forest/10">
-          <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-gold">Using Student Profile</p>
+          <p className="font-mono text-xs uppercase tracking-[0.2em] text-accent">Using Student Profile</p>
           <p className="mt-2 text-sm text-graphite/80">
             {profile.full_name} - @{profile.display_username} - Class of {profile.graduating_class_year}
           </p>
@@ -179,7 +179,7 @@ export default function ApplicationForm({
       )}
 
       <div>
-        <label htmlFor={nameId} className="font-mono text-xs uppercase tracking-[0.15em] text-graphite/70">
+        <label htmlFor={nameId} className="font-mono text-xs uppercase tracking-[0.15em] text-graphite/80">
           Full Name
         </label>
         <input
@@ -187,13 +187,13 @@ export default function ApplicationForm({
           required
           value={name}
           onChange={(e) => setName(e.target.value)}
-          className="mt-2 w-full rounded-sm border border-forest/15 bg-paper px-4 py-3 text-sm text-graphite outline-none focus:border-gold"
+          className="mt-2 w-full rounded-sm border border-forest/65 bg-paper px-4 py-3 text-base text-graphite outline-none focus:border-gold"
           placeholder="First and last name"
         />
       </div>
 
       <div>
-        <label htmlFor={emailId} className="font-mono text-xs uppercase tracking-[0.15em] text-graphite/70">
+        <label htmlFor={emailId} className="font-mono text-xs uppercase tracking-[0.15em] text-graphite/80">
           School Email
         </label>
         <input
@@ -202,10 +202,10 @@ export default function ApplicationForm({
           type="email"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
-          className="mt-2 w-full rounded-sm border border-forest/15 bg-paper px-4 py-3 text-sm text-graphite outline-none focus:border-gold"
-          placeholder="you@mail.lvjusd.org"
+          className="mt-2 w-full rounded-sm border border-forest/65 bg-paper px-4 py-3 text-base text-graphite outline-none focus:border-gold"
+          placeholder="you@mail.lvjusd.org" autoComplete="username"
         />
-        <p className="mt-1 text-xs text-graphite/50">
+        <p className="mt-1 text-xs text-graphite/80">
           Must be your official school email — this is where we&apos;ll send an interview invite.
         </p>
       </div>
@@ -213,12 +213,12 @@ export default function ApplicationForm({
       <div>
         <label
           htmlFor={graduatingYearId}
-          className="font-mono text-xs uppercase tracking-[0.15em] text-graphite/70"
+          className="font-mono text-xs uppercase tracking-[0.15em] text-graphite/80"
         >
           Graduating Year
         </label>
         <div className="mt-2 flex items-center gap-3">
-          <span className="font-mono text-sm uppercase tracking-[0.15em] text-graphite/60">
+          <span className="font-mono text-sm uppercase tracking-[0.15em] text-graphite/80">
             Class of
           </span>
           <input
@@ -228,15 +228,15 @@ export default function ApplicationForm({
             pattern="[0-9]*"
             value={graduatingYear}
             onChange={(e) => setGraduatingYear(e.target.value)}
-            className="w-full rounded-sm border border-forest/15 bg-paper px-4 py-3 text-sm text-graphite outline-none focus:border-gold sm:max-w-[14rem]"
+            className="w-full rounded-sm border border-forest/65 bg-paper px-4 py-3 text-base text-graphite outline-none focus:border-gold sm:max-w-[14rem]"
             placeholder="2027"
           />
         </div>
-        <p className="mt-1 text-xs text-graphite/50">
+        <p className="mt-1 text-xs text-graphite/80">
           Please enter the year your class graduates from Livermore High School.
         </p>
         {getRoleEligibilityLabel(roleSlug) ? (
-          <p className="mt-1 text-xs uppercase tracking-[0.12em] text-forest/70">
+          <p className="mt-1 text-xs uppercase tracking-[0.12em] text-forest/80">
             {getRoleEligibilityLabel(roleSlug)}
           </p>
         ) : null}
@@ -245,7 +245,7 @@ export default function ApplicationForm({
       <div>
         <label
           htmlFor={studentIdNumberId}
-          className="font-mono text-xs uppercase tracking-[0.15em] text-graphite/70"
+          className="font-mono text-xs uppercase tracking-[0.15em] text-graphite/80"
         >
           Student ID Number
         </label>
@@ -254,13 +254,13 @@ export default function ApplicationForm({
           required
           value={studentIdNumber}
           onChange={(e) => setStudentIdNumber(e.target.value)}
-          className="mt-2 w-full rounded-sm border border-forest/15 bg-paper px-4 py-3 text-sm text-graphite outline-none focus:border-gold"
+          className="mt-2 w-full rounded-sm border border-forest/65 bg-paper px-4 py-3 text-base text-graphite outline-none focus:border-gold"
           placeholder="Student ID number"
         />
       </div>
 
       <div>
-        <label htmlFor={whyApplyId} className="font-mono text-xs uppercase tracking-[0.15em] text-graphite/70">
+        <label htmlFor={whyApplyId} className="font-mono text-xs uppercase tracking-[0.15em] text-graphite/80">
           Why would you like to apply for {roleLabel}?
         </label>
         <textarea
@@ -269,12 +269,12 @@ export default function ApplicationForm({
           value={whyApply}
           onChange={(e) => setWhyApply(e.target.value)}
           rows={4}
-          className="mt-2 w-full rounded-sm border border-forest/15 bg-paper px-4 py-3 text-sm text-graphite outline-none focus:border-gold"
+          className="mt-2 w-full rounded-sm border border-forest/65 bg-paper px-4 py-3 text-base text-graphite outline-none focus:border-gold"
         />
       </div>
 
       <div>
-        <label htmlFor={whyFitId} className="font-mono text-xs uppercase tracking-[0.15em] text-graphite/70">
+        <label htmlFor={whyFitId} className="font-mono text-xs uppercase tracking-[0.15em] text-graphite/80">
           Why do you think you&apos;d be a good fit for this position?
         </label>
         <textarea
@@ -283,13 +283,13 @@ export default function ApplicationForm({
           value={whyFit}
           onChange={(e) => setWhyFit(e.target.value)}
           rows={4}
-          className="mt-2 w-full rounded-sm border border-forest/15 bg-paper px-4 py-3 text-sm text-graphite outline-none focus:border-gold"
+          className="mt-2 w-full rounded-sm border border-forest/65 bg-paper px-4 py-3 text-base text-graphite outline-none focus:border-gold"
         />
       </div>
 
       {requiresProof && (
         <div>
-          <label htmlFor={proofId} className="font-mono text-xs uppercase tracking-[0.15em] text-graphite/70">
+          <label htmlFor={proofId} className="font-mono text-xs uppercase tracking-[0.15em] text-graphite/80">
             Proof of prior work (required for Publicist)
           </label>
           <textarea
@@ -298,10 +298,10 @@ export default function ApplicationForm({
             value={proofOfWork}
             onChange={(e) => setProofOfWork(e.target.value)}
             rows={4}
-            className="mt-2 w-full rounded-sm border border-forest/15 bg-paper px-4 py-3 text-sm text-graphite outline-none focus:border-gold"
+            className="mt-2 w-full rounded-sm border border-forest/65 bg-paper px-4 py-3 text-base text-graphite outline-none focus:border-gold"
             placeholder="Links to designs, posts, flyers, videos, or a description of past publicity work you've done."
           />
-          <p className="mt-1 text-xs text-graphite/50">
+          <p className="mt-1 text-xs text-graphite/80">
             We ask every publicist applicant for this directly, after past issues with applicants
             overstating their experience.
           </p>
@@ -310,7 +310,7 @@ export default function ApplicationForm({
 
       <label
         htmlFor={geaConfirmedId}
-        className="flex items-center gap-3 rounded-sm bg-forest/[0.04] p-4 text-xs leading-relaxed text-graphite/70"
+        className="flex items-center gap-3 rounded-sm bg-forest/[0.04] p-4 text-xs leading-relaxed text-graphite/80"
       >
         <input
           id={geaConfirmedId}
@@ -326,7 +326,7 @@ export default function ApplicationForm({
 
       <label
         htmlFor={agreedId}
-        className="flex items-center gap-3 rounded-sm bg-forest/[0.04] p-4 text-xs leading-relaxed text-graphite/70"
+        className="flex items-center gap-3 rounded-sm bg-forest/[0.04] p-4 text-xs leading-relaxed text-graphite/80"
       >
         <input
           id={agreedId}
@@ -352,7 +352,7 @@ export default function ApplicationForm({
       <button
         type="submit"
         disabled={submitting || !applicationsOpen}
-        className="w-full rounded-sm bg-forest px-6 py-3 font-mono text-xs uppercase tracking-[0.15em] text-gold transition hover:bg-forestdeep disabled:opacity-50"
+        className="w-full rounded-sm bg-forest px-6 py-3 font-mono text-xs uppercase tracking-[0.15em] text-accent transition hover:bg-forestdeep disabled:opacity-50"
       >
         {submitting ? "Submitting..." : applicationsOpen ? "Submit Application" : "Applications Closed"}
       </button>

@@ -1,11 +1,12 @@
 export default function RouteLoading() {
   return (
-    <div className="mx-auto max-w-6xl px-4 py-10 sm:px-6 md:py-14">
-      <div className="animate-pulse space-y-8">
+    <div className="mx-auto max-w-6xl px-4 py-10 sm:px-6 md:py-14" role="status" aria-label="Loading page">
+      <span className="sr-only">Loading page…</span>
+      <div className="animate-pulse space-y-8" aria-hidden="true">
         <div className="flex items-center justify-between gap-4">
           <div className="space-y-3">
             <div className="h-3 w-44 rounded-full bg-forest/10" />
-            <div className="h-8 w-72 rounded-full bg-forest/15" />
+            <div className="h-8 w-72 max-w-full rounded-full bg-forest/15" />
           </div>
           <div className="h-10 w-28 rounded-sm bg-forest/10" />
         </div>

@@ -85,7 +85,7 @@ export default function AskQuestionForm({
 
   if (done) {
     return (
-      <div className="rounded-2xl border border-forest/10 bg-paper p-5 text-sm text-graphite/70" aria-live="polite">
+      <div className="rounded-2xl border border-forest/10 bg-paper p-5 text-sm text-graphite/80" aria-live="polite">
         Thanks - your post is live and will show up in the forum right away.
         <button
           onClick={() => setDone(false)}
@@ -100,25 +100,25 @@ export default function AskQuestionForm({
   return (
     <form onSubmit={handleSubmit} className="space-y-4 rounded-2xl border border-forest/10 bg-paper p-5">
       <div>
-        <label htmlFor={nameId} className="font-mono text-xs uppercase tracking-[0.15em] text-graphite/60">
+        <label htmlFor={nameId} className="font-mono text-xs uppercase tracking-[0.15em] text-graphite/80">
           Display name (optional)
         </label>
         <input
           id={nameId}
           value={name}
           onChange={(e) => setName(e.target.value)}
-          className="mt-2 w-full rounded-xl border border-forest/15 bg-paper px-4 py-3 text-sm text-graphite outline-none placeholder:text-graphite/40 focus:border-gold"
+          className="mt-2 w-full rounded-xl border border-forest/65 bg-paper px-4 py-3 text-base text-graphite outline-none placeholder:text-graphite/80 focus:border-gold"
           placeholder="Leave blank to stay anonymous"
         />
         {authUserId && (
-          <p className="mt-1 text-xs text-graphite/50">
+          <p className="mt-1 text-xs text-graphite/80">
             Your signed-in account will be attached to this post so you can find it later.
           </p>
         )}
       </div>
 
       <div>
-        <label htmlFor={boardId} className="font-mono text-xs uppercase tracking-[0.15em] text-graphite/60">
+        <label htmlFor={boardId} className="font-mono text-xs uppercase tracking-[0.15em] text-graphite/80">
           Board
         </label>
         <select
@@ -126,7 +126,7 @@ export default function AskQuestionForm({
           disabled={submitting}
           value={board}
           onChange={(e) => setBoard(e.target.value as ForumBoard)}
-          className="mt-2 w-full rounded-xl border border-forest/15 bg-paper px-4 py-3 text-sm text-graphite outline-none focus:border-gold"
+          className="mt-2 w-full rounded-xl border border-forest/65 bg-paper px-4 py-3 text-base text-graphite outline-none focus:border-gold"
         >
           {FORUM_BOARDS.map((option) => (
             <option key={option.value} value={option.value}>
@@ -134,13 +134,13 @@ export default function AskQuestionForm({
             </option>
           ))}
         </select>
-        <p className="mt-1 text-xs text-graphite/50">
+        <p className="mt-1 text-xs text-graphite/80">
           Pick the board that best matches what you want to post.
         </p>
       </div>
 
       <div>
-        <label htmlFor={questionId} className="font-mono text-xs uppercase tracking-[0.15em] text-graphite/60">
+        <label htmlFor={questionId} className="font-mono text-xs uppercase tracking-[0.15em] text-graphite/80">
           Your post
         </label>
         <textarea
@@ -150,7 +150,7 @@ export default function AskQuestionForm({
           value={question}
           onChange={(e) => setQuestion(e.target.value)}
           rows={4}
-          className="mt-2 w-full rounded-xl border border-forest/15 bg-paper px-4 py-3 text-sm text-graphite outline-none placeholder:text-graphite/40 focus:border-gold"
+          className="mt-2 w-full rounded-xl border border-forest/65 bg-paper px-4 py-3 text-base text-graphite outline-none placeholder:text-graphite/80 focus:border-gold"
           placeholder="Example: What should incoming students know about the academy?"
         />
       </div>
@@ -172,11 +172,11 @@ export default function AskQuestionForm({
       <button
         type="submit"
         disabled={submitting}
-        className="rounded-full bg-forest px-5 py-2.5 font-mono text-xs uppercase tracking-[0.15em] text-gold transition hover:bg-forestdeep disabled:opacity-50"
+        className="rounded-full bg-forest px-5 py-2.5 font-mono text-xs uppercase tracking-[0.15em] text-accent transition hover:bg-forestdeep disabled:opacity-50"
       >
         {submitting ? "Posting..." : "Post to forum"}
       </button>
-      <p className="text-xs text-graphite/50">
+      <p className="text-xs text-graphite/80">
         Posts are published immediately unless they trip the safety filter.
       </p>
     </form>

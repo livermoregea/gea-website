@@ -5,9 +5,6 @@ import { hasSupabaseConfig } from "@/lib/supabase/config";
 
 export const revalidate = 0;
 
-const academyApplicationUrl =
-  "https://docs.google.com/forms/d/e/1FAIpQLSdTDKvYr0IqeTOAl88It9BlaFNkUU359dHG5B6FBzN48W6yng/viewform";
-
 const faqs = [
   {
     question: "What is the Green Engineering Academy?",
@@ -76,30 +73,22 @@ export default async function QAPage() {
   return (
     <div className="mx-auto max-w-6xl px-4 py-16 sm:px-6 md:py-20">
       <div className="max-w-3xl">
-        <p className="font-mono text-xs uppercase tracking-[0.3em] text-gold">Student Q&amp;A</p>
+        <p className="font-mono text-xs uppercase tracking-[0.3em] text-accent">Student Q&amp;A</p>
         <h1 className="mt-4 font-display text-2xl font-medium text-forest sm:text-3xl md:text-4xl">
           GEA questions and answers
         </h1>
         <p className="mt-4 text-sm leading-relaxed text-graphite/80 sm:text-base">
-          Learn about GEA and visit the application form if you are interested in joining the academy.
+          Learn about GEA, explore the engineering pathway, and find answers to common questions.
         </p>
       </div>
 
       <div className="mt-10 rounded-sm bg-forest/[0.03] px-5 py-6 ring-1 ring-forest/5 sm:px-6 sm:py-7">
-        <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-gold">Apply</p>
+        <p className="font-mono text-xs uppercase tracking-[0.2em] text-accent">Admissions</p>
         <h2 className="mt-2 font-display text-xl text-forest">Interested in GEA?</h2>
-        <p className="mt-3 max-w-2xl text-sm leading-relaxed text-graphite/70 sm:text-base">
-          Start with the academy application. This page is for learning about the program and
-          getting to the application form.
+        <p className="mt-3 max-w-2xl text-sm leading-relaxed text-graphite/80 sm:text-base">
+          Academy applications open in late November. You can still explore the curriculum and learn about the program here.
         </p>
-        <Link
-          href={academyApplicationUrl}
-          target="_blank"
-          rel="noreferrer"
-          className="mt-5 inline-flex min-h-11 items-center justify-center rounded-sm bg-forest px-4 py-2.5 font-mono text-xs uppercase tracking-[0.15em] text-gold transition hover:bg-forestdeep"
-        >
-          Open Application Form
-        </Link>
+        <Link href="/curriculum" className="mt-5 inline-flex min-h-11 items-center rounded-sm bg-forest px-4 py-2.5 text-sm text-paper transition hover:bg-forestdeep">Explore the curriculum</Link>
       </div>
 
       <div className="dim-divider my-12" />
@@ -107,14 +96,14 @@ export default async function QAPage() {
       <section className="max-w-4xl">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
           <div>
-            <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-gold">FAQ</p>
+            <p className="font-mono text-xs uppercase tracking-[0.2em] text-accent">FAQ</p>
             <h2 className="mt-2 font-display text-xl font-medium text-forest sm:text-2xl">
               Frequently asked questions
             </h2>
           </div>
-          <div className="max-w-xl rounded-sm border border-forest/10 bg-paper px-4 py-3 text-sm leading-relaxed text-graphite/60 shadow-[0_8px_24px_rgba(18,53,36,0.04)]">
+          <div className="max-w-xl rounded-sm border border-forest/10 bg-paper px-4 py-3 text-sm leading-relaxed text-graphite/80 shadow-[0_8px_24px_rgba(18,53,36,0.04)]">
             <p>Basic information is listed below.</p>
-            <p className="mt-2 text-xs uppercase tracking-[0.18em] text-gold">
+            <p className="mt-2 text-xs uppercase tracking-[0.18em] text-accent">
               Questions not covered?
             </p>
             <p className="mt-2">
@@ -136,18 +125,18 @@ export default async function QAPage() {
             >
               <summary className="flex cursor-pointer list-none items-start justify-between gap-4 px-5 py-4 font-medium text-forest marker:hidden sm:px-6 sm:py-5">
                 <span className="text-sm leading-relaxed sm:text-base">{faq.question}</span>
-                <span className="mt-0.5 text-lg leading-none text-gold transition group-open:rotate-45">
+                <span className="mt-0.5 text-lg leading-none text-accent transition group-open:rotate-45">
                   +
                 </span>
               </summary>
-              <div className="px-5 pb-5 text-sm leading-relaxed text-graphite/75 sm:px-6 sm:text-base">
+              <div className="px-5 pb-5 text-sm leading-relaxed text-graphite/80 sm:px-6 sm:text-base">
                 {faq.answer}
               </div>
             </details>
           ))}
         </div>
-        <div className="mt-8 rounded-sm border border-forest/10 bg-paper px-4 py-3 text-sm leading-relaxed text-graphite/60 shadow-[0_8px_24px_rgba(18,53,36,0.04)]">
-          <p className="text-xs uppercase tracking-[0.18em] text-gold">Questions not covered?</p>
+        <div className="mt-8 rounded-sm border border-forest/10 bg-paper px-4 py-3 text-sm leading-relaxed text-graphite/80 shadow-[0_8px_24px_rgba(18,53,36,0.04)]">
+          <p className="text-xs uppercase tracking-[0.18em] text-accent">Questions not covered?</p>
           <p className="mt-2">
             Visit the{" "}
             <Link href="/contact" className="text-forest underline decoration-gold underline-offset-4">
@@ -159,19 +148,12 @@ export default async function QAPage() {
       </section>
 
       <div className="mt-12 rounded-sm bg-forest/[0.03] px-5 py-6 ring-1 ring-forest/5 sm:px-6 sm:py-7">
-        <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-gold">Apply</p>
-        <h2 className="mt-2 font-display text-xl text-forest">Ready to join GEA?</h2>
-        <p className="mt-3 max-w-2xl text-sm leading-relaxed text-graphite/70 sm:text-base">
-          If you’re interested in the academy, the application form is the next step.
+        <p className="font-mono text-xs uppercase tracking-[0.2em] text-accent">Admissions</p>
+        <h2 className="mt-2 font-display text-xl text-forest">Questions about joining GEA?</h2>
+        <p className="mt-3 max-w-2xl text-sm leading-relaxed text-graphite/80 sm:text-base">
+          Academy applications open in late November. Contact GEA if you have questions about the program.
         </p>
-        <Link
-          href={academyApplicationUrl}
-          target="_blank"
-          rel="noreferrer"
-          className="mt-5 inline-flex min-h-11 items-center justify-center rounded-sm bg-forest px-4 py-2.5 font-mono text-xs uppercase tracking-[0.15em] text-gold transition hover:bg-forestdeep"
-        >
-          Open Application Form
-        </Link>
+        <Link href="/contact" className="mt-5 inline-flex min-h-11 items-center rounded-sm bg-forest px-4 py-2.5 text-sm text-paper transition hover:bg-forestdeep">Contact GEA</Link>
       </div>
     </div>
   );

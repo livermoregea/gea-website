@@ -99,33 +99,34 @@ export default function AdminQA() {
     load();
   }
 
-  if (loading) return <p className="text-sm text-graphite/50">Loading...</p>;
+  if (loading) return <p role="status" className="text-sm text-graphite/80">Loading...</p>;
 
   return (
     <div className="grid gap-10 md:grid-cols-2">
       {message && (
-        <p className="md:col-span-2 rounded-sm bg-forest/[0.05] p-4 text-sm text-graphite/80 ring-1 ring-forest/10">
+        <p className="md:col-span-2 rounded-sm bg-forest/[0.05] p-4 text-sm text-graphite/80 ring-1 ring-forest/10" role="status">
           {message}
         </p>
       )}
       <div>
-        <p className="font-mono text-xs uppercase tracking-[0.2em] text-gold">Pending Questions</p>
+        <p className="font-mono text-xs uppercase tracking-[0.2em] text-accent">Pending Questions</p>
         <div className="mt-4 space-y-3">
-          {questions.length === 0 && <p className="text-sm text-graphite/50">Nothing pending.</p>}
+          {questions.length === 0 && <p className="text-sm text-graphite/80">Nothing pending.</p>}
           {questions.map((q) => (
             <div key={q.id} className="rounded-sm bg-forest/[0.03] p-4 ring-1 ring-forest/5">
-              <p className="font-mono text-[10px] uppercase tracking-[0.15em] text-graphite/40">
+              <p className="font-mono text-xs uppercase tracking-[0.15em] text-graphite/80">
                 {q.asked_by_name}
               </p>
               <QuestionContent question={q.question} className="mt-1" />
               <textarea
+                aria-label="Reason for rejecting this question"
                 value={questionRejectionReasons[q.id] ?? ""}
                 onChange={(e) =>
                   setQuestionRejectionReasons((current) => ({ ...current, [q.id]: e.target.value }))
                 }
                 rows={2}
                 placeholder="Reason for rejection (required if you reject this question)"
-                className="mt-3 w-full rounded-sm border border-forest/15 bg-paper px-3 py-2 text-sm outline-none focus:border-gold"
+                className="mt-3 w-full rounded-sm border border-forest/65 bg-paper px-3 py-2 text-base outline-none focus:border-gold"
               />
               <div className="mt-3 flex gap-3">
                 <button
@@ -147,23 +148,24 @@ export default function AdminQA() {
       </div>
 
       <div>
-        <p className="font-mono text-xs uppercase tracking-[0.2em] text-gold">Pending Answers</p>
+        <p className="font-mono text-xs uppercase tracking-[0.2em] text-accent">Pending Answers</p>
         <div className="mt-4 space-y-3">
-          {answers.length === 0 && <p className="text-sm text-graphite/50">Nothing pending.</p>}
+          {answers.length === 0 && <p className="text-sm text-graphite/80">Nothing pending.</p>}
           {answers.map((a) => (
             <div key={a.id} className="rounded-sm bg-forest/[0.03] p-4 ring-1 ring-forest/5">
-              <p className="font-mono text-[10px] uppercase tracking-[0.15em] text-graphite/40">
+              <p className="font-mono text-xs uppercase tracking-[0.15em] text-graphite/80">
                 {a.answered_by_name}
               </p>
               <p className="mt-1 text-sm text-graphite whitespace-pre-wrap">{a.answer}</p>
               <textarea
+                aria-label="Reason for rejecting this answer"
                 value={answerRejectionReasons[a.id] ?? ""}
                 onChange={(e) =>
                   setAnswerRejectionReasons((current) => ({ ...current, [a.id]: e.target.value }))
                 }
                 rows={2}
                 placeholder="Reason for rejection (required if you reject this answer)"
-                className="mt-3 w-full rounded-sm border border-forest/15 bg-paper px-3 py-2 text-sm outline-none focus:border-gold"
+                className="mt-3 w-full rounded-sm border border-forest/65 bg-paper px-3 py-2 text-base outline-none focus:border-gold"
               />
               <div className="mt-3 flex gap-3">
                 <button

@@ -137,18 +137,18 @@ function renderCommentNode({
     >
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <p className="font-mono text-[10px] uppercase tracking-[0.15em] text-graphite/40">
+          <p className="font-mono text-xs uppercase tracking-[0.15em] text-graphite/80">
             {node.answered_by_name}
           </p>
-          <p className="mt-1 text-xs text-graphite/50">
+          <p className="mt-1 text-xs text-graphite/80">
             Commented on {formatDate(node.created_at)}
           </p>
         </div>
         <div className="text-right">
-          <p className="font-mono text-[10px] uppercase tracking-[0.15em] text-graphite/40">
+          <p className="font-mono text-xs uppercase tracking-[0.15em] text-graphite/80">
             +{node.upvote_count} / -{node.downvote_count}
           </p>
-          <p className="mt-1 text-xs text-graphite/50">{node.report_count} reports</p>
+          <p className="mt-1 text-xs text-graphite/80">{node.report_count} reports</p>
         </div>
       </div>
 
@@ -158,7 +158,7 @@ function renderCommentNode({
         <button
           type="button"
           onClick={() => onDeleteAnswer(node.id, node.answer)}
-          className="rounded-full bg-red-50 px-3 py-1.5 font-mono text-[10px] uppercase tracking-[0.15em] text-red-700 transition hover:bg-red-100"
+          className="rounded-full bg-red-50 px-3 py-1.5 font-mono text-xs uppercase tracking-[0.15em] text-red-700 transition hover:bg-red-100"
         >
           Delete Comment
         </button>
@@ -384,31 +384,31 @@ export default function AdminForum() {
     load();
   }
 
-  if (loading) return <p className="text-sm text-graphite/50">Loading forum activity...</p>;
+  if (loading) return <p role="status" className="text-sm text-graphite/80">Loading forum activity...</p>;
 
   return (
     <div className="space-y-6">
       {message && (
-        <p className="rounded-sm bg-forest/[0.05] p-4 text-sm text-graphite/80 ring-1 ring-forest/10">
+        <p className="rounded-sm bg-forest/[0.05] p-4 text-sm text-graphite/80 ring-1 ring-forest/10" role="status">
           {message}
         </p>
       )}
 
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <div className="rounded-sm bg-forest/[0.03] p-4 ring-1 ring-forest/5">
-          <p className="font-mono text-xs uppercase tracking-[0.15em] text-gold">Posts</p>
+          <p className="font-mono text-xs uppercase tracking-[0.15em] text-accent">Posts</p>
           <p className="mt-2 font-display text-2xl text-forest">{questions.length}</p>
         </div>
         <div className="rounded-sm bg-forest/[0.03] p-4 ring-1 ring-forest/5">
-          <p className="font-mono text-xs uppercase tracking-[0.15em] text-gold">Comments</p>
+          <p className="font-mono text-xs uppercase tracking-[0.15em] text-accent">Comments</p>
           <p className="mt-2 font-display text-2xl text-forest">{answers.length}</p>
         </div>
         <div className="rounded-sm bg-forest/[0.03] p-4 ring-1 ring-forest/5">
-          <p className="font-mono text-xs uppercase tracking-[0.15em] text-gold">Votes</p>
+          <p className="font-mono text-xs uppercase tracking-[0.15em] text-accent">Votes</p>
           <p className="mt-2 font-display text-2xl text-forest">{votes.length}</p>
         </div>
         <div className="rounded-sm bg-forest/[0.03] p-4 ring-1 ring-forest/5">
-          <p className="font-mono text-xs uppercase tracking-[0.15em] text-gold">Reports</p>
+          <p className="font-mono text-xs uppercase tracking-[0.15em] text-accent">Reports</p>
           <p className="mt-2 font-display text-2xl text-forest">{reports.length}</p>
         </div>
       </div>
@@ -416,12 +416,12 @@ export default function AdminForum() {
       <div className="grid gap-6 xl:grid-cols-[320px_minmax(0,1fr)]">
         <aside className="space-y-3">
           <div className="rounded-sm bg-forest/[0.03] p-4 ring-1 ring-forest/5">
-            <p className="font-mono text-xs uppercase tracking-[0.2em] text-gold">Posts</p>
-            <p className="mt-2 text-sm text-graphite/70">Newest posts first. Select one to view it.</p>
+            <p className="font-mono text-xs uppercase tracking-[0.2em] text-accent">Posts</p>
+            <p className="mt-2 text-sm text-graphite/80">Newest posts first. Select one to view it.</p>
           </div>
 
           {questions.length === 0 ? (
-            <p className="text-sm text-graphite/50">No forum posts yet.</p>
+            <p className="text-sm text-graphite/80">No forum posts yet.</p>
           ) : (
             questions.map((question) => {
               const answerCount = answers.filter((answer) => answer.question_id === question.id).length;
@@ -438,13 +438,13 @@ export default function AdminForum() {
                       : "border-forest/10 bg-paper/70 hover:border-forest/20 hover:bg-paper"
                   }`}
                 >
-                  <p className="font-mono text-[10px] uppercase tracking-[0.15em] text-graphite/40">
+                  <p className="font-mono text-xs uppercase tracking-[0.15em] text-graphite/80">
                     {question.asked_by_name}
                   </p>
                   <p className="mt-2 line-clamp-3 font-display text-base text-forest whitespace-pre-wrap">
                     {question.question}
                   </p>
-                  <div className="mt-3 flex items-center justify-between gap-3 text-xs text-graphite/50">
+                  <div className="mt-3 flex items-center justify-between gap-3 text-xs text-graphite/80">
                     <span>{answerCount} comment{answerCount === 1 ? "" : "s"}</span>
                     <span>{formatDate(question.created_at)}</span>
                   </div>
@@ -457,22 +457,22 @@ export default function AdminForum() {
         <main className="space-y-6">
           {!selectedQuestion ? (
             <div className="rounded-sm bg-paper p-5 ring-1 ring-forest/10">
-              <p className="text-sm text-graphite/50">Select a post to view it.</p>
+              <p className="text-sm text-graphite/80">Select a post to view it.</p>
             </div>
           ) : (
             <div className="space-y-6 rounded-sm bg-paper p-5 ring-1 ring-forest/10">
               <div className="flex flex-wrap items-start justify-between gap-4">
                 <div>
-                  <p className="font-mono text-[11px] uppercase tracking-[0.2em] text-gold">
+                  <p className="font-mono text-xs uppercase tracking-[0.2em] text-accent">
                     {selectedQuestion.asked_by_name}
                   </p>
                   <QuestionContent question={selectedQuestion.question} className="mt-2" />
-                  <p className="mt-3 text-xs text-graphite/50">Posted {formatDate(selectedQuestion.created_at)}</p>
+                  <p className="mt-3 text-xs text-graphite/80">Posted {formatDate(selectedQuestion.created_at)}</p>
                 </div>
                 <button
                   type="button"
                   onClick={() => deleteQuestion(selectedQuestion.id, selectedQuestion.question)}
-                  className="rounded-full bg-red-50 px-3 py-1.5 font-mono text-[10px] uppercase tracking-[0.15em] text-red-700 transition hover:bg-red-100"
+                  className="rounded-full bg-red-50 px-3 py-1.5 font-mono text-xs uppercase tracking-[0.15em] text-red-700 transition hover:bg-red-100"
                 >
                   Delete post
                 </button>
@@ -480,8 +480,8 @@ export default function AdminForum() {
 
               <section>
                 <div className="flex flex-wrap items-center justify-between gap-3">
-                  <p className="font-mono text-xs uppercase tracking-[0.2em] text-gold">Comments</p>
-                  <p className="text-sm text-graphite/60">
+                  <p className="font-mono text-xs uppercase tracking-[0.2em] text-accent">Comments</p>
+                  <p className="text-sm text-graphite/80">
                     {answersForSelectedQuestion.length} top-level comment
                     {answersForSelectedQuestion.length === 1 ? "" : "s"}
                   </p>
@@ -489,7 +489,7 @@ export default function AdminForum() {
 
                 <div className="mt-4 space-y-4">
                   {answersForSelectedQuestion.length === 0 ? (
-                    <p className="text-sm text-graphite/50">No comments on this post yet.</p>
+                    <p className="text-sm text-graphite/80">No comments on this post yet.</p>
                   ) : (
                     answersForSelectedQuestion.map((node) =>
                       renderCommentNode({
@@ -508,28 +508,28 @@ export default function AdminForum() {
       <section className="rounded-sm bg-forest/[0.03] p-6 ring-1 ring-forest/5">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <p className="font-mono text-xs uppercase tracking-[0.2em] text-gold">Activity</p>
+            <p className="font-mono text-xs uppercase tracking-[0.2em] text-accent">Activity</p>
             <h2 className="mt-2 font-display text-xl text-forest">Recent activity</h2>
           </div>
-          <p className="text-sm text-graphite/60">Latest {activityItems.length} activity items</p>
+          <p className="text-sm text-graphite/80">Latest {activityItems.length} activity items</p>
         </div>
 
         <div className="mt-5 space-y-3">
           {activityItems.length === 0 ? (
-            <p className="text-sm text-graphite/50">No activity yet.</p>
+            <p className="text-sm text-graphite/80">No activity yet.</p>
           ) : (
             activityItems.slice(0, 50).map((item) => (
               <div key={item.key} className="rounded-sm bg-paper p-4 ring-1 ring-forest/10">
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div>
-                    <p className="font-mono text-[10px] uppercase tracking-[0.15em] text-graphite/40">
+                    <p className="font-mono text-xs uppercase tracking-[0.15em] text-graphite/80">
                       {item.type}
                     </p>
                     <p className="mt-1 text-sm font-medium text-forest">{item.label}</p>
                   </div>
-                  <p className="text-xs text-graphite/50">{formatDate(item.created_at)}</p>
+                  <p className="text-xs text-graphite/80">{formatDate(item.created_at)}</p>
                 </div>
-                <p className="mt-2 text-sm text-graphite/70 whitespace-pre-wrap">{item.detail}</p>
+                <p className="mt-2 text-sm text-graphite/80 whitespace-pre-wrap">{item.detail}</p>
               </div>
             ))
           )}

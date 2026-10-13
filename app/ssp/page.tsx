@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
+import InstructionVideo from "@/components/InstructionVideo";
+import HeroVideo from "@/components/HeroVideo";
 import SSPChallenge from "@/components/SSPChallenge";
 import { SocialIcon } from "@/components/SocialIcons";
 
@@ -27,25 +29,10 @@ export default function ScienceAtStockmensParkPage() {
   return (
     <div className="bg-paper">
       <section className="relative isolate flex min-h-[440px] items-center overflow-hidden border-b border-gold/25 bg-[#181818] text-paper sm:min-h-[560px]">
-        <div aria-hidden="true" className="ssp-hero-video pointer-events-none absolute inset-0 select-none">
-          <video
-            autoPlay
-            muted
-            loop
-            playsInline
-            preload="metadata"
-            poster="/images/ssp/headervideo/poster.jpg"
-            className="h-full w-full object-cover"
-            tabIndex={-1}
-            disablePictureInPicture
-            disableRemotePlayback
-          >
-            <source src="/images/ssp/headervideo/header.mp4" type="video/mp4" />
-          </video>
-        </div>
+        <HeroVideo />
         <div aria-hidden="true" className="pointer-events-none absolute inset-0 bg-gradient-to-r from-[#181818]/85 via-[#181818]/70 to-[#181818]/55" />
         <div className="relative z-10 mx-auto w-full max-w-6xl px-4 py-16 sm:px-6 sm:py-24">
-          <Link href="/community" className="mb-5 inline-flex min-h-11 items-center font-mono text-xs uppercase tracking-[0.15em] text-paper/75 transition hover:text-goldlight"><span aria-hidden="true" className="mr-2">←</span> Community In Action</Link>
+          <Link href="/community" className="mb-5 inline-flex min-h-11 items-center font-mono text-xs uppercase tracking-[0.15em] text-paper/85 transition hover:text-goldlight"><span aria-hidden="true" className="mr-2">←</span> Community In Action</Link>
           <p className="font-mono text-xs uppercase tracking-[0.22em] text-goldlight">Community outreach · Looking back at 2026</p>
           <h1 className="mt-5 max-w-3xl font-display text-4xl font-medium leading-[1.08] tracking-tight sm:text-6xl lg:text-7xl">
             <span className="block">Science at</span>
@@ -71,7 +58,7 @@ export default function ScienceAtStockmensParkPage() {
             </div>
             <figure className="overflow-hidden rounded-sm border border-forest/15 bg-white/70">
               <Image src="/images/ssp/headervideo/poster.jpg" width={1920} height={1080} sizes="(min-width: 1024px) 540px, 100vw" alt="GEA students and community visitors gathered around the science activity at Stockmens Park" className="aspect-[4/3] w-full object-cover" />
-              <figcaption className="px-5 py-4 text-sm leading-relaxed text-graphite/70">A moment from the Science at Stockmens Park 2026 timelapse.</figcaption>
+              <figcaption className="px-5 py-4 text-sm leading-relaxed text-graphite/80">A moment from the Science at Stockmens Park 2026 timelapse.</figcaption>
             </figure>
           </div>
           <div className="mt-8 grid gap-4 sm:grid-cols-3">
@@ -82,7 +69,7 @@ export default function ScienceAtStockmensParkPage() {
             ].map(([title, description]) => (
               <article key={title} className="rounded-sm border border-forest/15 bg-white/70 p-6">
                 <h3 className="font-display text-2xl text-forestdeep">{title}</h3>
-                <p className="mt-3 text-sm leading-relaxed text-graphite/75">{description}</p>
+                <p className="mt-3 text-sm leading-relaxed text-graphite/80">{description}</p>
               </article>
             ))}
           </div>
@@ -107,16 +94,7 @@ export default function ScienceAtStockmensParkPage() {
           <p className="font-mono text-xs uppercase tracking-[0.2em] text-forest">Activity resources · Video</p>
           <h2 id="video-heading" className="mt-3 font-display text-3xl text-forestdeep sm:text-4xl">The original activity instructions</h2>
           <p className="mt-4 max-w-3xl leading-relaxed text-graphite/80">Revisit the instruction video from the event, or use it to try the challenge with your own group. The written science explanations and building steps are below, too.</p>
-          <div className="mt-6 aspect-video w-full overflow-hidden rounded-sm border border-forest/20 bg-forestdeep">
-            <iframe
-              src="https://www.youtube-nocookie.com/embed/fVFe5nQ5TMs"
-              title="Science at Stockmens Park activity instructions"
-              className="h-full w-full border-0"
-              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-              referrerPolicy="strict-origin-when-cross-origin"
-              allowFullScreen
-            />
-          </div>
+          <InstructionVideo />
           <p className="mt-3 text-sm text-graphite/80"><a href="https://youtu.be/fVFe5nQ5TMs" target="_blank" rel="noopener noreferrer" className="text-forest underline underline-offset-4">Watch on YouTube ↗</a></p>
           <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
             <a href="#written-instructions" className="inline-flex min-h-11 items-center justify-center rounded-sm bg-gold px-5 py-3 text-sm font-medium text-forestdeep hover:bg-goldlight focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-forest">Read the science & instructions ↓</a>
@@ -131,7 +109,7 @@ export default function ScienceAtStockmensParkPage() {
           <div className="mt-8 grid gap-4 sm:grid-cols-2">
             {waves.map((wave) => (
               <article key={wave.name} className="rounded-sm border border-forest/15 bg-white/70 p-6">
-                <p className="font-mono text-[11px] uppercase tracking-[0.18em] text-forest/70">{wave.type}</p>
+                <p className="font-mono text-xs uppercase tracking-[0.18em] text-forest/80">{wave.type}</p>
                 <h3 className="mt-2 font-display text-xl text-forestdeep">{wave.name}</h3>
                 <p className="mt-3 leading-relaxed text-graphite/80">{wave.description}</p>
               </article>
@@ -139,7 +117,7 @@ export default function ScienceAtStockmensParkPage() {
           </div>
           <figure className="mt-6 rounded-sm border border-forest/15 bg-white p-3 sm:p-8">
             <Image src="/images/ssp/love-wave.svg" width={800} height={520} alt="Love wave viewed from above: the wave travels to the right while colorful patches of ground move side to side across its path, without bouncing up and down." className="mx-auto h-auto w-full max-w-3xl" />
-            <figcaption className="mx-auto mt-5 max-w-2xl text-center text-sm leading-relaxed text-graphite/75">Love waves shake the ground sideways. Imagine looking down from the sky: the blue arrow shows where the wave goes, and the green arrow shows how the ground wiggles. Illustration by GEA, based on the <a className="text-forest underline underline-offset-4" href="https://www.iris.edu/hq/inclass/animation/lovewave_motion">IRIS Love wave explanation</a>.</figcaption>
+            <figcaption className="mx-auto mt-5 max-w-2xl text-center text-sm leading-relaxed text-graphite/80">Love waves shake the ground sideways. Imagine looking down from the sky: the blue arrow shows where the wave goes, and the green arrow shows how the ground wiggles. Illustration by GEA, based on the <a className="text-forest underline underline-offset-4" href="https://www.iris.edu/hq/inclass/animation/lovewave_motion">IRIS Love wave explanation</a>.</figcaption>
           </figure>
         </section>
 

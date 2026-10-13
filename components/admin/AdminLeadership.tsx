@@ -250,8 +250,10 @@ export default function AdminLeadership() {
 
   async function vacateSeat(id: string) {
     if (!hasSupabaseConfig()) return;
+    if (!window.confirm("Vacate this leadership seat? The current member will be removed without being added to the former leadership list. Choose Retire instead to preserve their record.")) return;
     const supabase = createClient();
-    await supabase.from("leadership_members").delete().eq("id", id);
+    const { error } = await supabase.from("leadership_members").delete().eq("id", id);
+    if (error) { setPhotoError("Couldn’t vacate this seat. Refresh and try again."); return; }
     load();
   }
 
@@ -322,38 +324,38 @@ export default function AdminLeadership() {
     <div className="space-y-6">
       <section className="rounded-sm bg-paper p-5 ring-1 ring-forest/10">
         <h3 className="font-display text-2xl text-forest">Manage roles</h3>
-        <p className="mt-2 text-sm text-graphite/70">Add a role, edit its name, or remove an empty role from the board. Retire or vacate a filled seat before removing its role. Archives and applications are preserved.</p>
+        <p className="mt-2 text-sm text-graphite/80">Add a role, edit its name, or remove an empty role from the board. Retire or vacate a filled seat before removing its role. Archives and applications are preserved.</p>
         {roleError && <p role="alert" className="mt-3 text-sm text-red-700">{roleError}</p>}
         <fieldset disabled={loading || !rolesReady || roleSaving || saving} className="mt-4 space-y-3 disabled:opacity-60">
           {activeRoles.map((item) => (
             <form key={item.slug} onSubmit={(event) => saveRole(event, item.slug)} className="flex flex-wrap items-center gap-2">
-              <input aria-label={`Name for ${item.label}`} required maxLength={100} value={roleDrafts[item.slug] ?? item.label} onChange={(event) => setRoleDrafts((drafts) => ({ ...drafts, [item.slug]: event.target.value }))} className="min-w-0 flex-1 rounded-sm border border-forest/15 bg-paper px-3 py-2 text-sm" />
+              <input aria-label={`Name for ${item.label}`} required maxLength={100} value={roleDrafts[item.slug] ?? item.label} onChange={(event) => setRoleDrafts((drafts) => ({ ...drafts, [item.slug]: event.target.value }))} className="min-w-0 flex-1 rounded-sm border border-forest/65 bg-paper px-3 py-2 text-base" />
               <button type="submit" className="min-h-11 rounded-sm border border-forest/15 px-3 text-sm text-forest">Save name</button>
               <button type="button" onClick={() => removeRole(item)} disabled={members.some((member) => member.role === item.slug)} title={members.some((member) => member.role === item.slug) ? "Retire or vacate this seat first" : undefined} aria-label={`Remove ${item.label}`} className="min-h-11 px-3 text-sm text-red-700 disabled:opacity-40">Remove</button>
             </form>
           ))}
-          {!activeRoles.length && <p className="text-sm text-graphite/60">No roles yet. Add a role to create a seat.</p>}
+          {!activeRoles.length && <p className="text-sm text-graphite/80">No roles yet. Add a role to create a seat.</p>}
           <form onSubmit={(event) => saveRole(event)} className="flex flex-wrap gap-2 border-t border-forest/10 pt-3">
-            <input aria-label="New role name" placeholder="New role name" required maxLength={100} value={newRoleName} onChange={(event) => setNewRoleName(event.target.value)} className="min-w-0 flex-1 rounded-sm border border-forest/15 bg-paper px-3 py-2 text-sm" />
-            <button type="submit" className="min-h-11 rounded-sm bg-forest px-4 py-2 text-sm text-gold">{roleSaving ? "Saving..." : "Add role"}</button>
+            <input aria-label="New role name" placeholder="New role name" required maxLength={100} value={newRoleName} onChange={(event) => setNewRoleName(event.target.value)} className="min-w-0 flex-1 rounded-sm border border-forest/65 bg-paper px-3 py-2 text-base" />
+            <button type="submit" className="min-h-11 rounded-sm bg-forest px-4 py-2 text-sm text-accent">{roleSaving ? "Saving..." : "Add role"}</button>
           </form>
         </fieldset>
       </section>
       <section className="rounded-sm bg-paper p-5 ring-1 ring-forest/10">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
           <div>
-            <p className="font-mono text-xs uppercase tracking-[0.2em] text-gold">Leadership Board</p>
+            <p className="font-mono text-xs uppercase tracking-[0.2em] text-accent">Leadership Board</p>
             <h3 className="mt-2 font-display text-2xl text-forest">Seat editor</h3>
-            <p className="mt-2 max-w-2xl text-sm leading-relaxed text-graphite/70">
+            <p className="mt-2 max-w-2xl text-sm leading-relaxed text-graphite/80">
               Fill the seat and add a photo from your computer.
             </p>
           </div>
-          <p className="text-sm text-graphite/60">{members.length} filled seat{members.length === 1 ? "" : "s"}</p>
+          <p className="text-sm text-graphite/80">{members.length} filled seat{members.length === 1 ? "" : "s"}</p>
         </div>
 
         <form onSubmit={fillSeat} className="mt-5 grid gap-3 sm:grid-cols-2">
           <div>
-            <label htmlFor={roleId} className="font-mono text-xs uppercase tracking-[0.15em] text-graphite/70">
+            <label htmlFor={roleId} className="font-mono text-xs uppercase tracking-[0.15em] text-graphite/80">
               Role
             </label>
             <select
@@ -366,7 +368,7 @@ export default function AdminLeadership() {
                 setCropFile(null);
                 setPhotoError("");
               }}
-              className="mt-2 block w-full rounded-sm border border-forest/15 bg-paper px-3 py-2 text-sm"
+              className="mt-2 block w-full rounded-sm border border-forest/65 bg-paper px-3 py-2 text-base"
             >
               {activeRoles.map((r) => (
                 <option key={r.slug} value={r.slug}>
@@ -374,12 +376,12 @@ export default function AdminLeadership() {
                 </option>
               ))}
             </select>
-            <p className="mt-2 text-xs text-graphite/45">
+            <p className="mt-2 text-xs text-graphite/80">
               {selectedRole ? selectedRole.label : "Choose a seat to update."}
             </p>
           </div>
           <div>
-            <label htmlFor={nameId} className="font-mono text-xs uppercase tracking-[0.15em] text-graphite/70">
+            <label htmlFor={nameId} className="font-mono text-xs uppercase tracking-[0.15em] text-graphite/80">
               Name
             </label>
             <input
@@ -387,13 +389,13 @@ export default function AdminLeadership() {
               required
               value={name}
               onChange={(e) => setName(e.target.value)}
-              className="mt-2 block w-full rounded-sm border border-forest/15 bg-paper px-3 py-2 text-sm"
+              className="mt-2 block w-full rounded-sm border border-forest/65 bg-paper px-3 py-2 text-base"
             />
           </div>
           <div>
             <label
               htmlFor={contactEmailId}
-              className="font-mono text-xs uppercase tracking-[0.15em] text-graphite/70"
+              className="font-mono text-xs uppercase tracking-[0.15em] text-graphite/80"
             >
               Contact Email
             </label>
@@ -402,23 +404,23 @@ export default function AdminLeadership() {
               type="email"
               value={contactEmail}
               onChange={(e) => setContactEmail(e.target.value)}
-              className="mt-2 block w-full rounded-sm border border-forest/15 bg-paper px-3 py-2 text-sm"
-              placeholder="name@lvjusd.org"
+              className="mt-2 block w-full rounded-sm border border-forest/65 bg-paper px-3 py-2 text-base"
+              placeholder="name@lvjusd.org" autoComplete="username"
             />
           </div>
           <div>
-            <label htmlFor={bioId} className="font-mono text-xs uppercase tracking-[0.15em] text-graphite/70">
+            <label htmlFor={bioId} className="font-mono text-xs uppercase tracking-[0.15em] text-graphite/80">
               Bio (optional)
             </label>
             <input
               id={bioId}
               value={bio}
               onChange={(e) => setBio(e.target.value)}
-              className="mt-2 block w-full rounded-sm border border-forest/15 bg-paper px-3 py-2 text-sm"
+              className="mt-2 block w-full rounded-sm border border-forest/65 bg-paper px-3 py-2 text-base"
             />
           </div>
           <div className="sm:col-span-2">
-            <label htmlFor={photoId} className="font-mono text-xs uppercase tracking-[0.15em] text-graphite/70">
+            <label htmlFor={photoId} className="font-mono text-xs uppercase tracking-[0.15em] text-graphite/80">
               Leadership Photo
             </label>
             <div className="mt-2 grid gap-4 rounded-sm border border-dashed border-forest/15 bg-paper p-4 sm:grid-cols-[1fr_180px] sm:items-center">
@@ -434,17 +436,17 @@ export default function AdminLeadership() {
                     if (file) setCropFile(file);
                     e.target.value = "";
                   }}
-                  className="block w-full text-sm text-graphite/70 file:mr-4 file:rounded-sm file:border-0 file:bg-forest file:px-4 file:py-2 file:font-mono file:text-xs file:uppercase file:tracking-[0.15em] file:text-gold hover:file:bg-forestdeep"
+                  className="block w-full text-base text-graphite/80 file:mr-4 file:rounded-sm file:border-0 file:bg-forest file:px-4 file:py-2 file:font-mono file:text-xs file:uppercase file:tracking-[0.15em] file:text-accent hover:file:bg-forestdeep"
                 />
-                <p className="mt-2 text-xs leading-relaxed text-graphite/55">
+                <p className="mt-2 text-xs leading-relaxed text-graphite/80">
                   Choose a photo, then crop it to a 4:5 portrait. Save the seat to publish your photo.
                 </p>
                 {photoFile && (
-                  <p className="mt-1 text-xs text-graphite/70">
+                  <p className="mt-1 text-xs text-graphite/80">
                     Selected: <span className="font-medium">{photoFile.name}</span>
                   </p>
                 )}
-                {photoError && <p className="mt-2 text-xs text-red-700">{photoError}</p>}
+                {photoError && <p className="mt-2 text-xs text-red-700" role="alert">{photoError}</p>}
               </div>
               <div className="flex justify-start sm:justify-end">
                 <div className="flex aspect-[4/5] w-36 items-center justify-center overflow-hidden rounded-sm border border-forest/10 bg-forest/[0.03]">
@@ -464,10 +466,10 @@ export default function AdminLeadership() {
                     />
                   ) : (
                     <div className="px-4 text-center">
-                      <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-gold">
+                      <p className="font-mono text-xs uppercase tracking-[0.2em] text-accent">
                         Preview
                       </p>
-                      <p className="mt-1 text-sm text-graphite/60">No photo selected yet</p>
+                      <p className="mt-1 text-sm text-graphite/80">No photo selected yet</p>
                     </div>
                   )}
                 </div>
@@ -491,7 +493,7 @@ export default function AdminLeadership() {
                     {removingPhoto ? "Removing photo..." : "Remove current photo"}
                   </button>
                 ) : (
-                  <p className="text-xs text-graphite/45">
+                  <p className="text-xs text-graphite/80">
                     Upload a new image to replace the current one, or remove the existing photo to
                     return the seat to text only.
                   </p>
@@ -502,7 +504,7 @@ export default function AdminLeadership() {
           <button
             type="submit"
             disabled={saving || loading || roleSaving || !!cropFile || activeRoles.length === 0}
-            className="rounded-sm bg-forest px-4 py-2.5 font-mono text-xs uppercase tracking-[0.15em] text-gold transition hover:bg-forestdeep disabled:cursor-not-allowed disabled:opacity-60 sm:col-span-2"
+            className="rounded-sm bg-forest px-4 py-2.5 font-mono text-xs uppercase tracking-[0.15em] text-accent transition hover:bg-forestdeep disabled:cursor-not-allowed disabled:opacity-60 sm:col-span-2"
           >
             {saving ? "Saving..." : "Fill / Update Seat"}
           </button>
@@ -512,19 +514,19 @@ export default function AdminLeadership() {
       <div className="space-y-3">
         <div className="flex flex-col gap-3 rounded-sm bg-forest/[0.03] p-4 ring-1 ring-forest/10 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <p className="font-mono text-[10px] uppercase tracking-[0.15em] text-gold">Current board</p>
-            <p className="mt-1 text-sm text-graphite/60">Retiring a member preserves them on the public leadership archive.</p>
+            <p className="font-mono text-xs uppercase tracking-[0.15em] text-accent">Current board</p>
+            <p className="mt-1 text-sm text-graphite/80">Retiring a member preserves them on the public leadership archive.</p>
           </div>
-          <label className="text-sm text-graphite/70">
+          <label className="text-sm text-graphite/80">
             School year
-            <select value={retireYear} onChange={(event) => setRetireYear(event.target.value)} className="mt-1 block min-h-10 rounded-sm border border-forest/15 bg-paper px-3 py-2 text-sm">
+            <select value={retireYear} onChange={(event) => setRetireYear(event.target.value)} className="mt-1 block min-h-10 rounded-sm border border-forest/65 bg-paper px-3 py-2 text-base">
               <option>2025-2026</option>
               <option>2026-2027</option>
               <option>2027-2028</option>
             </select>
           </label>
         </div>
-        {loading && <p className="text-sm text-graphite/50">Loading...</p>}
+        {loading && <p className="text-sm text-graphite/80" role="status">Loading...</p>}
         {[...members].sort((a, b) => a.display_order - b.display_order).map((m, index, orderedMembers) => (
           <div key={m.id} className="rounded-sm bg-forest/[0.03] p-4 ring-1 ring-forest/10">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -534,7 +536,7 @@ export default function AdminLeadership() {
                     // eslint-disable-next-line @next/next/no-img-element
                     <img src={m.photo_url} alt={m.name} className="h-full w-full object-cover" />
                   ) : (
-                    <span className="font-mono text-xs uppercase tracking-[0.15em] text-gold">
+                    <span className="font-mono text-xs uppercase tracking-[0.15em] text-accent">
                       {m.name
                         .split(" ")
                         .filter(Boolean)
@@ -545,9 +547,9 @@ export default function AdminLeadership() {
                   )}
                 </div>
                 <div>
-                  <p className="font-mono text-[10px] uppercase tracking-[0.15em] text-gold">{getRoleLabel(m.role, roles)}</p>
+                  <p className="font-mono text-xs uppercase tracking-[0.15em] text-accent">{getRoleLabel(m.role, roles)}</p>
                   <p className="font-medium text-graphite">{m.name}</p>
-                  {m.contact_email && <p className="text-xs text-graphite/60">{m.contact_email}</p>}
+                  {m.contact_email && <p className="text-xs text-graphite/80">{m.contact_email}</p>}
                 </div>
               </div>
               <div className="flex flex-wrap gap-3">
@@ -577,7 +579,7 @@ export default function AdminLeadership() {
 
       {formerMembers.length > 0 && (
         <section className="border-t border-forest/10 pt-6">
-          <p className="font-mono text-xs uppercase tracking-[0.2em] text-gold">Former Leadership</p>
+          <p className="font-mono text-xs uppercase tracking-[0.2em] text-accent">Former Leadership</p>
           <h3 className="mt-2 font-display text-2xl text-forest">Leadership archive</h3>
           <div className="mt-4 space-y-5">
             {Array.from(new Set(formerMembers.map((member) => member.school_year))).map((schoolYear) => (
@@ -585,7 +587,7 @@ export default function AdminLeadership() {
                 <h4 className="font-display text-lg text-forest">{schoolYear}</h4>
                 <div className="mt-2 grid gap-2 sm:grid-cols-2">
                   {formerMembers.filter((member) => member.school_year === schoolYear).map((member) => (
-                    <div key={member.id} className="rounded-sm bg-forest/[0.03] px-4 py-3 text-sm text-graphite/75">
+                    <div key={member.id} className="rounded-sm bg-forest/[0.03] px-4 py-3 text-sm text-graphite/80">
                       <span className="font-medium text-forest">{member.name}</span> · {getRoleLabel(member.role, roles)}
                     </div>
                   ))}
@@ -597,40 +599,40 @@ export default function AdminLeadership() {
       )}
 
       <section className="border-t border-forest/10 pt-6">
-        <p className="font-mono text-xs uppercase tracking-[0.2em] text-gold">Archive entry</p>
+        <p className="font-mono text-xs uppercase tracking-[0.2em] text-accent">Archive entry</p>
         <h3 className="mt-2 font-display text-2xl text-forest">Add former team member</h3>
-        <p className="mt-2 max-w-2xl text-sm leading-relaxed text-graphite/65">
+        <p className="mt-2 max-w-2xl text-sm leading-relaxed text-graphite/80">
           Add someone from an earlier leadership team without filling a current seat first.
         </p>
         <form onSubmit={addFormerMember} className="mt-5 grid gap-3 sm:grid-cols-2">
-          <label className="text-sm text-graphite/70">
+          <label className="text-sm text-graphite/80">
             School year
-            <select value={formerYear} onChange={(event) => setFormerYear(event.target.value)} className="mt-2 block w-full rounded-sm border border-forest/15 bg-paper px-3 py-2 text-sm">
+            <select value={formerYear} onChange={(event) => setFormerYear(event.target.value)} className="mt-2 block w-full rounded-sm border border-forest/65 bg-paper px-3 py-2 text-base">
               <option>2024-2025</option>
               <option>2025-2026</option>
               <option>2026-2027</option>
               <option>2027-2028</option>
             </select>
           </label>
-          <label className="text-sm text-graphite/70">
+          <label className="text-sm text-graphite/80">
             Role
-            <select value={formerRole} onChange={(event) => setFormerRole(event.target.value)} className="mt-2 block w-full rounded-sm border border-forest/15 bg-paper px-3 py-2 text-sm">
+            <select value={formerRole} onChange={(event) => setFormerRole(event.target.value)} className="mt-2 block w-full rounded-sm border border-forest/65 bg-paper px-3 py-2 text-base">
               {activeRoles.map((item) => <option key={item.slug} value={item.slug}>{item.label}</option>)}
             </select>
           </label>
-          <label className="text-sm text-graphite/70">
+          <label className="text-sm text-graphite/80">
             Name
-            <input required value={formerName} onChange={(event) => setFormerName(event.target.value)} className="mt-2 block w-full rounded-sm border border-forest/15 bg-paper px-3 py-2 text-sm" />
+            <input required value={formerName} onChange={(event) => setFormerName(event.target.value)} className="mt-2 block w-full rounded-sm border border-forest/65 bg-paper px-3 py-2 text-base" />
           </label>
-          <label className="text-sm text-graphite/70">
+          <label className="text-sm text-graphite/80">
             Contact email (optional)
-            <input type="email" value={formerEmail} onChange={(event) => setFormerEmail(event.target.value)} className="mt-2 block w-full rounded-sm border border-forest/15 bg-paper px-3 py-2 text-sm" />
+            <input type="email" value={formerEmail} onChange={(event) => setFormerEmail(event.target.value)} className="mt-2 block w-full rounded-sm border border-forest/65 bg-paper px-3 py-2 text-base" autoComplete="username" />
           </label>
-          <label className="text-sm text-graphite/70 sm:col-span-2">
+          <label className="text-sm text-graphite/80 sm:col-span-2">
             Bio (optional)
-            <input value={formerBio} onChange={(event) => setFormerBio(event.target.value)} className="mt-2 block w-full rounded-sm border border-forest/15 bg-paper px-3 py-2 text-sm" />
+            <input value={formerBio} onChange={(event) => setFormerBio(event.target.value)} className="mt-2 block w-full rounded-sm border border-forest/65 bg-paper px-3 py-2 text-base" />
           </label>
-          <button type="submit" disabled={saving || loading || roleSaving || activeRoles.length === 0} className="rounded-sm bg-forest px-4 py-2.5 font-mono text-xs uppercase tracking-[0.15em] text-gold transition hover:bg-forestdeep disabled:cursor-not-allowed disabled:opacity-60 sm:col-span-2">
+          <button type="submit" disabled={saving || loading || roleSaving || activeRoles.length === 0} className="rounded-sm bg-forest px-4 py-2.5 font-mono text-xs uppercase tracking-[0.15em] text-accent transition hover:bg-forestdeep disabled:cursor-not-allowed disabled:opacity-60 sm:col-span-2">
             {saving ? "Adding..." : "Add Former Member"}
           </button>
         </form>

@@ -186,7 +186,7 @@ export default function SSPChallenge() {
             if (event.key === "Escape") { cancelHold(); setStaffControls(false); }
           }}
           onKeyUp={(event) => { if (event.key === " " || event.key === "Enter") cancelHold(); }}
-          className="my-3 touch-none select-none rounded-sm font-mono text-5xl tabular-nums text-forestdeep [-webkit-touch-callout:none] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-forest"
+          className="my-3 touch-none select-none rounded-sm font-mono text-[min(3rem,18vw)] tabular-nums text-forestdeep [-webkit-touch-callout:none] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-forest"
         >
           <span role="timer" aria-label={`${Math.floor(seconds / 60)} minutes and ${seconds % 60} seconds remaining`}>{display}</span>
         </button>
@@ -205,7 +205,7 @@ export default function SSPChallenge() {
         <p role="status" className="mt-4 text-sm leading-relaxed text-forestdeep">
           {!ready ? "Loading timer…" : remaining === 0 ? "Time’s up! Stop building and move on to the shake test in step 5." : deadline !== null ? "Building time is running." : started ? "Paused by GEA. Wait for your activity leader to resume." : "Ready when you are."}
         </p>
-        <p className="mt-3 text-xs leading-relaxed text-graphite/70">Changing steps does not stop or reset the timer. If the activity is interrupted, ask a GEA team member for help.</p>
+        <p className="mt-3 text-xs leading-relaxed text-graphite/80">Changing steps does not stop or reset the timer. If the activity is interrupted, ask a GEA team member for help.</p>
       </aside>
     </div>
   );

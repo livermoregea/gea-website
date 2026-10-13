@@ -48,16 +48,16 @@ export default function QuestionQueue({
     load();
   }, []);
 
-  if (loading) return <p className="text-sm text-graphite/50">Loading questions...</p>;
+  if (loading) return <p role="status" className="text-sm text-graphite/80">Loading questions...</p>;
   if (questions.length === 0)
-    return <p className="text-sm text-graphite/50">No approved questions waiting for an answer right now.</p>;
+    return <p className="text-sm text-graphite/80">No approved questions waiting for an answer right now.</p>;
 
   return (
     <div className="space-y-6">
       {questions.map((q) =>
         answeredIds.includes(q.id) ? null : (
           <div key={q.id} className="rounded-sm bg-forest/[0.03] p-5 ring-1 ring-forest/5">
-            <p className="font-mono text-[11px] uppercase tracking-[0.2em] text-gold">{q.asked_by_name}</p>
+            <p className="font-mono text-xs uppercase tracking-[0.2em] text-accent">{q.asked_by_name}</p>
             <QuestionContent question={q.question} className="mt-2" />
             <AnswerForm
               questionId={q.id}

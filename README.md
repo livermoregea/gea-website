@@ -154,3 +154,13 @@ Checks:
 - `psql -v ON_ERROR_STOP=1 -f tests/forum-admin-overrides.sql` against a disposable,
   empty PostgreSQL database only (the fixtures run inside a rolled-back transaction).
 - `npm run build`
+
+### GEA Builders
+
+GEA Builders is temporarily hidden from the public site (`BUILDERS_ENABLED = false`
+in `lib/site-features.ts`). Its implementation is preserved at `/builders`, with project
+review, public-story moderation, and milestone recognition at
+`/admin-portal-x7k9/builders`. For an existing database, run
+[`supabase/builders.sql`](supabase/builders.sql) before launch. Fresh installations
+include it in `schema.sql`. See [integration and rollout notes](docs/builders-integration.md)
+for permissions, video sharing, and validation.

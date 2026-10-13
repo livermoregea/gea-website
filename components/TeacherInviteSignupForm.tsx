@@ -22,6 +22,7 @@ export default function TeacherInviteSignupForm({
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
+    try {
     setError(null);
 
     if (!hasSupabaseConfig()) {
@@ -63,21 +64,26 @@ export default function TeacherInviteSignupForm({
 
     router.push("/teacher");
     router.refresh();
+      } catch {
+      setError("We couldn’t reach the sign-in service. Check your connection and try again.");
+    } finally {
+      setLoading(false);
+    }
   }
 
   return (
     <form onSubmit={submit} className="space-y-5 rounded-sm bg-forest/[0.03] p-6 ring-1 ring-forest/5 sm:p-8">
       <div>
-        <p className="font-mono text-xs uppercase tracking-[0.2em] text-gold">Teacher Invite</p>
+        <p className="font-mono text-xs uppercase tracking-[0.2em] text-accent">Teacher Invite</p>
         <h2 className="mt-2 font-display text-xl text-forest">Create your account</h2>
-        <p className="mt-2 text-sm text-graphite/70">
+        <p className="mt-2 text-sm text-graphite/80">
           This invite is for <span className="font-medium text-forest">{teacherName}</span> at{" "}
           <span className="font-medium text-forest">{teacherEmail}</span>.
         </p>
       </div>
 
       <div>
-        <label className="font-mono text-xs uppercase tracking-[0.15em] text-graphite/70" htmlFor="teacher-password">
+        <label className="font-mono text-xs uppercase tracking-[0.15em] text-graphite/80" htmlFor="teacher-password">
           Password
         </label>
         <input
@@ -86,14 +92,14 @@ export default function TeacherInviteSignupForm({
           required
           value={password}
           onChange={(e) => setPassword(e.target.value)}
-          className="mt-2 w-full rounded-sm border border-forest/15 bg-paper px-4 py-3 text-sm outline-none focus:border-gold"
-          placeholder="Create a password"
+          className="mt-2 w-full rounded-sm border border-forest/65 bg-paper px-4 py-3 text-base outline-none focus:border-gold"
+          placeholder="Create a password" autoComplete="new-password"
         />
       </div>
 
       <div>
         <label
-          className="font-mono text-xs uppercase tracking-[0.15em] text-graphite/70"
+          className="font-mono text-xs uppercase tracking-[0.15em] text-graphite/80"
           htmlFor="teacher-password-confirm"
         >
           Confirm Password
@@ -104,8 +110,8 @@ export default function TeacherInviteSignupForm({
           required
           value={confirmPassword}
           onChange={(e) => setConfirmPassword(e.target.value)}
-          className="mt-2 w-full rounded-sm border border-forest/15 bg-paper px-4 py-3 text-sm outline-none focus:border-gold"
-          placeholder="Confirm your password"
+          className="mt-2 w-full rounded-sm border border-forest/65 bg-paper px-4 py-3 text-base outline-none focus:border-gold"
+          placeholder="Confirm your password" autoComplete="new-password"
         />
       </div>
 
@@ -118,7 +124,7 @@ export default function TeacherInviteSignupForm({
       <button
         type="submit"
         disabled={loading}
-        className="w-full rounded-sm bg-forest px-6 py-3 font-mono text-xs uppercase tracking-[0.15em] text-gold transition hover:bg-forestdeep disabled:opacity-50"
+        className="w-full rounded-sm bg-forest px-6 py-3 font-mono text-xs uppercase tracking-[0.15em] text-accent transition hover:bg-forestdeep disabled:opacity-50"
       >
         {loading ? "Creating account..." : "Finish Signup"}
       </button>

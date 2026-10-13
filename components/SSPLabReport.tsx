@@ -59,12 +59,12 @@ export default function SSPLabReport() {
           className="scroll-mt-28 overflow-hidden rounded-sm border border-forest/20 bg-paper text-forestdeep shadow-sm focus:outline-none"
         >
           <header className="border-b-4 border-gold bg-forestdeep px-3 py-4 text-paper sm:px-7 sm:py-5">
-            <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-goldlight">Green Engineering Academy</p>
+            <p className="font-mono text-xs uppercase tracking-[0.18em] text-goldlight">Green Engineering Academy</p>
             <h4 id="finished-report-heading" className="mt-2 font-display text-2xl font-medium sm:text-3xl">Our shake-test report</h4>
             <p className="mt-2 text-sm text-paper/85">Science at Stockmens Park</p>
           </header>
           <div className="px-3 sm:px-7">
-            <p className="border-b border-forest/15 py-3 font-mono text-[10px] uppercase leading-relaxed tracking-[0.12em] text-forest/75">Spaghetti + marshmallows + tape · 10-minute build</p>
+            <p className="border-b border-forest/15 py-3 font-mono text-xs uppercase leading-relaxed tracking-[0.12em] text-forest/80">Spaghetti + marshmallows + tape · 10-minute build</p>
             <ol className="divide-y divide-forest/15">
               {prompts.map((prompt, index) => {
                 const answer = answers[prompt.id].trim();
@@ -80,7 +80,7 @@ export default function SSPLabReport() {
           </div>
           <footer className="border-t border-forest/15 bg-forest/5 px-3 py-3 sm:px-7 sm:py-4">
             <p className="font-display text-sm font-medium">Build. Test. Learn. Improve.</p>
-            <p className="mt-1 font-mono text-[10px] text-forest/75">livermoregea.org</p>
+            <p className="mt-1 font-mono text-xs text-forest/80">livermoregea.org</p>
           </footer>
         </article>
         <div className="mt-5">
@@ -90,7 +90,7 @@ export default function SSPLabReport() {
         <div className="mt-5 flex flex-wrap items-center gap-4">
           <button type="button" onClick={() => { setComplete(false); setDownloadStatus(""); }} className="inline-flex min-h-11 items-center justify-center rounded-sm border border-forest/25 px-5 py-3 text-sm font-medium text-forestdeep hover:bg-forest/5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-forest">Edit answers</button>
           <Link href="/" className="inline-flex min-h-11 items-center justify-center rounded-sm bg-gold px-5 py-3 text-sm font-medium text-forestdeep hover:bg-goldlight focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-forest">Return to homepage</Link>
-          <p className="text-sm leading-relaxed text-graphite/75">Share your discoveries with a GEA team member!</p>
+          <p className="text-sm leading-relaxed text-graphite/80">Share your discoveries with a GEA team member!</p>
         </div>
       </div>
     );
@@ -112,7 +112,7 @@ export default function SSPLabReport() {
         {prompts.map((prompt, index) => (
           <div key={prompt.id}>
             <label htmlFor={`ssp-report-${prompt.id}`} className="block font-medium leading-relaxed text-forestdeep">
-              <span className="mr-2 font-mono text-sm text-forest/65">{index + 1}.</span>
+              <span className="mr-2 font-mono text-sm text-forest/80">{index + 1}.</span>
               {prompt.before} <span aria-hidden="true">____{prompt.after}</span>
             </label>
             <input
@@ -129,13 +129,13 @@ export default function SSPLabReport() {
                 setComplete(false);
               }}
               aria-describedby={`ssp-report-${prompt.id}-hint`}
-              className="mt-2 w-full rounded-sm border-0 border-b-2 border-forest/30 bg-paper px-3 py-3 text-base text-forestdeep focus:border-forest focus:outline-none focus:ring-2 focus:ring-gold/60"
+              className="mt-2 w-full rounded-sm border-0 border-b-2 border-forest/65 bg-paper px-3 py-3 text-base text-forestdeep focus:border-forest focus:outline-none focus:ring-2 focus:ring-gold/60"
             />
-            <p id={`ssp-report-${prompt.id}-hint`} className="mt-2 text-sm leading-relaxed text-graphite/70">{prompt.hint}</p>
+            <p id={`ssp-report-${prompt.id}-hint`} className="mt-2 text-sm leading-relaxed text-graphite/80">{prompt.hint}</p>
           </div>
         ))}
       </div>
-      <p className="mt-6 text-xs leading-relaxed text-graphite/70">This is for your team to discuss, not to turn in. Your answers stay here as you review the steps; refreshing the page clears them.</p>
+      <p className="mt-6 text-xs leading-relaxed text-graphite/80">This is for your team to discuss, not to turn in. Your answers stay here as you review the steps; refreshing the page clears them.</p>
       <button type="submit" className="mt-4 inline-flex min-h-11 items-center justify-center rounded-sm bg-gold px-5 py-3 text-sm font-medium text-forestdeep hover:bg-goldlight focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-forest">Create our report</button>
     </form>
   );

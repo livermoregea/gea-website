@@ -1,7 +1,7 @@
 "use client";
 
 import { usePathname } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { normalizeAnnouncementLink } from "@/lib/announcement-links";
 import { hasSupabaseConfig } from "@/lib/supabase/config";
@@ -58,7 +58,7 @@ function normalizeButtons(value: unknown): AnnouncementButton[] {
 
 function buttonClasses(variant: ButtonVariant) {
   if (variant === "primary") {
-    return "bg-forest text-gold hover:bg-forestdeep";
+    return "bg-forest text-accent hover:bg-forestdeep";
   }
   return "border border-forest/15 text-forest hover:bg-forest/[0.04]";
 }
@@ -73,6 +73,7 @@ export default function SiteAnnouncements({
   initialAnnouncements?: WebsiteAnnouncement[];
 }) {
   const pathname = usePathname();
+  const dialogRef = useRef<HTMLDialogElement>(null);
   const initialBanner = initialAnnouncements.find(
     (row) => row.kind === "banner" && (row.scope === "site" || pathname === "/")
   ) ?? null;
@@ -143,6 +144,20 @@ export default function SiteAnnouncements({
     setPopupOpen(false);
   }
 
+  useEffect(() => {
+    const dialog = dialogRef.current;
+    if (!popupOpen || !dialog) return;
+    const previousFocus = document.activeElement;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    if (!dialog.open) dialog.showModal();
+    return () => {
+      if (dialog.open) dialog.close();
+      document.body.style.overflow = previousOverflow;
+      if (previousFocus instanceof HTMLElement && previousFocus.isConnected) previousFocus.focus();
+    };
+  }, [popupOpen, popup]);
+
   const popupButtons = useMemo(() => normalizeButtons(popup?.buttons ?? []), [popup]);
   const bannerButtons = useMemo(() => normalizeButtons(banner?.buttons ?? []), [banner]);
 
@@ -152,11 +167,11 @@ export default function SiteAnnouncements({
         <div className="border-b border-gold/20 bg-[#173f2c] text-paper shadow-[0_10px_30px_rgba(18,53,36,0.08)]">
           <div className="mx-auto flex max-w-6xl flex-col gap-4 px-4 py-4 sm:px-6 lg:flex-row lg:items-center lg:justify-between">
             <div className="max-w-3xl">
-              <p className="font-mono text-[10px] uppercase tracking-[0.24em] text-gold/90">
+              <p className="font-mono text-xs uppercase tracking-[0.24em] text-accent/90">
                 GEA Update
               </p>
               <h2 className="mt-2 font-display text-lg text-paper sm:text-xl">{banner.title}</h2>
-              <p className="mt-2 text-sm leading-relaxed text-paper/80 whitespace-pre-wrap">
+              <p className="mt-2 text-sm leading-relaxed text-paper/85 whitespace-pre-wrap">
                 {banner.body}
               </p>
             </div>
@@ -180,13 +195,14 @@ export default function SiteAnnouncements({
       )}
 
       {popup && popupOpen && (
-        <div
-          className="fixed inset-0 z-[60] flex items-center justify-center bg-forestdeep/70 px-4 py-6 backdrop-blur-sm"
-          role="dialog"
+        <dialog
+          ref={dialogRef}
+          className="m-auto w-[calc(100%-2rem)] max-w-2xl rounded-sm bg-paper p-0 shadow-2xl backdrop:bg-forestdeep/70 backdrop:backdrop-blur-sm"
           aria-modal="true"
           aria-labelledby="website-popup-title"
           aria-describedby="website-popup-description"
-          onClick={() => dismiss(false)}
+          onCancel={(event) => { event.preventDefault(); dismiss(false); }}
+          onClick={(event) => { if (event.target === event.currentTarget) dismiss(false); }}
         >
           <div
             className="w-full max-w-2xl rounded-sm border border-paper/20 bg-paper p-6 shadow-2xl shadow-black/20 ring-1 ring-forest/10 sm:p-8"
@@ -194,7 +210,7 @@ export default function SiteAnnouncements({
           >
             <div className="flex items-start justify-between gap-4">
               <div>
-                <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-gold">
+                <p className="font-mono text-xs uppercase tracking-[0.22em] text-accent">
                   {popup.kind === "popup" ? "Website Notice" : "Announcement"}
                 </p>
                 <h2 id="website-popup-title" className="mt-2 font-display text-2xl text-forest">
@@ -213,7 +229,7 @@ export default function SiteAnnouncements({
 
             <p
               id="website-popup-description"
-              className="mt-4 text-sm leading-relaxed text-graphite/75 sm:text-base whitespace-pre-wrap"
+              className="mt-4 text-sm leading-relaxed text-graphite/80 sm:text-base whitespace-pre-wrap"
             >
               {popup.body}
             </p>
@@ -236,12 +252,12 @@ export default function SiteAnnouncements({
             )}
 
             {popup.allow_dont_show_again && (
-              <label className="mt-5 flex cursor-pointer items-center gap-3 rounded-sm bg-forest/[0.03] px-4 py-3 text-sm text-graphite/75">
+              <label className="mt-5 flex cursor-pointer items-center gap-3 rounded-sm bg-forest/[0.03] px-4 py-3 text-sm text-graphite/80">
                 <input
                   type="checkbox"
                   checked={dontShowAgain}
                   onChange={(event) => setDontShowAgain(event.target.checked)}
-                  className="h-4 w-4 rounded border-forest/25 text-forest focus:ring-gold"
+                  className="h-4 w-4 rounded border-forest/65 text-forest focus:ring-gold"
                 />
                 <span>Don&apos;t show again</span>
               </label>
@@ -255,7 +271,7 @@ export default function SiteAnnouncements({
               {popup.allow_dont_show_again && dontShowAgain ? "Hide Forever" : "Not Now"}
             </button>
           </div>
-        </div>
+        </dialog>
       )}
     </>
   );
