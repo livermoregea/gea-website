@@ -19,7 +19,7 @@ export default async function AdminApplicationPage({ params }: { params: Promise
         <h1 className="mb-4 font-display text-2xl text-forestdeep">Staff sign-in required</h1>
         <p className="text-sm text-graphite/80">
           <Link href="/admin-portal-x7k9/login" className="text-forest underline decoration-gold underline-offset-4">
-            Sign in
+            Sign in to GEA One
           </Link>{" "}to access the admin portal.
         </p>
       </div>
@@ -32,7 +32,7 @@ export default async function AdminApplicationPage({ params }: { params: Promise
   ]);
 
   if (!adminRow && !teacherRow) {
-    return <PageNotice title="Staff access required"><p>Your account does not have staff access. Contact a GEA coordinator if you need help.</p></PageNotice>;
+    return <PageNotice title="Staff access required"><p>Your GEA One account does not have staff access. Contact a GEA coordinator if you need help.</p></PageNotice>;
   }
 
   return <AdminApplicationDetail applicationId={id} />;

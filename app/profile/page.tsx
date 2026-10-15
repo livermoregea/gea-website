@@ -1,3 +1,4 @@
+import GEAOneBadge from "@/components/GEAOneBadge";
 import { BUILDERS_ENABLED } from "@/lib/site-features";
 import Link from "next/link";
 import { redirect } from "next/navigation";
@@ -8,6 +9,7 @@ export default async function ProfilePage() {
   if (!hasSupabaseConfig()) {
     return (
       <div className="mx-auto max-w-3xl px-4 py-16 sm:px-6 md:py-20">
+      <div className="mb-5"><GEAOneBadge /></div>
         <p className="font-mono text-xs uppercase tracking-[0.3em] text-accent">Profile</p>
         <h1 className="mt-4 font-display text-2xl font-medium text-forest">Demo mode</h1>
         <p className="mt-3 text-sm text-graphite/80">
@@ -26,19 +28,20 @@ export default async function ProfilePage() {
     redirect("/login");
   }
 
-  const [{ data: studentProfile }, { data: teacherProfile }, { data: adminProfile }] =
+  const [{ data: studentProfile }, { data: teacherProfile }, { data: adminProfile }, { data: officerProfile }] =
     await Promise.all([
       supabase
         .from("student_profiles")
-        .select("full_name, display_username, graduating_class_year, school_email, auth_email")
+        .select("id, full_name, display_username, graduating_class_year, school_email, auth_email")
         .eq("auth_user_id", user.id)
         .maybeSingle(),
       supabase
         .from("teacher_profiles")
-        .select("full_name, school_email, auth_email")
+        .select("id, full_name, school_email, auth_email")
         .eq("auth_user_id", user.id)
         .maybeSingle(),
       supabase.from("admins").select("name").eq("auth_user_id", user.id).maybeSingle(),
+      supabase.from("officer_profiles").select("id, name, position, access_enabled").eq("id", user.id).maybeSingle(),
     ]);
 
   const profileType = studentProfile ? "student" : teacherProfile ? "teacher" : null;
@@ -57,13 +60,19 @@ export default async function ProfilePage() {
 
   return (
     <div className="mx-auto max-w-3xl px-4 py-16 sm:px-6 md:py-20">
+      <div className="mb-5"><GEAOneBadge /></div>
       <p className="font-mono text-xs uppercase tracking-[0.3em] text-accent">Profile</p>
-      <h1 className="mt-4 font-display text-2xl font-medium text-forest">Your account</h1>
+      <h1 className="mt-4 font-display text-2xl font-medium text-forest">Your GEA One account</h1>
       <p className="mt-3 text-sm text-graphite/80">
-        This is the account linked to your Q&amp;A, leadership, and staff access.
+        GEA One connects your Q&amp;A, leadership, and staff access.
       </p>
 
+      <Link href="/account/redirect" className="mt-4 inline-flex min-h-11 items-center text-sm text-forest underline underline-offset-4">Back to GEA One home</Link>
       <div className="dim-divider my-8" />
+
+      {officerProfile && officerProfile.access_enabled !== false && <Link href="/officerboard" className="mb-6 inline-flex min-h-11 items-center rounded-xl bg-[#064e3b] px-5 py-3 text-sm font-semibold text-white hover:bg-forestdeep">
+        Open Officer Board →
+      </Link>}
 
       {studentProfile ? (
         <div className="space-y-4">
@@ -74,7 +83,7 @@ export default async function ProfilePage() {
               <p>Name: {studentProfile.full_name}</p>
               <p>Class of {studentProfile.graduating_class_year}</p>
               <p>School Email: {studentProfile.school_email ?? studentProfile.auth_email}</p>
-              <p>Login Email: {studentProfile.auth_email}</p>
+              <p>GEA One email: {studentProfile.auth_email}</p>
             </div>
           </div>
           <div className="flex flex-wrap gap-3">
@@ -113,7 +122,7 @@ export default async function ProfilePage() {
             <h2 className="mt-2 font-display text-xl text-forest">{teacherProfile.full_name}</h2>
             <div className="mt-3 space-y-1 text-sm text-graphite/80">
               <p>School Email: {teacherProfile.school_email}</p>
-              <p>Login Email: {teacherProfile.auth_email}</p>
+              <p>GEA One email: {teacherProfile.auth_email}</p>
             </div>
           </div>
           <div className="flex flex-wrap gap-3">
@@ -158,10 +167,17 @@ export default async function ProfilePage() {
             Open Admin Portal
           </Link>
         </div>
+      ) : officerProfile ? (
+        <div className="rounded-sm bg-forest/[0.03] p-6 ring-1 ring-forest/5">
+          <h2 className="font-display text-xl text-forest">{officerProfile.name}</h2>
+          <p className="mt-3 text-sm text-graphite/80">{officerProfile.position || "Officer"}</p>
+          <p className="mt-3 text-sm text-graphite/80">Contact your academy advisor to request changes to your officer profile.</p>
+          <Link href="/contact" className="mt-3 inline-flex min-h-11 items-center text-sm text-forest underline underline-offset-4">Contact GEA</Link>
+        </div>
       ) : (
         <div className="rounded-sm bg-forest/[0.03] p-6 ring-1 ring-forest/5">
           <p className="text-sm text-graphite/80">
-            We found your account, but not a linked student, teacher, or admin profile.
+            We found your GEA One account, but not a linked student, teacher, or admin profile.
           </p>
         </div>
       )}

@@ -133,22 +133,22 @@ export default async function ApplyPage({
             Signed In
           </p>
           <p className="mt-2 text-sm text-graphite/80">
-            This application will be linked to your account.
+            This application will be linked to your GEA One account.
           </p>
         </div>
       ) : (
         <div className="mt-6 rounded-sm bg-forest/[0.04] p-5 ring-1 ring-forest/10">
           <p className="font-mono text-xs uppercase tracking-[0.2em] text-accent">
-            Optional Sign In
+            Connect GEA One (optional)
           </p>
           <p className="mt-2 text-sm text-graphite/80">
-            Sign in to associate this application with your account.
+            Sign in to GEA One to associate this application with your GEA One account.
           </p>
           <Link
             href="/leadership"
             className="mt-3 inline-flex rounded-sm bg-forest px-4 py-2 font-mono text-xs uppercase tracking-[0.15em] text-accent transition hover:bg-forestdeep"
           >
-            Sign In on Leadership Page
+            Sign in to GEA One
           </Link>
         </div>
       )}

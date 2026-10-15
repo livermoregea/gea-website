@@ -49,15 +49,15 @@ export default async function TeacherPage() {
         <div className="mt-4 flex flex-wrap justify-center gap-3">
           <Link
             href="/teacher/signup"
-            className="rounded-sm bg-forest px-4 py-2.5 font-mono text-xs uppercase tracking-[0.15em] text-accent"
+            className="inline-flex min-h-11 items-center justify-center rounded-sm bg-forest px-4 py-2.5 font-mono text-xs uppercase tracking-[0.15em] text-accent"
           >
             Teacher Signup
           </Link>
           <Link
             href="/login"
-            className="rounded-sm border border-forest/15 px-4 py-2.5 font-mono text-xs uppercase tracking-[0.15em] text-forest"
+            className="inline-flex min-h-11 items-center justify-center rounded-sm border border-forest/15 px-4 py-2.5 font-mono text-xs uppercase tracking-[0.15em] text-forest"
           >
-            Log In
+            Sign in to GEA One
           </Link>
         </div>
       </div>

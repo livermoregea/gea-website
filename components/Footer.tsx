@@ -59,7 +59,7 @@ export default function Footer() {
               </p>
               <Link
                 href="/contact"
-                className="mt-4 inline-flex rounded-sm border border-paper/20 px-4 py-2 font-mono text-xs uppercase tracking-[0.18em] text-paper transition hover:border-gold hover:text-accent"
+                className="mt-4 inline-flex min-h-11 items-center justify-center rounded-sm border border-paper/20 px-4 py-2 font-mono text-xs uppercase tracking-[0.18em] text-paper transition hover:border-gold hover:text-accent"
               >
                 Open Contact Page
               </Link>
@@ -71,7 +71,7 @@ export default function Footer() {
               <p className="mt-2">
                 <Link
                   href="/privacy"
-                  className="font-mono text-xs uppercase tracking-[0.18em] text-accent underline decoration-paper/25 underline-offset-4"
+                  className="inline-flex min-h-11 items-center font-mono text-xs uppercase tracking-[0.18em] text-accent underline decoration-paper/25 underline-offset-4"
                 >
                   Student Privacy
                 </Link>

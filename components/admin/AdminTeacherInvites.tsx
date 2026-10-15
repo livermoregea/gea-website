@@ -173,7 +173,7 @@ export default function AdminTeacherInvites() {
                 </div>
                 <a
                   href={`/teacher/signup/${invite.invite_token}`}
-                  className="rounded-sm border border-forest/15 px-3 py-2 font-mono text-xs uppercase tracking-[0.15em] text-forest"
+                  className="inline-flex min-h-11 items-center justify-center rounded-sm border border-forest/15 px-3 py-2 font-mono text-xs uppercase tracking-[0.15em] text-forest"
                 >
                   Open Link
                 </a>

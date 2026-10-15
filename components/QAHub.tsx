@@ -194,6 +194,7 @@ function VotePill({
             : "text-forest hover:bg-forest/[0.04] disabled:cursor-not-allowed disabled:opacity-40"
         }`}
         aria-label={`Upvote. Current count ${upCount}`}
+        aria-pressed={value === 1}
       >
         <span aria-hidden="true">▲</span>
         <span>Up</span>
@@ -211,6 +212,7 @@ function VotePill({
             : "text-forest hover:bg-forest/[0.04] disabled:cursor-not-allowed disabled:opacity-40"
         }`}
         aria-label={`Downvote. Current count ${downCount}`}
+        aria-pressed={value === -1}
       >
         <span aria-hidden="true">▼</span>
         <span>Down</span>
@@ -427,7 +429,7 @@ function QuestionCard({
               </div>
             ) : (
               <div className="rounded-sm border border-forest/10 bg-forest/[0.03] p-4 text-sm text-graphite/80">
-                Sign in with an approved student account to comment on posts.
+                Sign in to GEA One with an account with student access to comment on posts.
               </div>
             )}
 
@@ -1008,7 +1010,7 @@ export default function QAHub({
                 href="/login"
                 className="inline-flex min-h-11 items-center rounded-sm bg-forest px-5 py-2.5 font-mono text-xs uppercase tracking-[0.15em] text-accent transition hover:bg-forestdeep"
               >
-                Sign in to post
+                Sign in to GEA One to post
               </Link>
             )}
             <a
@@ -1023,7 +1025,7 @@ export default function QAHub({
 
       {!canCreatePost && authUserId && (
         <section className="rounded-sm border border-forest/10 bg-forest/[0.03] px-5 py-4 text-sm leading-relaxed text-graphite/80 ring-1 ring-forest/5">
-          Your account is currently not allowed to post. You can read the forum and report content,
+          Your GEA One account is currently not allowed to post. You can read the forum and report content,
           but you cannot post, reply, or vote yet.
         </section>
       )}

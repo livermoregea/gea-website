@@ -163,13 +163,13 @@ export default function AdminApplicationDetail({ applicationId }: { applicationI
             </select>
           )}
           {previousApplication ? (
-            <Link href={`/admin-portal-x7k9/applications/${previousApplication.id}`} className="max-w-48 rounded-sm border border-forest/15 px-3 py-2 text-left font-mono text-xs uppercase tracking-[0.08em] text-forest hover:bg-forest/[0.04]">
+            <Link href={`/admin-portal-x7k9/applications/${previousApplication.id}`} className="inline-flex min-h-11 max-w-48 items-center justify-center rounded-sm border border-forest/15 px-3 py-2 text-center font-mono text-xs uppercase tracking-[0.08em] text-forest hover:bg-forest/[0.04]">
               <span className="block text-xs text-graphite/80">Previous</span>
               <span className="block truncate">{previousApplication.name}</span>
             </Link>
           ) : null}
           {nextApplication ? (
-            <Link href={`/admin-portal-x7k9/applications/${nextApplication.id}`} className="max-w-48 rounded-sm bg-forest px-3 py-2 text-left font-mono text-xs uppercase tracking-[0.08em] text-accent hover:bg-forestdeep">
+            <Link href={`/admin-portal-x7k9/applications/${nextApplication.id}`} className="inline-flex min-h-11 max-w-48 items-center justify-center rounded-sm bg-forest px-3 py-2 text-center font-mono text-xs uppercase tracking-[0.08em] text-accent hover:bg-forestdeep">
               <span className="block text-xs text-accent">Next</span>
               <span className="block truncate">{nextApplication.name}</span>
             </Link>
@@ -209,7 +209,7 @@ export default function AdminApplicationDetail({ applicationId }: { applicationI
                   type="button"
                   disabled={saving || application.status === status}
                   onClick={() => updateStatus(status)}
-                  className={`min-h-10 rounded-sm border px-3 py-2 text-left font-mono text-xs uppercase tracking-[0.1em] transition ${
+                  className={`min-h-10 rounded-sm border px-3 py-2 text-center font-mono text-xs uppercase tracking-[0.1em] transition ${
                     application.status === status
                       ? "border-forest bg-forest text-accent shadow-[0_0_0_2px_rgba(18,53,36,0.12)]"
                       : "border-forest/20 bg-paper text-forest hover:border-forest hover:bg-forest/[0.05]"

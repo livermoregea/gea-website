@@ -93,23 +93,12 @@ export async function POST(request: Request) {
   let authUserId = existingUser?.id ?? null;
 
   if (existingUser) {
-    const { error: updateUserError } = await supabase.auth.admin.updateUserById(existingUser.id, {
-      password: studentIdNumber,
-      email_confirm: true,
-      user_metadata: {
-        full_name: fullName,
-        display_username: displayUsername,
-        graduating_class_year: graduatingClassYear,
-        account_type: "student",
-      },
-    });
-
-    if (updateUserError) {
-      return NextResponse.json(
-        { error: updateUserError.message ?? "Could not create the student account." },
-        { status: 400 }
-      );
-    }
+    // Public signup must never reset an existing student, teacher, or staff login.
+    // Attaching another profile to an existing Auth user requires super-admin access.
+    return NextResponse.json(
+      { error: "That email already has a GEA One account. Sign in to GEA One or ask a GEA coordinator to add student access." },
+      { status: 409 }
+    );
   } else {
     const { data: createdUser, error: createUserError } = await supabase.auth.admin.createUser({
       email: schoolEmail,
@@ -125,7 +114,7 @@ export async function POST(request: Request) {
 
     if (createUserError) {
       return NextResponse.json(
-        { error: createUserError.message ?? "Could not create the student account." },
+        { error: createUserError.message ?? "Could not create the GEA One account." },
         { status: 400 }
       );
     }
@@ -159,6 +148,6 @@ export async function POST(request: Request) {
 
   return NextResponse.json({
     ok: true,
-    message: "Your account is ready. You can sign in now.",
+    message: "Your GEA One account is ready. You can sign in now.",
   });
 }

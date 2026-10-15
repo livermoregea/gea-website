@@ -1,5 +1,7 @@
 "use client";
 
+import ActionError from "@/components/ActionError";
+
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
@@ -46,7 +48,7 @@ export default function TeacherInviteSignupForm({
 
     if (!res.ok) {
       setLoading(false);
-      setError(data.error ?? "We couldn't finish creating your teacher account.");
+      setError(data.error ?? "We couldn't finish creating your GEA One account.");
       return;
     }
 
@@ -58,11 +60,11 @@ export default function TeacherInviteSignupForm({
     setLoading(false);
 
     if (signInError) {
-      setError("Your account was created, but we couldn't sign you in.");
+      setError("Your GEA One account was created, but we couldn't sign you in.");
       return;
     }
 
-    router.push("/teacher");
+    router.push("/account/redirect");
     router.refresh();
       } catch {
       setError("We couldn’t reach the sign-in service. Check your connection and try again.");
@@ -75,7 +77,7 @@ export default function TeacherInviteSignupForm({
     <form onSubmit={submit} className="space-y-5 rounded-sm bg-forest/[0.03] p-6 ring-1 ring-forest/5 sm:p-8">
       <div>
         <p className="font-mono text-xs uppercase tracking-[0.2em] text-accent">Teacher Invite</p>
-        <h2 className="mt-2 font-display text-xl text-forest">Create your account</h2>
+        <h2 className="mt-2 font-display text-xl text-forest">Create your GEA One account</h2>
         <p className="mt-2 text-sm text-graphite/80">
           This invite is for <span className="font-medium text-forest">{teacherName}</span> at{" "}
           <span className="font-medium text-forest">{teacherEmail}</span>.
@@ -116,9 +118,7 @@ export default function TeacherInviteSignupForm({
       </div>
 
       {error && (
-        <p className="text-sm text-red-700" role="alert">
-          {error}
-        </p>
+        <ActionError message={error} className="text-sm text-red-700" />
       )}
 
       <button
@@ -126,7 +126,7 @@ export default function TeacherInviteSignupForm({
         disabled={loading}
         className="w-full rounded-sm bg-forest px-6 py-3 font-mono text-xs uppercase tracking-[0.15em] text-accent transition hover:bg-forestdeep disabled:opacity-50"
       >
-        {loading ? "Creating account..." : "Finish Signup"}
+        {loading ? "Creating GEA One account..." : "Activate GEA One"}
       </button>
     </form>
   );

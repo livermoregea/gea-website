@@ -91,7 +91,7 @@ export default function MacNCheesePage() {
           <button
             type="button"
             disabled
-            className="absolute right-4 top-4 w-[calc(100%-2rem)] max-w-[18rem] rounded-sm border border-gold/35 bg-gold/10 px-3 py-2 text-left text-forestdeep disabled:cursor-not-allowed sm:right-6 sm:top-6 sm:w-60 lg:right-8"
+            className="block absolute right-4 top-4 w-[calc(100%-2rem)] max-w-[18rem] rounded-sm border border-gold/35 bg-gold/10 px-3 py-2 text-left text-forestdeep disabled:cursor-not-allowed sm:right-6 sm:top-6 sm:w-60 lg:right-8"
           >
             <span className="block font-mono text-xs uppercase tracking-[0.18em] text-forest/80">
               Next?
@@ -122,7 +122,7 @@ export default function MacNCheesePage() {
               <a
                 key={href}
                 href={href}
-                className="rounded-sm border border-forest/20 bg-white/70 px-4 py-2 font-mono text-xs uppercase tracking-[0.16em] text-forestdeep transition-colors hover:border-gold hover:bg-gold/10 focus:outline-none focus:ring-2 focus:ring-gold/60"
+                className="inline-flex min-h-11 items-center justify-center rounded-sm border border-forest/20 bg-white/70 px-4 py-2 font-mono text-xs uppercase tracking-[0.16em] text-forestdeep transition-colors hover:border-gold hover:bg-gold/10 focus:outline-none focus:ring-2 focus:ring-gold/60"
               >
                 {label}
               </a>

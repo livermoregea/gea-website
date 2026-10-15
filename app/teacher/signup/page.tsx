@@ -1,3 +1,4 @@
+import GEAOneBadge from "@/components/GEAOneBadge";
 import Link from "next/link";
 import { hasSupabaseConfig } from "@/lib/supabase/config";
 
@@ -6,9 +7,10 @@ export default function TeacherSignupPage() {
 
   return (
     <div className="mx-auto max-w-md px-4 py-16 sm:px-6 md:py-24">
+      <div className="mb-5"><GEAOneBadge /></div>
       <p className="font-mono text-xs uppercase tracking-[0.3em] text-accent">GEA Teacher Access</p>
       <h1 className="mt-4 font-display text-2xl font-medium text-forest">
-        {demoMode ? "Demo teacher signup" : "Create a teacher account"}
+        {demoMode ? "GEA One teacher preview" : "Join GEA One as a teacher"}
       </h1>
       <p className="mt-3 text-sm text-graphite/80">
         {demoMode
@@ -18,7 +20,7 @@ export default function TeacherSignupPage() {
 
       <div className="mt-4 flex flex-wrap gap-3 text-sm">
         <Link href="/login" className="text-forest underline decoration-gold underline-offset-4">
-          Log in
+          Sign in to GEA One
         </Link>
       </div>
 

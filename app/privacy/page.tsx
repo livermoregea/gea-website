@@ -83,7 +83,7 @@ export default function PrivacyPage() {
               collect statistics from the public site.
             </p>
             <p>
-              If you sign in, the site may use essential session cookies so your login stays
+              If you sign in to GEA One, the site may use essential session cookies so your GEA One session stays
               active. Those cookies are only used for sign-in and site functionality.
             </p>
           </div>

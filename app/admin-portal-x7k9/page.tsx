@@ -2,6 +2,7 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { hasSupabaseConfig } from "@/lib/supabase/config";
 import StaffPortal from "@/components/StaffPortal";
+import { redirect } from "next/navigation";
 
 export default async function AdminPortalPage() {
   const supabase = await createClient();
@@ -30,7 +31,7 @@ export default async function AdminPortalPage() {
             href="/admin-portal-x7k9/login"
             className="text-forest underline decoration-gold underline-offset-4"
           >
-            Sign in
+            Sign in to GEA One
           </Link>{" "}
           to access the admin portal.
         </p>
@@ -38,7 +39,7 @@ export default async function AdminPortalPage() {
     );
   }
 
-  const [{ data: adminRow }, { data: teacherRow }] = await Promise.all([
+  const [{ data: adminRow }, { data: teacherRow }, { data: officerRow }, { data: superAdminRow }] = await Promise.all([
     supabase
       .from("admins")
       .select("name")
@@ -49,21 +50,24 @@ export default async function AdminPortalPage() {
       .select("full_name, school_email")
       .eq("auth_user_id", user.id)
       .maybeSingle(),
+    supabase.from("officer_profiles").select("id").eq("id", user.id).maybeSingle(),
+    supabase.from("super_admins").select("auth_user_id").eq("auth_user_id", user.id).maybeSingle(),
   ]);
 
-  if (!adminRow && !teacherRow) {
+  if (!adminRow && !superAdminRow && !teacherRow && officerRow) redirect("/officerboard");
+  if (!adminRow && !superAdminRow && !teacherRow) {
     return (
       <div className="mx-auto max-w-md px-4 py-16 text-center sm:px-6 md:py-24">
         <h1 className="mb-4 font-display text-2xl text-forestdeep">Account access</h1>
         <p className="text-sm text-graphite/80">
-          Your account doesn&apos;t have staff access to this portal.
+          Your GEA One account doesn&apos;t have staff access to this portal.
         </p>
       </div>
     );
   }
 
   const displayName = adminRow?.name ?? teacherRow?.full_name ?? user.email ?? "Staff";
-  const accessLabel = adminRow ? "Admin" : "Teacher";
+  const accessLabel = adminRow || superAdminRow ? "Admin" : "Teacher";
 
   return (
     <StaffPortal

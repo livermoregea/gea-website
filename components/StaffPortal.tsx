@@ -1,5 +1,11 @@
+import styles from "./staffportal.module.css";
+import type { ReactNode } from "react";
+import { accountMemberships } from "@/lib/account-landing";
+import { createClient } from "@/lib/supabase/server";
+import GEAOneBadge from "@/components/GEAOneBadge";
 import AdminTabs from "@/components/admin/AdminTabs";
 import type { AdminSectionKey } from "@/components/admin/AdminTabs";
+import Link from "next/link";
 
 type StaffPortalProps = {
   title: string;
@@ -8,46 +14,40 @@ type StaffPortalProps = {
   schoolEmail: string;
   userId: string;
   section?: AdminSectionKey;
+  workspace?: "administration" | "officers";
+  children?: ReactNode;
 };
 
-export default function StaffPortal({
+export default async function StaffPortal({
   title,
   accessLabel,
   displayName,
   schoolEmail,
   userId,
   section = "dashboard",
+  workspace = "administration",
+  children,
 }: StaffPortalProps) {
+  const membership = await accountMemberships(await createClient(), userId);
   return (
-    <div className="mx-auto max-w-[92rem] px-4 py-8 sm:px-6 md:py-10">
-      <section className="rounded-sm bg-paper px-5 py-4 ring-1 ring-forest/10 sm:px-6">
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-          <div className="min-w-0">
-            <p className="font-mono text-xs uppercase tracking-[0.3em] text-accent">{title}</p>
-            <h1 className="mt-2 font-display text-2xl font-medium text-forest sm:text-3xl">
-              Welcome, {displayName}
-            </h1>
-            <p className="mt-2 max-w-2xl text-sm leading-relaxed text-graphite/80">
-              {accessLabel} access.
-            </p>
-          </div>
-
-          <div className="flex flex-wrap gap-2">
-            <span className="rounded-full border border-forest/10 bg-forest/[0.03] px-3 py-1 text-xs text-forest">
-              Name: {displayName}
-            </span>
-            <span className="rounded-full border border-forest/10 bg-forest/[0.03] px-3 py-1 text-xs text-forest">
-              Email: {schoolEmail}
-            </span>
-            <span className="rounded-full border border-forest/10 bg-forest/[0.03] px-3 py-1 text-xs text-forest">
-              Role: {accessLabel}
-            </span>
-          </div>
+    <div className={styles.workspace}>
+      <header className={styles.header}>
+        <div>
+          <span className={styles.badge}><GEAOneBadge size="compact" /></span>
+          <h1 className={styles.title}>GEA One workspace</h1>
+          <p className={styles.identity}>{displayName} · {accessLabel}</p>
         </div>
-      </section>
-
-      <section className="mt-6">
-        <AdminTabs section={section} />
+        <div className={styles.links}>
+          <Link href="/account" className="inline-flex min-h-11 items-center underline underline-offset-4" aria-label="GEA One home">Home</Link>
+          <Link href="/dashboard#qa" className="inline-flex min-h-11 items-center underline underline-offset-4">Forum</Link>
+        </div>
+      </header>
+      <nav aria-label="Workspace areas" className={styles.areas}>
+        <Link href="/admin-portal-x7k9" aria-current={workspace === "administration" ? "page" : undefined} className="inline-flex min-h-11 items-center rounded-full border border-forest/15 px-5 py-2 text-sm font-medium text-forest transition hover:bg-forest/5 aria-[current=page]:border-forest aria-[current=page]:bg-forest aria-[current=page]:text-paper">Academy administration</Link>
+        {membership.isOfficer && <Link href="/admin-portal-x7k9/officers" aria-current={workspace === "officers" ? "page" : undefined} className="inline-flex min-h-11 items-center rounded-full border border-forest/15 px-5 py-2 text-sm font-medium text-forest transition hover:bg-forest/5 aria-[current=page]:border-forest aria-[current=page]:bg-forest aria-[current=page]:text-paper">Officer accountability</Link>}
+      </nav>
+      <section className={styles.content} aria-label={workspace === "officers" ? "Officer accountability" : "Academy administration"}>
+        {children ?? <AdminTabs section={section} />}
       </section>
     </div>
   );

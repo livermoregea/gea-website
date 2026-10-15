@@ -1,3 +1,5 @@
+import Link from "next/link";
+import GEAOneBadge from "@/components/GEAOneBadge";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { hasSupabaseConfig } from "@/lib/supabase/config";
@@ -23,6 +25,7 @@ export default async function EditProfilePage() {
   if (!hasSupabaseConfig()) {
     return (
       <div className="mx-auto max-w-3xl px-4 py-16 sm:px-6 md:py-20">
+      <div className="mb-5"><GEAOneBadge /></div>
         <p className="font-mono text-xs uppercase tracking-[0.3em] text-accent">Profile Requests</p>
         <h1 className="mt-4 font-display text-2xl font-medium text-forest">Demo mode</h1>
         <p className="mt-3 text-sm text-graphite/80">
@@ -70,12 +73,14 @@ export default async function EditProfilePage() {
 
   return (
     <div className="mx-auto max-w-3xl px-4 py-16 sm:px-6 md:py-20">
+      <div className="mb-5"><GEAOneBadge /></div>
       <p className="font-mono text-xs uppercase tracking-[0.3em] text-accent">Profile Requests</p>
       <h1 className="mt-4 font-display text-2xl font-medium text-forest">Request profile changes</h1>
       <p className="mt-3 text-sm text-graphite/80">
         Submit profile changes for review.
       </p>
 
+      <Link href="/profile" className="mt-3 inline-flex min-h-11 items-center text-sm text-forest underline underline-offset-4">Back to profile &amp; settings</Link>
       <div className="dim-divider my-8" />
 
       {studentProfile ? (

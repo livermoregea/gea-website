@@ -1,5 +1,7 @@
 "use client";
 
+import GEAOneBadge from "@/components/GEAOneBadge";
+
 import { BUILDERS_ENABLED } from "@/lib/site-features";
 import Image from "next/image";
 import Link from "next/link";
@@ -21,6 +23,8 @@ const links = [
 export default function Nav() {
   const [open, setOpen] = useState(false);
   const [accountOpen, setAccountOpen] = useState(false);
+  const [signingOut, setSigningOut] = useState(false);
+  const [accountError, setAccountError] = useState<string | null>(null);
   const [accountReady, setAccountReady] = useState(false);
   const [isSignedIn, setIsSignedIn] = useState(false);
   const pathname = usePathname();
@@ -95,14 +99,16 @@ export default function Nav() {
   }, [open, accountOpen]);
 
   async function handleSignOut() {
-    if (!hasSupabaseConfig()) return;
-    const supabase = createClient();
-    await supabase.auth.signOut();
-    setIsSignedIn(false);
-    setAccountOpen(false);
-    setOpen(false);
-    router.push("/");
-    router.refresh();
+    if (!hasSupabaseConfig() || signingOut) return;
+    if (!window.dispatchEvent(new Event("gea:before-navigation", { cancelable: true }))) return;
+    setSigningOut(true); setAccountError(null);
+    try {
+      const { error } = await createClient().auth.signOut();
+      if (error) { setAccountError("Could not sign out. Check your connection and try again."); return; }
+      setIsSignedIn(false); setAccountOpen(false); setOpen(false);
+      router.push("/"); router.refresh();
+    } catch { setAccountError("Could not sign out. Check your connection and try again."); }
+    finally { setSigningOut(false); }
   }
 
   return (
@@ -150,32 +156,29 @@ export default function Nav() {
                     type="button"
                     aria-controls="account-links"
                     onClick={() => setAccountOpen((value) => !value)}
-                    className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-forest/15 bg-paper text-forestdeep transition hover:border-forest/30 hover:bg-forest/[0.04]"
-                    aria-label="Account menu"
+                    className="inline-flex min-h-11 items-center rounded-full transition hover:opacity-90"
+                    aria-label="GEA One account menu"
                     aria-expanded={accountOpen}
                   >
-                    <svg viewBox="0 0 24 24" className="h-5 w-5" aria-hidden="true">
-                      <path
-                        fill="currentColor"
-                        d="M12 12.2a4.6 4.6 0 1 0-4.6-4.6 4.6 4.6 0 0 0 4.6 4.6Zm0 2.1c-4.3 0-8 2.2-8 4.9a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1c0-2.7-3.7-4.9-8-4.9Z"
-                      />
-                    </svg>
+                    <GEAOneBadge size="compact" />
                   </button>
                   {accountOpen && (
                     <div id="account-links" className="absolute right-0 top-full z-50 mt-2 w-56 rounded-sm border border-forest/10 bg-paper p-2 shadow-lg shadow-forest/10">
                       <Link
-                        href="/profile"
+                        href="/account/redirect"
                         onClick={() => setAccountOpen(false)}
-                        className="block rounded-sm px-3 py-2 font-mono text-xs uppercase tracking-[0.15em] text-forestdeep transition hover:bg-forest/[0.06]"
+                        className="flex min-h-11 items-center rounded-sm px-3 py-2 font-mono text-xs uppercase tracking-[0.15em] text-forestdeep transition hover:bg-forest/[0.06]"
                       >
-                        View Profile
+                        Head to home
                       </Link>
                       <button
                         type="button"
                         onClick={handleSignOut}
-                        className="block w-full rounded-sm px-3 py-2 text-left font-mono text-xs uppercase tracking-[0.15em] text-red-700 transition hover:bg-red-50"
+                        disabled={signingOut}
+                        aria-busy={signingOut}
+                        className="flex w-full items-center justify-start rounded-sm px-3 py-2 text-left font-mono text-xs uppercase tracking-[0.15em] text-red-700 transition hover:bg-red-50"
                       >
-                        Log Out
+                        {signingOut ? "Signing out…" : "Sign out"}
                       </button>
                     </div>
                   )}
@@ -183,9 +186,9 @@ export default function Nav() {
               ) : (
                 <Link
                   href="/login"
-                  className="inline-flex h-11 items-center rounded-full border border-forest/15 px-4 font-mono text-xs uppercase tracking-[0.15em] text-forestdeep transition hover:border-forest/30 hover:bg-forest/[0.04]"
+                  className="inline-flex min-h-11 items-center justify-center rounded-full border border-forest/20 px-5 py-2 font-mono text-xs uppercase tracking-[0.12em] text-forest transition hover:bg-forest/5"
                 >
-                  Sign In
+                  Sign in
                 </Link>
               )}
             </div>
@@ -201,6 +204,7 @@ export default function Nav() {
             Menu
           </button>
         </div>
+        {accountError && <p role="alert" className="mt-3 rounded-sm border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">{accountError}</p>}
         {open && (
           <nav
             id="mobile-nav"
@@ -213,7 +217,7 @@ export default function Nav() {
                 href={l.href}
                 onClick={() => setOpen(false)}
                 aria-current={pathname === l.href || (l.href !== "/" && pathname.startsWith(`${l.href}/`)) ? "page" : undefined}
-                className="rounded-sm px-3 py-2 font-mono text-xs uppercase tracking-[0.15em] text-forestdeep transition hover:bg-forest/[0.06] aria-[current=page]:bg-forest/[0.08]"
+                className="flex min-h-11 items-center justify-start rounded-sm px-3 py-2 font-mono text-xs uppercase tracking-[0.15em] text-forestdeep transition hover:bg-forest/[0.06] aria-[current=page]:bg-forest/[0.08]"
               >
                 {l.label}
               </Link>
@@ -221,27 +225,29 @@ export default function Nav() {
             {accountReady && isSignedIn ? (
               <>
                 <Link
-                  href="/profile"
+                  href="/account/redirect"
                   onClick={() => setOpen(false)}
-                  className="rounded-sm px-3 py-2 font-mono text-xs uppercase tracking-[0.15em] text-forestdeep transition hover:bg-forest/[0.06]"
+                  className="flex min-h-11 items-center justify-start rounded-sm px-3 py-2 font-mono text-xs uppercase tracking-[0.15em] text-forestdeep transition hover:bg-forest/[0.06]"
                 >
-                  View Profile
+                  Head to home
                 </Link>
                 <button
                   type="button"
                   onClick={handleSignOut}
-                  className="rounded-sm px-3 py-2 text-left font-mono text-xs uppercase tracking-[0.15em] text-red-700 transition hover:bg-red-50"
+                  disabled={signingOut}
+                  aria-busy={signingOut}
+                  className="flex min-h-11 items-center justify-start rounded-sm px-3 py-2 text-left font-mono text-xs uppercase tracking-[0.15em] text-red-700 transition hover:bg-red-50"
                 >
-                  Log Out
+                  {signingOut ? "Signing out…" : "Sign out"}
                 </button>
               </>
             ) : (
               <Link
                 href="/login"
                 onClick={() => setOpen(false)}
-                className="rounded-sm px-3 py-2 font-mono text-xs uppercase tracking-[0.15em] text-forestdeep transition hover:bg-forest/[0.06]"
+                className="flex min-h-11 items-center justify-start rounded-sm px-3 py-2 font-mono text-xs uppercase tracking-[0.15em] text-forestdeep transition hover:bg-forest/[0.06]"
               >
-                Sign In
+                Sign in
               </Link>
             )}
           </nav>

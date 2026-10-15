@@ -1,5 +1,7 @@
 "use client";
 
+import ActionError from "@/components/ActionError";
+
 import { useId, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
@@ -39,12 +41,12 @@ export default function TeacherAuthForm({
     setLoginError(null);
 
     if (!hasSupabaseConfig()) {
-      setLoginError("Teacher sign-in is disabled until Supabase is configured.");
+      setLoginError("GEA One teacher sign-in is disabled until Supabase is configured.");
       return;
     }
 
     const email = loginEmail.trim().toLowerCase();
-    const password = loginPassword.trim();
+    const password = loginPassword;
     if (!email || !password) return;
 
     setLoading(true);
@@ -57,7 +59,7 @@ export default function TeacherAuthForm({
       return;
     }
 
-    router.push(redirectTo);
+    router.push("/account/redirect");
     router.refresh();
       } catch {
       setLoginError("We couldn’t reach the sign-in service. Check your connection and try again.");
@@ -79,7 +81,7 @@ export default function TeacherAuthForm({
     const fullName = signupName.trim();
     const schoolEmail = signupEmail.trim().toLowerCase();
     const code = signupCode.trim();
-    const password = signupPassword.trim();
+    const password = signupPassword;
 
     if (!fullName || !schoolEmail || !code || !password) return;
 
@@ -103,7 +105,7 @@ export default function TeacherAuthForm({
 
     if (!res.ok) {
       setLoading(false);
-      setSignupError(data.error ?? "We couldn't create that teacher account.");
+      setSignupError(data.error ?? "We couldn't create that GEA One account.");
       return;
     }
 
@@ -115,11 +117,11 @@ export default function TeacherAuthForm({
     setLoading(false);
 
     if (error) {
-      setSignupError("Your account was created, but we couldn't sign you in.");
+      setSignupError("Your GEA One account was created, but we couldn't sign you in.");
       return;
     }
 
-    router.push(redirectTo);
+    router.push("/account/redirect");
     router.refresh();
       } catch {
       setSignupError("We couldn’t reach the sign-in service. Check your connection and try again.");
@@ -130,29 +132,33 @@ export default function TeacherAuthForm({
 
   return (
     <div className="rounded-sm bg-forest/[0.03] p-6 ring-1 ring-forest/5 sm:p-8">
-      <div className="grid grid-cols-2 gap-2 rounded-sm bg-paper p-1 ring-1 ring-forest/10">
+      <div role="group" aria-label="Account access" className="grid grid-cols-2 gap-2 rounded-sm bg-paper p-1 ring-1 ring-forest/10">
         <button
           type="button"
           onClick={() => setMode("signin")}
+          aria-pressed={mode === "signin"}
+          disabled={loading}
           className={`rounded-sm px-3 py-2 font-mono text-xs uppercase tracking-[0.15em] transition ${
             mode === "signin" ? "bg-forest text-accent" : "text-forest/80 hover:text-forest"
           }`}
         >
-          Sign In
+          Sign in
         </button>
         <button
           type="button"
           onClick={() => setMode("signup")}
+          aria-pressed={mode === "signup"}
+          disabled={loading}
           className={`rounded-sm px-3 py-2 font-mono text-xs uppercase tracking-[0.15em] transition ${
             mode === "signup" ? "bg-forest text-accent" : "text-forest/80 hover:text-forest"
           }`}
         >
-          Create Account
+          Create account
         </button>
       </div>
 
       {mode === "signin" ? (
-        <form onSubmit={signIn} className="mt-6 space-y-5">
+        <form aria-busy={loading} onSubmit={signIn} className="mt-6 space-y-5">
           <div>
             <label htmlFor={loginEmailId} className="font-mono text-xs uppercase tracking-[0.15em] text-graphite/80">
               School Email
@@ -179,14 +185,12 @@ export default function TeacherAuthForm({
               value={loginPassword}
               onChange={(e) => setLoginPassword(e.target.value)}
               className="mt-2 w-full rounded-sm border border-forest/65 bg-paper px-4 py-3 text-base outline-none focus:border-gold"
-              placeholder="Your teacher password" autoComplete="current-password"
+              placeholder="Your GEA One password" autoComplete="current-password"
             />
           </div>
 
           {loginError && (
-            <p className="text-sm text-red-700" role="alert">
-              {loginError}
-            </p>
+            <ActionError message={loginError} className="text-sm text-red-700" />
           )}
 
           <button
@@ -194,11 +198,11 @@ export default function TeacherAuthForm({
             disabled={loading}
             className="w-full rounded-sm bg-forest px-6 py-3 font-mono text-xs uppercase tracking-[0.15em] text-accent transition hover:bg-forestdeep disabled:opacity-50"
           >
-            {loading ? "Signing in..." : "Sign In"}
+            {loading ? "Signing in..." : "Sign in"}
           </button>
         </form>
       ) : (
-        <form onSubmit={signUp} className="mt-6 space-y-5">
+        <form aria-busy={loading} onSubmit={signUp} className="mt-6 space-y-5">
           <div>
             <label htmlFor={signupNameId} className="font-mono text-xs uppercase tracking-[0.15em] text-graphite/80">
               Full Name
@@ -261,9 +265,7 @@ export default function TeacherAuthForm({
           </div>
 
           {signupError && (
-            <p className="text-sm text-red-700" role="alert">
-              {signupError}
-            </p>
+            <ActionError message={signupError} className="text-sm text-red-700" />
           )}
 
           <button
@@ -271,7 +273,7 @@ export default function TeacherAuthForm({
             disabled={loading}
             className="w-full rounded-sm bg-forest px-6 py-3 font-mono text-xs uppercase tracking-[0.15em] text-accent transition hover:bg-forestdeep disabled:opacity-50"
           >
-            {loading ? "Creating account..." : "Create Teacher Account"}
+            {loading ? "Creating GEA One account..." : "Create account"}
           </button>
         </form>
       )}

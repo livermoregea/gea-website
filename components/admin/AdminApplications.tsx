@@ -1,12 +1,13 @@
 "use client";
 
+import AdminApplicationArchive from "@/components/admin/AdminApplicationArchive";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { useLeadershipRoles } from "@/lib/use-leadership-roles";
 import { getRoleLabel } from "@/lib/roles";
 import { hasSupabaseConfig } from "@/lib/supabase/config";
-import { isAdminNotificationSeen, markAdminNotificationSeen } from "@/lib/admin-notifications";
+import { isAdminNotificationSeen, markAdminNotificationSeen, subscribeToAdminNotifications } from "@/lib/admin-notifications";
 
 type Application = {
   id: string;
@@ -101,6 +102,8 @@ export default function AdminApplications() {
   const roles = useLeadershipRoles();
   const [apps, setApps] = useState<Application[]>([]);
   const [slots, setSlots] = useState<InterviewSlot[]>([]);
+  const [, setNotificationRevision] = useState(0);
+  useEffect(() => subscribeToAdminNotifications(() => setNotificationRevision((value) => value + 1)), []);
   const [loading, setLoading] = useState(true);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
@@ -345,6 +348,13 @@ export default function AdminApplications() {
           </div>
         </div>
       </section>
+
+      <AdminApplicationArchive onCleared={(count) => {
+        setMessage(`${count} applications archived and cleared. Applications received after the export remain in the queue.`);
+        setDrafts({});
+        setQuickActionId(null);
+        void load();
+      }} />
 
       <section className="rounded-sm bg-forest/[0.03] p-5 ring-1 ring-forest/10">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center">

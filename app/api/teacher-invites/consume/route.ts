@@ -68,7 +68,7 @@ export async function POST(request: Request) {
 
     if (createUserError || !createdUser.user) {
       return NextResponse.json(
-        { error: createUserError?.message ?? "Could not create the teacher account." },
+        { error: createUserError?.message ?? "Could not create the GEA One account." },
         { status: 400 }
       );
     }
@@ -86,7 +86,7 @@ export async function POST(request: Request) {
 
     if (updateUserError) {
       return NextResponse.json(
-        { error: updateUserError.message ?? "Could not update the teacher account." },
+        { error: updateUserError.message ?? "Could not update the GEA One account." },
         { status: 400 }
       );
     }

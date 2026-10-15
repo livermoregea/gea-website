@@ -1,7 +1,13 @@
+import Link from "next/link";
+import type { Metadata } from "next";
+import GEAOneBadge from "@/components/GEAOneBadge";
 import { redirect } from "next/navigation";
 import StudentAuthForm from "@/components/StudentAuthForm";
 import { createClient } from "@/lib/supabase/server";
 import { hasSupabaseConfig } from "@/lib/supabase/config";
+import { accountLanding } from "@/lib/account-landing";
+
+export const metadata: Metadata = { title: "GEA One · Sign in", description: "One account for your GEA community, profile, and school tools." };
 
 export default async function LoginPage({ searchParams }: { searchParams: Promise<{ mode?: string }> }) {
   const { mode } = await searchParams;
@@ -15,57 +21,24 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
     } = await supabase.auth.getUser();
 
     if (user) {
-      const [{ data: studentProfile }, { data: teacherProfile }, { data: adminProfile }] = await Promise.all([
-        supabase.from("student_profiles").select("id").eq("auth_user_id", user.id).maybeSingle(),
-        supabase.from("teacher_profiles").select("id").eq("auth_user_id", user.id).maybeSingle(),
-        supabase.from("admins").select("auth_user_id").eq("auth_user_id", user.id).maybeSingle(),
-      ]);
-
-      if (adminProfile) {
-        redirect("/admin-portal-x7k9");
-      }
-      if (teacherProfile) {
-        redirect("/teacher");
-      }
-      if (studentProfile) {
-        redirect("/dashboard#qa");
-      }
+      redirect(await accountLanding(supabase, user.id));
     }
   }
 
   return (
-    <div className="mx-auto max-w-3xl px-4 py-16 sm:px-6 md:py-24">
-      <p className="font-mono text-xs uppercase tracking-[0.3em] text-accent">Student accounts</p>
-      <h1 className="mt-4 font-display text-2xl font-medium text-forest sm:text-3xl">
-        {demoMode ? "Student account demo" : "Create your GEA account or sign in"}
-      </h1>
-      <p className="mt-3 max-w-2xl text-sm leading-relaxed text-graphite/80">
-        {demoMode
-          ? "Supabase isn&apos;t configured, so sign-in is disabled in this environment."
-          : "Student accounts are for GEA and LVJUSD students only. Use your @lvjusd.org student email and student ID to create an account."}
-      </p>
-
-      <div className="mt-8 grid gap-4 md:grid-cols-2">
-        <div className="rounded-sm bg-forest/[0.03] p-5 ring-1 ring-forest/5">
-          <p className="font-mono text-xs uppercase tracking-[0.2em] text-accent">What it is</p>
-          <p className="mt-2 text-sm leading-relaxed text-graphite/80">
-            Your student account gives you access to the student forum and a place to manage
-            your student profile.
-          </p>
+    <div className="mx-auto max-w-lg px-4 py-12 sm:px-6 md:py-20">
+      <section className="rounded-2xl border border-forest/10 bg-paper p-6 shadow-lg shadow-forest/5 sm:p-8" aria-labelledby="gea-one-auth-heading">
+        <div className="flex justify-center"><GEAOneBadge size="hero" /></div>
+        <h1 id="gea-one-auth-heading" className="mt-6 text-center font-display text-2xl font-medium text-forest">
+          {demoMode ? "GEA One preview" : "Your GEA One account"}
+        </h1>
+        <div id="student-account" className="mt-6 scroll-mt-28">
+          {demoMode
+            ? <p className="text-center text-sm text-graphite/80">Sign-in is unavailable in this preview.</p>
+            : <StudentAuthForm key={initialMode} redirectTo="/account/redirect" initialMode={initialMode} />}
         </div>
-        <div className="rounded-sm bg-paper p-5 ring-1 ring-forest/10">
-          <p className="font-mono text-xs uppercase tracking-[0.2em] text-accent">How to join</p>
-          <p className="mt-2 text-sm leading-relaxed text-graphite/80">
-            Sign in if you already have an account. If you do not, create one and you can start
-            using it right away.
-          </p>
-        </div>
-      </div>
-
-      <div className="dim-divider my-8" />
-      <div id="student-account" className="scroll-mt-28">
-        {demoMode ? null : <StudentAuthForm key={initialMode} redirectTo="/dashboard" initialMode={initialMode} />}
-      </div>
+        <div className="mt-5 text-center"><Link href="/contact" className="inline-flex min-h-11 items-center text-sm text-forest underline underline-offset-4">Need help signing in?</Link></div>
+      </section>
     </div>
   );
 }

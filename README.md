@@ -17,6 +17,7 @@ moderated student Q&A.
 | Upperclassman dashboard | `/dashboard` | Answer approved questions (goes to "pending" for admin approval) |
 | **Admin portal (hidden)** | `/admin-portal-x7k9` | Not linked anywhere. Officer and teacher accounts can manage applications, generate interview drafts, open interview slots, moderate Q&A, fill/vacate leadership seats |
 | Admin login | `/admin-portal-x7k9/login` | |
+| Officer Board | `/officerboard` | Private officer tasks and PEET evaluations; separate reviewer permissions. See [setup](docs/officerboard.md) |
 | Interview booking | `/interview/[token]` | Sent only via the interview-invite email; unguessable per-applicant link |
 
 ## 1. Create the Supabase project
@@ -29,12 +30,13 @@ moderated student Q&A.
 
 ## 2. Set environment variables
 
-Copy `.env.local.example` to `.env.local` and fill in:
+Create an ignored `.env.local` file for local development, and configure the same
+settings on your hosting provider for production:
 
 - `NEXT_PUBLIC_SUPABASE_URL` / `NEXT_PUBLIC_SUPABASE_ANON_KEY` — from Supabase.
-- `SUPABASE_SERVICE_ROLE_KEY` — **server only**, used exclusively in
-  `app/api/send-interview-invite/route.ts` to bypass RLS for the interview draft flow. Never
-  reference this in a `"use client"` file.
+- `SUPABASE_SERVICE_ROLE_KEY` — **server only**, used by trusted server operations
+  including account administration, signup/invites, and verified forum overrides.
+  Never reference this in a `"use client"` file.
 - `NEXT_PUBLIC_SITE_URL` — your deployed domain (or `http://localhost:3000` locally). Used to
   build the interview booking link.
 
@@ -58,20 +60,13 @@ user:
    ```
 3. Sign in at `/admin-portal-x7k9/login`.
 
-## 5. Add upperclassmen who can answer Q&A
+## 5. Student and staff access
 
-Same pattern as admins:
-
-1. Create their Supabase Auth user (or have them sign up — see note below).
-2. Insert a row:
-   ```sql
-   insert into upperclassmen (auth_user_id, name, school_email)
-   values ('their-auth-user-id', 'Full Name', 'their@schoolemail.org');
-   ```
-3. They sign in at `/login` and answer from `/dashboard`.
-
-There's no public sign-up page by design — officers add upperclassmen manually, since GEA asked
-for a "designated login" per answerer, not open registration.
+Students create GEA One accounts at `/login` with their district email and student
+ID. Existing accounts keep their credentials. Regular students land in the forum;
+officers, teachers, and admins land at GEA One home. Teachers join through private
+invites. Officer memberships and reviewer permissions are managed separately from
+ordinary student access; see [officer setup and permissions](docs/officerboard.md).
 
 ## 6. Fill the President seat (and any other seat)
 
@@ -122,8 +117,8 @@ URL so interview links in emails point to the live site.
   used to browse other applicants' data.
 - The leadership page lets signed-in students read their own application rows so they can check
   the live status that admins set in the portal.
-- `SUPABASE_SERVICE_ROLE_KEY` must stay server-side only. It's used in one file
-  (`app/api/send-interview-invite/route.ts`) and nowhere else.
+- `SUPABASE_SERVICE_ROLE_KEY` must stay server-side only. Trusted account and
+  moderation operations use it through server routes; it must never enter the browser.
 
 ### Verified admin forum overrides
 
@@ -164,3 +159,10 @@ review, public-story moderation, and milestone recognition at
 [`supabase/builders.sql`](supabase/builders.sql) before launch. Fresh installations
 include it in `schema.sql`. See [integration and rollout notes](docs/builders-integration.md)
 for permissions, video sharing, and validation.
+
+## GEA One release checks
+
+Use the [live-release checklist](docs/live-release-checklist.md) before deploying
+the GEA One and officer-accountability changes. Keep the regression tests and
+production migrations in version control; fixture SQL belongs only in disposable
+test databases.

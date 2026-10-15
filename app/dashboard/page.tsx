@@ -1,14 +1,19 @@
+import { accountMemberships } from "@/lib/account-landing";
+import GEAOneBadge from "@/components/GEAOneBadge";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import QAHub from "@/components/QAHub";
 import { hasSupabaseConfig } from "@/lib/supabase/config";
+
+export const metadata = { title: "GEA One · Forum", robots: { index: false, follow: false } };
 
 export default async function DashboardPage() {
   const supabase = await createClient();
   if (!hasSupabaseConfig()) {
     return (
       <div className="mx-auto max-w-3xl px-4 py-16 sm:px-6 md:py-20">
-        <p className="font-mono text-xs uppercase tracking-[0.3em] text-accent">Student Dashboard</p>
+      <div className="mb-5"><GEAOneBadge /></div>
+        <p className="font-mono text-xs uppercase tracking-[0.3em] text-accent">GEA One Forum</p>
         <h1 className="mt-4 font-display text-2xl font-medium text-forest">Demo mode</h1>
         <p className="mt-3 text-sm text-graphite/80">
           Supabase isn&apos;t configured, so the dashboard is showing placeholder content.
@@ -26,64 +31,39 @@ export default async function DashboardPage() {
   if (!user) {
     return (
       <div className="mx-auto max-w-md px-4 py-16 text-center sm:px-6 md:py-24">
-        <h1 className="mb-4 font-display text-2xl text-forestdeep">Account access</h1>
+      <div className="mb-5"><GEAOneBadge /></div>
+        <h1 className="mb-4 font-display text-2xl text-forestdeep">GEA One access</h1>
         <p className="text-sm text-graphite/80">
-          You need to sign in to access the forum.{" "}
+          Sign in to GEA One to access the forum.{" "}
           <Link href="/login" className="text-forest underline decoration-gold underline-offset-4">
-            Sign in
+            Sign in to GEA One
           </Link>
         </p>
       </div>
     );
   }
 
-  const { data: profile } = await supabase
-    .from("student_profiles")
-    .select("full_name, display_username, graduating_class_year")
-    .eq("auth_user_id", user.id)
-    .maybeSingle();
-
-  if (!profile) {
-    return (
-      <div className="mx-auto max-w-md px-4 py-16 text-center sm:px-6 md:py-24">
-        <h1 className="mb-4 font-display text-2xl text-forestdeep">Account access</h1>
-        <p className="text-sm text-graphite/80">
-          Your account doesn&apos;t have a student profile yet. Please create one from the student
-          login page.
-        </p>
-      </div>
-    );
-  }
-
-  const displayName = profile.display_username ?? "GEA Student";
-  const fullName = profile.full_name ?? "Student";
-  const classYear = profile.graduating_class_year ?? null;
+  const membership = await accountMemberships(supabase, user.id);
 
   return (
-    <div className="mx-auto max-w-6xl px-4 py-16 sm:px-6 md:py-20">
-      <div className="max-w-3xl">
-        <p className="font-mono text-xs uppercase tracking-[0.3em] text-accent">Student Dashboard</p>
-        <h1 className="mt-4 font-display text-2xl font-medium text-forest">
-          Welcome, {displayName}
-        </h1>
-        <p className="mt-3 text-sm leading-relaxed text-graphite/80">
-          Name: {fullName}
-          {classYear ? `. Class of ${classYear}.` : "."}{" "}
-          This is your student account for the site.
-        </p>
-      </div>
-      <div className="dim-divider my-8" />
-      <section id="qa" className="space-y-6">
-        <div>
-          <p className="font-mono text-xs uppercase tracking-[0.2em] text-accent">GEA Forum</p>
-          <h2 className="mt-2 font-display text-xl text-forest">Forum access</h2>
+    <div id="qa" className="mx-auto max-w-6xl scroll-mt-28 px-4 py-10 sm:px-6 md:py-14">
+      <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
+        <div className="flex flex-wrap items-center gap-4">
+          <GEAOneBadge />
+          <h1 className="font-display text-2xl text-forest">Q&amp;A / Forum</h1>
         </div>
+        <nav aria-label="GEA One account" className="flex flex-wrap items-center gap-5">
+          {membership.hasWorkspace && <Link href="/account" className="inline-flex min-h-11 items-center text-sm text-forest underline underline-offset-4">GEA One home</Link>}
+          <Link href="/profile" className="inline-flex min-h-11 items-center text-sm text-forest underline underline-offset-4">Profile &amp; settings</Link>
+        </nav>
+      </div>
+      <section aria-label="Community forum">
         <QAHub
           authUserId={user.id}
-          displayName={displayName}
-          canCreatePost
-          canVote
-          canReply
+          displayName={membership.displayName ?? "GEA Member"}
+          canCreatePost={membership.canUseForum}
+          canVote={membership.canUseForum}
+          canReply={membership.canUseForum}
           canReport
         />
       </section>

@@ -1439,3 +1439,1276 @@ grant execute on function public.edit_builder_story(uuid,text,text,text,text,boo
 grant execute on function public.set_builder_recognition(uuid,integer,boolean,boolean) to authenticated;
 grant execute on function public.get_builder_wall() to anon, authenticated;
 commit;
+
+
+-- PEET officer portal. Run in the existing Supabase project's SQL editor.
+-- Uses existing auth.users; PEET roles are independent of the site admins list.
+begin;
+
+create table if not exists public.officer_profiles (
+  id uuid primary key references auth.users(id) on delete cascade,
+  name text not null check (length(btrim(name)) between 1 and 160),
+  role text not null default 'officer' check (role in ('officer', 'admin')),
+  created_at timestamptz not null default now()
+);
+
+create table if not exists public.tasks (
+  id uuid primary key default gen_random_uuid(),
+  title text not null check (length(btrim(title)) between 1 and 200),
+  description text not null default '' check (length(description) <= 10000),
+  assigned_to uuid not null references public.officer_profiles(id),
+  created_by uuid not null references public.officer_profiles(id),
+  due_date date,
+  status text not null default 'in_progress' check (status in ('in_progress', 'submitted', 'completed')),
+  final_product_url text check (final_product_url is null or
+    (length(final_product_url) <= 2048 and final_product_url ~* '^https?://[^[:space:]/?#@]+([/?#][^[:space:]]*)?$')),
+  created_at timestamptz not null default now(),
+  submitted_at timestamptz,
+  completed_at timestamptz,
+  check (status = 'in_progress' or (final_product_url is not null and submitted_at is not null)),
+  check ((status = 'completed') = (completed_at is not null))
+);
+
+create table if not exists public.peet_evaluations (
+  id uuid primary key default gen_random_uuid(),
+  task_id uuid not null unique references public.tasks(id) on delete cascade,
+  evaluated_by uuid not null references public.officer_profiles(id),
+  efficiency numeric not null check (efficiency between 1.0 and 4.0),
+  effectiveness numeric not null check (effectiveness between 1.0 and 4.0),
+  time numeric not null check (time between 1.0 and 4.0),
+  feedback_notes text not null default '' check (length(feedback_notes) <= 10000),
+  evaluated_at timestamptz not null default now()
+);
+create index if not exists tasks_assigned_to_idx on public.tasks(assigned_to, created_at desc);
+create index if not exists tasks_status_idx on public.tasks(status);
+
+create or replace function public.is_peet_admin()
+returns boolean language sql stable security definer set search_path = '' as $$
+  select exists (select 1 from public.officer_profiles where id = auth.uid() and role = 'admin');
+$$;
+
+alter table public.officer_profiles enable row level security;
+alter table public.tasks enable row level security;
+alter table public.peet_evaluations enable row level security;
+drop policy if exists officer_profiles_read on public.officer_profiles;
+create policy officer_profiles_read on public.officer_profiles for select to authenticated
+  using (id = auth.uid() or public.is_peet_admin());
+drop policy if exists officer_tasks_read on public.tasks;
+create policy officer_tasks_read on public.tasks for select to authenticated
+  using (public.is_peet_admin() or (assigned_to = auth.uid() and exists
+    (select 1 from public.officer_profiles where id = auth.uid())));
+drop policy if exists officer_evaluations_read on public.peet_evaluations;
+create policy officer_evaluations_read on public.peet_evaluations for select to authenticated
+  using (public.is_peet_admin() or exists
+    (select 1 from public.tasks where tasks.id = task_id and assigned_to = auth.uid()));
+
+-- Writes go through validated RPCs; browsers cannot change roles, identities,
+-- timestamps, completion status, or scores directly, even on their own records.
+revoke all on public.officer_profiles, public.tasks, public.peet_evaluations from public, anon, authenticated;
+grant select on public.officer_profiles, public.tasks, public.peet_evaluations to authenticated;
+grant all on public.officer_profiles, public.tasks, public.peet_evaluations to service_role;
+
+create or replace function public.save_officer_task(
+  p_title text, p_description text default '', p_due_date date default null,
+  p_assigned_to uuid default null, p_task_id uuid default null
+) returns uuid language plpgsql security definer set search_path = '' as $$
+declare
+  v_actor uuid := auth.uid();
+  v_admin boolean := public.is_peet_admin();
+  v_assignee uuid := coalesce(p_assigned_to, auth.uid());
+  v_task public.tasks;
+  v_id uuid;
+begin
+  if v_actor is null or not exists (select 1 from public.officer_profiles where id = v_actor) then
+    raise exception 'Officer access is required.';
+  end if;
+  if p_title is null or length(btrim(p_title)) not between 1 and 200
+    or p_description is null or length(p_description) > 10000 then
+    raise exception 'Enter a title of 1–200 characters and a description of at most 10,000 characters.';
+  end if;
+  if not exists (select 1 from public.officer_profiles where id = v_assignee)
+    or (not v_admin and v_assignee <> v_actor) then
+    raise exception 'You can only assign tasks to yourself.';
+  end if;
+  if p_task_id is null then
+    insert into public.tasks(title, description, due_date, assigned_to, created_by)
+      values(btrim(p_title), p_description, p_due_date, v_assignee, v_actor) returning id into v_id;
+    return v_id;
+  end if;
+  select * into v_task from public.tasks where id = p_task_id for update;
+  if not found or (not v_admin and v_task.assigned_to <> v_actor) then
+    raise exception 'Task not available.';
+  end if;
+  if v_task.status = 'completed' or (not v_admin and v_task.status <> 'in_progress') then
+    raise exception 'This task can no longer be edited.';
+  end if;
+  update public.tasks set title = btrim(p_title), description = p_description,
+    due_date = p_due_date, assigned_to = v_assignee where id = p_task_id;
+  return p_task_id;
+end;
+$$;
+
+create or replace function public.submit_officer_task(p_task_id uuid, p_url text)
+returns void language plpgsql security definer set search_path = '' as $$
+declare v_task public.tasks; v_url text := btrim(p_url);
+begin
+  if auth.uid() is null or not exists (select 1 from public.officer_profiles where id = auth.uid()) then
+    raise exception 'Officer access is required.';
+  end if;
+  select * into v_task from public.tasks where id = p_task_id for update;
+  if not found or (v_task.assigned_to <> auth.uid() and not public.is_peet_admin()) then
+    raise exception 'Task not available.';
+  end if;
+  if v_task.status <> 'in_progress' then raise exception 'This task has already been submitted.'; end if;
+  if v_url is null or length(v_url) > 2048 or v_url !~* '^https?://[^[:space:]/?#@]+([/?#][^[:space:]]*)?$' then
+    raise exception 'Enter a valid HTTP or HTTPS link to your final product.';
+  end if;
+  update public.tasks set final_product_url = v_url, status = 'submitted', submitted_at = now()
+    where id = p_task_id;
+end;
+$$;
+
+create or replace function public.delete_officer_task(p_task_id uuid)
+returns void language plpgsql security definer set search_path = '' as $$
+declare v_task public.tasks;
+begin
+  if auth.uid() is null or not exists (select 1 from public.officer_profiles where id = auth.uid()) then
+    raise exception 'Officer access is required.';
+  end if;
+  select * into v_task from public.tasks where id = p_task_id for update;
+  if not found or (not public.is_peet_admin() and
+    (v_task.assigned_to <> auth.uid() or v_task.status <> 'in_progress')) then
+    raise exception 'Only your in-progress tasks can be deleted.';
+  end if;
+  delete from public.tasks where id = p_task_id;
+end;
+$$;
+
+-- One evaluation per task prevents repeated reviews from changing its weight.
+-- The task lock and transaction make evaluation + completion atomic.
+create or replace function public.evaluate_officer_task(
+  p_task_id uuid, p_efficiency numeric, p_effectiveness numeric, p_time numeric,
+  p_feedback text default ''
+) returns void language plpgsql security definer set search_path = '' as $$
+declare v_task public.tasks;
+begin
+  if auth.uid() is null or not public.is_peet_admin() then raise exception 'PEET reviewer access is required.'; end if;
+  if p_efficiency is null or p_efficiency not between 1 and 4
+    or p_effectiveness is null or p_effectiveness not between 1 and 4
+    or p_time is null or p_time not between 1 and 4 then
+    raise exception 'Each PEET score must be between 1.0 and 4.0.';
+  end if;
+  if p_feedback is null or length(p_feedback) > 10000 then raise exception 'Feedback must be at most 10,000 characters.'; end if;
+  select * into v_task from public.tasks where id = p_task_id for update;
+  if not found or v_task.status not in ('submitted', 'completed') then
+    raise exception 'Only submitted or completed tasks can be evaluated.';
+  end if;
+  insert into public.peet_evaluations(task_id, evaluated_by, efficiency, effectiveness, time, feedback_notes)
+    values(p_task_id, auth.uid(), p_efficiency, p_effectiveness, p_time, p_feedback)
+    on conflict(task_id) do update set evaluated_by = excluded.evaluated_by,
+      efficiency = excluded.efficiency, effectiveness = excluded.effectiveness,
+      time = excluded.time, feedback_notes = excluded.feedback_notes, evaluated_at = now();
+  update public.tasks set status = 'completed', completed_at = coalesce(completed_at, now()) where id = p_task_id;
+end;
+$$;
+
+revoke all on function public.is_peet_admin() from public, anon, authenticated;
+revoke all on function public.save_officer_task(text,text,date,uuid,uuid) from public, anon, authenticated;
+revoke all on function public.submit_officer_task(uuid,text) from public, anon, authenticated;
+revoke all on function public.delete_officer_task(uuid) from public, anon, authenticated;
+revoke all on function public.evaluate_officer_task(uuid,numeric,numeric,numeric,text) from public, anon, authenticated;
+grant execute on function public.is_peet_admin(), public.save_officer_task(text,text,date,uuid,uuid),
+  public.submit_officer_task(uuid,text), public.delete_officer_task(uuid),
+  public.evaluate_officer_task(uuid,numeric,numeric,numeric,text) to authenticated;
+commit;
+
+-- Contract-based attendance, volunteer service, and accountability.
+-- Run AFTER officerboard.sql in the existing Supabase project's SQL editor.
+begin;
+alter table public.officer_profiles add column if not exists position text not null default '';
+alter table public.officer_profiles add column if not exists reviewer_kind text;
+alter table public.officer_profiles add column if not exists peet_onboarding_seen_at timestamptz;
+-- Existing reviewers remain Presidents unless an advisor is explicitly designated.
+update public.officer_profiles set reviewer_kind = 'president' where role = 'admin' and reviewer_kind is null;
+alter table public.officer_profiles drop constraint if exists officer_reviewer_kind_check;
+alter table public.officer_profiles add constraint officer_reviewer_kind_check
+  check ((role = 'officer' and reviewer_kind is null) or (role = 'admin' and reviewer_kind in ('president','advisor') and reviewer_kind is not null));
+
+create or replace function public.is_peet_advisor()
+returns boolean language sql stable security definer set search_path = '' as $$
+  select exists(select 1 from public.officer_profiles where id = auth.uid() and role = 'admin' and reviewer_kind = 'advisor');
+$$;
+
+create table if not exists public.officer_events (
+  id uuid primary key default gen_random_uuid(),
+  title text not null check(length(btrim(title)) between 1 and 200),
+  kind text not null check(kind in ('meeting','volunteer','outreach')),
+  academic_year text not null check(academic_year ~ '^[0-9]{4}-[0-9]{4}$' and right(academic_year,4)::int = left(academic_year,4)::int + 1),
+  starts_at timestamptz not null,
+  ends_at timestamptz not null check(ends_at > starts_at),
+  location text not null default '' check(length(location)<=500),
+  mandatory boolean not null default false,
+  gea_approved boolean not null default false,
+  cancelled boolean not null default false,
+  notes text not null default '' check(length(notes)<=10000),
+  created_by uuid not null references public.officer_profiles(id),
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+create table if not exists public.officer_attendance (
+  id uuid primary key default gen_random_uuid(),
+  event_id uuid not null references public.officer_events(id),
+  officer_id uuid not null references public.officer_profiles(id),
+  status text not null default 'unmarked' check(status in ('unmarked','present','late','excused','unexcused')),
+  absence_notice text not null default '' check(length(absence_notice)<=10000),
+  notice_at timestamptz,
+  reviewer_notes text not null default '' check(length(reviewer_notes)<=10000),
+  recorded_by uuid references public.officer_profiles(id),
+  updated_at timestamptz not null default now(),
+  unique(event_id,officer_id)
+);
+create table if not exists public.officer_event_signups (
+  id uuid primary key default gen_random_uuid(),
+  event_id uuid not null references public.officer_events(id),
+  officer_id uuid not null references public.officer_profiles(id),
+  committed boolean not null default true,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  unique(event_id,officer_id)
+);
+create table if not exists public.officer_volunteer_logs (
+  id uuid primary key default gen_random_uuid(),
+  event_id uuid not null references public.officer_events(id),
+  officer_id uuid not null references public.officer_profiles(id),
+  check_in timestamptz not null,
+  check_out timestamptz not null check(check_out > check_in and check_out <= check_in + interval '24 hours'),
+  minutes integer generated always as (floor(extract(epoch from (check_out-check_in))/60)::integer) stored,
+  notes text not null default '' check(length(notes)<=10000),
+  status text not null default 'pending' check(status in ('pending','approved','rejected')),
+  reviewed_by uuid references public.officer_profiles(id),
+  review_notes text not null default '' check(length(review_notes)<=10000),
+  reviewed_at timestamptz,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  unique(event_id,officer_id),
+  check(check_out >= check_in + interval '1 minute')
+);
+create table if not exists public.officer_strikes (
+  id uuid primary key default gen_random_uuid(),
+  officer_id uuid not null references public.officer_profiles(id),
+  academic_year text not null check(academic_year ~ '^[0-9]{4}-[0-9]{4}$' and right(academic_year,4)::int = left(academic_year,4)::int + 1),
+  category text not null check(category in ('attendance','conduct')),
+  incident_date date not null,
+  reason text not null check(length(btrim(reason)) between 10 and 10000),
+  attendance_id uuid references public.officer_attendance(id),
+  status text not null default 'notified' check(status in ('notified','confirmed','dismissed','revoked')),
+  notified_at timestamptz not null default now(),
+  response_due_at timestamptz not null check(response_due_at > notified_at),
+  officer_response text not null default '' check(length(officer_response)<=10000),
+  responded_at timestamptz,
+  decision_notes text not null default '' check(length(decision_notes)<=10000),
+  decided_by uuid references public.officer_profiles(id),
+  decided_at timestamptz,
+  created_by uuid not null references public.officer_profiles(id),
+  created_at timestamptz not null default now(),
+  check(attendance_id is null or category='attendance')
+);
+create unique index if not exists officer_strikes_attendance_active_idx on public.officer_strikes(attendance_id)
+  where attendance_id is not null and status in ('notified','confirmed');
+create table if not exists public.officer_removal_reviews (
+  id uuid primary key default gen_random_uuid(),
+  officer_id uuid not null references public.officer_profiles(id),
+  academic_year text not null,
+  category text not null check(category in ('attendance','conduct')),
+  status text not null default 'pending' check(status in ('pending','retained','removal_approved')),
+  context_snapshot jsonb not null,
+  advisor_notes text not null default '' check(length(advisor_notes)<=10000),
+  opened_at timestamptz not null default now(),
+  decided_by uuid references public.officer_profiles(id),
+  decided_at timestamptz,
+  unique(officer_id,academic_year,category)
+);
+create table if not exists public.officer_tracking_audit (
+  id uuid primary key default gen_random_uuid(),
+  officer_id uuid references public.officer_profiles(id),
+  table_name text not null,
+  record_id uuid not null,
+  actor_id uuid references auth.users(id),
+  action text not null,
+  before_record jsonb,
+  after_record jsonb,
+  recorded_at timestamptz not null default now()
+);
+create table if not exists public.officer_accountability_notes (
+  id uuid primary key default gen_random_uuid(),
+  officer_id uuid not null references public.officer_profiles(id),
+  academic_year text not null check(academic_year ~ '^[0-9]{4}-[0-9]{4}$' and right(academic_year,4)::int=left(academic_year,4)::int+1),
+  notes text not null check(length(notes)<=10000),
+  recorded_by uuid not null references public.officer_profiles(id),
+  updated_at timestamptz not null default now(),
+  unique(officer_id,academic_year)
+);
+create index if not exists officer_events_year_idx on public.officer_events(academic_year,starts_at);
+create index if not exists officer_attendance_officer_idx on public.officer_attendance(officer_id);
+create index if not exists officer_volunteer_officer_idx on public.officer_volunteer_logs(officer_id);
+create index if not exists officer_strikes_officer_idx on public.officer_strikes(officer_id,academic_year,category,status);
+
+-- Calendar is shared with members. All personal records are self-only or reviewer-only.
+alter table public.officer_events enable row level security;
+drop policy if exists officer_events_read on public.officer_events;
+create policy officer_events_read on public.officer_events for select to authenticated
+  using(exists(select 1 from public.officer_profiles where id=auth.uid()));
+do $$ declare t text; begin
+  foreach t in array array['officer_attendance','officer_event_signups','officer_volunteer_logs','officer_strikes','officer_removal_reviews','officer_tracking_audit','officer_accountability_notes'] loop
+    execute format('alter table public.%I enable row level security',t);
+    execute format('drop policy if exists officer_tracking_read on public.%I',t);
+    execute format('create policy officer_tracking_read on public.%I for select to authenticated using(public.is_peet_admin() or (officer_id=auth.uid() and exists(select 1 from public.officer_profiles where id=auth.uid())))',t);
+  end loop;
+end $$;
+revoke all on public.officer_events, public.officer_attendance, public.officer_event_signups,
+  public.officer_volunteer_logs, public.officer_strikes, public.officer_removal_reviews,
+  public.officer_tracking_audit,public.officer_accountability_notes from public,anon,authenticated;
+grant select on public.officer_events, public.officer_attendance, public.officer_event_signups,
+  public.officer_volunteer_logs, public.officer_strikes, public.officer_removal_reviews,
+  public.officer_tracking_audit,public.officer_accountability_notes to authenticated;
+grant all on public.officer_events, public.officer_attendance, public.officer_event_signups,
+  public.officer_volunteer_logs, public.officer_strikes, public.officer_removal_reviews,
+  public.officer_tracking_audit,public.officer_accountability_notes to service_role;
+
+create or replace function public.audit_officer_tracking()
+returns trigger language plpgsql security definer set search_path='' as $$
+declare v_old jsonb; v_new jsonb; begin
+  if tg_op <> 'INSERT' then v_old:=to_jsonb(old); end if;
+  if tg_op <> 'DELETE' then v_new:=to_jsonb(new); end if;
+  insert into public.officer_tracking_audit(officer_id,table_name,record_id,actor_id,action,before_record,after_record)
+    values(coalesce(v_new->>'officer_id',v_old->>'officer_id')::uuid,tg_table_name,
+      coalesce(v_new->>'id',v_old->>'id')::uuid,auth.uid(),tg_op,v_old,v_new);
+  return coalesce(new,old);
+end $$;
+do $$ declare t text; begin
+  foreach t in array array['officer_events','officer_attendance','officer_event_signups','officer_volunteer_logs','officer_strikes','officer_removal_reviews','officer_accountability_notes'] loop
+    execute format('drop trigger if exists officer_tracking_audit on public.%I',t);
+    execute format('create trigger officer_tracking_audit after insert or update or delete on public.%I for each row execute function public.audit_officer_tracking()',t);
+  end loop;
+end $$;
+
+create or replace function public.mark_peet_onboarding_seen()
+returns void language plpgsql security definer set search_path='' as $$ begin
+  update public.officer_profiles set peet_onboarding_seen_at=coalesce(peet_onboarding_seen_at,now()) where id=auth.uid();
+  if not found then raise exception 'Officer access is required.'; end if;
+end $$;
+
+create or replace function public.save_officer_accountability_notes(p_officer_id uuid,p_year text,p_notes text)
+returns void language plpgsql security definer set search_path='' as $$ begin
+  if not public.is_peet_admin() then raise exception 'Reviewer access is required.'; end if;
+  if p_notes is null or length(p_notes)>10000 then raise exception 'Notes must be at most 10,000 characters.'; end if;
+  insert into public.officer_accountability_notes(officer_id,academic_year,notes,recorded_by)
+    values(p_officer_id,p_year,p_notes,auth.uid()) on conflict(officer_id,academic_year)
+    do update set notes=excluded.notes,recorded_by=auth.uid(),updated_at=now();
+end $$;
+
+create or replace function public.save_officer_event(p_title text,p_kind text,p_year text,p_starts_at timestamptz,p_ends_at timestamptz,
+  p_location text default '',p_mandatory boolean default false,p_approved boolean default false,p_notes text default '',p_event_id uuid default null,p_cancelled boolean default false)
+returns uuid language plpgsql security definer set search_path='' as $$ declare v_id uuid; begin
+  if not public.is_peet_admin() then raise exception 'Reviewer access is required.'; end if;
+  if p_title is null or length(btrim(p_title)) not between 1 and 200 or p_kind is null or p_kind not in ('meeting','volunteer','outreach')
+    or p_year is null or p_year !~ '^[0-9]{4}-[0-9]{4}$' or right(p_year,4)::int<>left(p_year,4)::int+1
+    or p_starts_at is null or p_ends_at is null or p_ends_at<=p_starts_at
+    or p_location is null or length(p_location)>500 or p_notes is null or length(p_notes)>10000
+    or p_mandatory is null or p_approved is null or p_cancelled is null then raise exception 'Check the event title, school year, dates, and details.'; end if;
+  if p_event_id is null then
+    insert into public.officer_events(title,kind,academic_year,starts_at,ends_at,location,mandatory,gea_approved,notes,created_by,cancelled)
+      values(btrim(p_title),p_kind,p_year,p_starts_at,p_ends_at,p_location,p_mandatory,p_approved,p_notes,auth.uid(),p_cancelled) returning id into v_id;
+  else
+    perform 1 from public.officer_events where id=p_event_id for update;
+    if not found then raise exception 'Event not available.'; end if;
+    if exists(select 1 from public.officer_attendance where event_id=p_event_id)
+      or exists(select 1 from public.officer_volunteer_logs where event_id=p_event_id)
+      or exists(select 1 from public.officer_event_signups where event_id=p_event_id) then
+      if exists(select 1 from public.officer_events where id=p_event_id and (kind<>p_kind or academic_year<>p_year)) then
+        raise exception 'An event with records must keep its category and school year.';
+      end if;
+    end if;
+    update public.officer_events set title=btrim(p_title),kind=p_kind,academic_year=p_year,starts_at=p_starts_at,ends_at=p_ends_at,
+      location=p_location,mandatory=p_mandatory,gea_approved=p_approved,notes=p_notes,cancelled=p_cancelled,updated_at=now() where id=p_event_id;
+    v_id:=p_event_id;
+  end if;
+  return v_id;
+end $$;
+
+create or replace function public.record_officer_attendance(p_event_id uuid,p_officer_id uuid,p_status text,p_notes text default '')
+returns void language plpgsql security definer set search_path='' as $$ declare v_event public.officer_events; begin
+  if not public.is_peet_admin() then raise exception 'Reviewer access is required.'; end if;
+  select * into v_event from public.officer_events where id=p_event_id for update;
+  if not found or v_event.kind<>'meeting' or v_event.cancelled then raise exception 'Select a scheduled leadership meeting.'; end if;
+  if p_status is null or p_status not in ('unmarked','present','late','excused','unexcused') or p_notes is null or length(p_notes)>10000 then raise exception 'Check the attendance status and notes.'; end if;
+  if not exists(select 1 from public.officer_profiles where id=p_officer_id) then raise exception 'Officer not available.'; end if;
+  if p_status in ('present','late','unexcused') and v_event.starts_at>now() then raise exception 'Record actual attendance after the meeting begins.'; end if;
+  if p_status<>'unexcused' and exists(select 1 from public.officer_strikes s join public.officer_attendance a on a.id=s.attendance_id
+    where a.event_id=p_event_id and a.officer_id=p_officer_id and s.status='confirmed') then raise exception 'Revoke the linked attendance strike before correcting this absence.'; end if;
+  insert into public.officer_attendance(event_id,officer_id,status,reviewer_notes,recorded_by)
+    values(p_event_id,p_officer_id,p_status,p_notes,auth.uid()) on conflict(event_id,officer_id)
+    do update set status=excluded.status,reviewer_notes=excluded.reviewer_notes,recorded_by=auth.uid(),updated_at=now();
+end $$;
+
+create or replace function public.notify_officer_absence(p_event_id uuid,p_notice text)
+returns void language plpgsql security definer set search_path='' as $$ begin
+  if not exists(select 1 from public.officer_profiles where id=auth.uid()) then raise exception 'Officer access is required.'; end if;
+  if p_notice is null or length(btrim(p_notice)) not between 1 and 10000 then raise exception 'Explain the relevant circumstances.'; end if;
+  perform 1 from public.officer_events where id=p_event_id and kind='meeting' and not cancelled for update;
+  if not found then raise exception 'Meeting not available.'; end if;
+  insert into public.officer_attendance(event_id,officer_id,absence_notice,notice_at)
+    values(p_event_id,auth.uid(),p_notice,now()) on conflict(event_id,officer_id)
+    do update set absence_notice=excluded.absence_notice,notice_at=coalesce(public.officer_attendance.notice_at,now()),updated_at=now();
+end $$;
+
+create or replace function public.set_officer_event_signup(p_event_id uuid,p_committed boolean)
+returns void language plpgsql security definer set search_path='' as $$ begin
+  if not exists(select 1 from public.officer_profiles where id=auth.uid()) then raise exception 'Officer access is required.'; end if;
+  if p_committed is null then raise exception 'Choose your participation status.'; end if;
+  perform 1 from public.officer_events where id=p_event_id and kind in ('volunteer','outreach') and not cancelled for update;
+  if not found then raise exception 'Event not available.'; end if;
+  insert into public.officer_event_signups(event_id,officer_id,committed) values(p_event_id,auth.uid(),p_committed)
+    on conflict(event_id,officer_id) do update set committed=excluded.committed,updated_at=now();
+end $$;
+
+create or replace function public.submit_officer_volunteer(p_event_id uuid,p_check_in timestamptz,p_check_out timestamptz,p_notes text default '',p_officer_id uuid default null)
+returns void language plpgsql security definer set search_path='' as $$
+declare v_officer uuid:=coalesce(p_officer_id,auth.uid()); v_event public.officer_events; begin
+  if not exists(select 1 from public.officer_profiles where id=auth.uid()) or (v_officer<>auth.uid() and not public.is_peet_admin()) then raise exception 'You can only log your own volunteer work.'; end if;
+  select * into v_event from public.officer_events where id=p_event_id for update;
+  if not found or v_event.kind not in ('volunteer','outreach') or v_event.cancelled then raise exception 'Event not available.'; end if;
+  if p_check_in is null or p_check_out is null or p_check_out<p_check_in+interval '1 minute'
+    or p_check_out>p_check_in+interval '24 hours' or p_check_out>now()
+    or p_check_in<v_event.starts_at-interval '12 hours' or p_check_out>v_event.ends_at+interval '12 hours'
+    or p_notes is null or length(p_notes)>10000 then raise exception 'Enter actual check-in and check-out times near the event, between 1 minute and 24 hours apart.'; end if;
+  perform 1 from public.officer_volunteer_logs where event_id=p_event_id and officer_id=v_officer for update;
+  if exists(select 1 from public.officer_volunteer_logs where event_id=p_event_id and officer_id=v_officer and status='approved') then raise exception 'Approved volunteer work is locked. Ask a reviewer to return it for correction.'; end if;
+  insert into public.officer_volunteer_logs(event_id,officer_id,check_in,check_out,notes)
+    values(p_event_id,v_officer,p_check_in,p_check_out,p_notes) on conflict(event_id,officer_id)
+    do update set check_in=excluded.check_in,check_out=excluded.check_out,notes=excluded.notes,status='pending',
+      reviewed_by=null,reviewed_at=null,review_notes='',updated_at=now();
+end $$;
+
+create or replace function public.review_officer_volunteer(p_log_id uuid,p_status text,p_notes text default '')
+returns void language plpgsql security definer set search_path='' as $$ begin
+  if not public.is_peet_admin() then raise exception 'Reviewer access is required.'; end if;
+  if p_status is null or p_status not in ('approved','rejected') or p_notes is null or length(p_notes)>10000
+    or (p_status='rejected' and length(btrim(p_notes))<10) then raise exception 'Choose approved or returned, and explain any requested correction.'; end if;
+  update public.officer_volunteer_logs set status=p_status,reviewed_by=auth.uid(),review_notes=p_notes,reviewed_at=now(),updated_at=now() where id=p_log_id;
+  if not found then raise exception 'Volunteer log not available.'; end if;
+end $$;
+
+create or replace function public.create_officer_strike(p_officer_id uuid,p_year text,p_category text,p_incident_date date,p_reason text,p_response_due_at timestamptz,p_attendance_id uuid default null)
+returns uuid language plpgsql security definer set search_path='' as $$ declare v_id uuid; begin
+  if not public.is_peet_admin() then raise exception 'Reviewer access is required.'; end if;
+  if not exists(select 1 from public.officer_profiles where id=p_officer_id and reviewer_kind is distinct from 'advisor') then raise exception 'Select a leadership officer, not a faculty advisor.'; end if;
+  if p_category is null or p_category not in ('attendance','conduct') or p_incident_date is null or p_incident_date>current_date
+    or p_year is null or p_year !~ '^[0-9]{4}-[0-9]{4}$' or right(p_year,4)::int<>left(p_year,4)::int+1
+    or p_reason is null or length(btrim(p_reason)) not between 10 and 10000 or p_response_due_at is null or p_response_due_at<=now()
+    then raise exception 'Document the incident and choose a future response deadline.'; end if;
+  if p_attendance_id is not null and (p_category<>'attendance' or not exists(select 1 from public.officer_attendance a join public.officer_events e on e.id=a.event_id
+    where a.id=p_attendance_id and a.officer_id=p_officer_id and a.status='unexcused' and e.kind='meeting' and e.mandatory and not e.cancelled and e.academic_year=p_year)) then raise exception 'An attendance strike must reference this officer’s unexcused mandatory meeting absence.'; end if;
+  if exists(select 1 from public.officer_strikes where attendance_id=p_attendance_id and status in ('notified','confirmed')) then raise exception 'This absence already has an active concern.'; end if;
+  insert into public.officer_strikes(officer_id,academic_year,category,incident_date,reason,response_due_at,attendance_id,created_by)
+    values(p_officer_id,p_year,p_category,p_incident_date,btrim(p_reason),p_response_due_at,p_attendance_id,auth.uid()) returning id into v_id;
+  return v_id;
+end $$;
+
+create or replace function public.respond_officer_strike(p_strike_id uuid,p_response text)
+returns void language plpgsql security definer set search_path='' as $$ begin
+  if not exists(select 1 from public.officer_profiles where id=auth.uid()) then raise exception 'Officer access is required.'; end if;
+  if p_response is null or length(btrim(p_response)) not between 1 and 10000 then raise exception 'Explain the relevant circumstances.'; end if;
+  update public.officer_strikes set officer_response=p_response,responded_at=now()
+    where id=p_strike_id and officer_id=auth.uid() and status='notified';
+  if not found then raise exception 'This concern is no longer awaiting your response.'; end if;
+end $$;
+
+create or replace function public.decide_officer_strike(p_strike_id uuid,p_status text,p_notes text)
+returns void language plpgsql security definer set search_path='' as $$
+declare v_strike public.officer_strikes; v_count integer; v_context jsonb; begin
+  if not public.is_peet_admin() then raise exception 'Reviewer access is required.'; end if;
+  select * into v_strike from public.officer_strikes where id=p_strike_id for update;
+  if not found then raise exception 'Concern not available.'; end if;
+  -- Serialize confirmations for the same officer, including different concerns.
+  perform 1 from public.officer_profiles where id=v_strike.officer_id for update;
+  if p_status is null or p_status not in ('confirmed','dismissed','revoked') or p_notes is null or length(btrim(p_notes)) not between 10 and 10000
+    or (v_strike.status='notified' and p_status='revoked') or (v_strike.status='confirmed' and p_status<>'revoked') or v_strike.status in ('dismissed','revoked') then raise exception 'Choose a valid decision and document your review of the circumstances.'; end if;
+  if p_status='confirmed' and v_strike.responded_at is null and now()<v_strike.response_due_at then raise exception 'Give the officer an opportunity to respond before confirming.'; end if;
+  if v_strike.attendance_id is not null then
+    perform 1 from public.officer_attendance a join public.officer_events e on e.id=a.event_id where a.id=v_strike.attendance_id for update of a,e;
+  end if;
+  if p_status='confirmed' and v_strike.attendance_id is not null and not exists(select 1 from public.officer_attendance a join public.officer_events e on e.id=a.event_id
+    where a.id=v_strike.attendance_id and a.status='unexcused' and e.mandatory and not e.cancelled) then raise exception 'The linked absence is no longer an unexcused mandatory absence.'; end if;
+  update public.officer_strikes set status=p_status,decision_notes=p_notes,decided_by=auth.uid(),decided_at=now() where id=p_strike_id;
+  select count(*) into v_count from public.officer_strikes where officer_id=v_strike.officer_id and academic_year=v_strike.academic_year and category=v_strike.category and status='confirmed';
+  if p_status='confirmed' and v_count>=3 then
+    select jsonb_build_object('confirmed_strikes',(select jsonb_agg(s) from public.officer_strikes s where s.officer_id=v_strike.officer_id and s.academic_year=v_strike.academic_year and s.category=v_strike.category and s.status='confirmed'),
+      'peet_score',(select avg((e.efficiency+e.effectiveness+e.time)/3)/4*100 from public.peet_evaluations e join public.tasks t on t.id=e.task_id where t.assigned_to=v_strike.officer_id and t.status='completed')) into v_context;
+    insert into public.officer_removal_reviews(officer_id,academic_year,category,context_snapshot)
+      values(v_strike.officer_id,v_strike.academic_year,v_strike.category,v_context) on conflict(officer_id,academic_year,category)
+      do update set status='pending',context_snapshot=excluded.context_snapshot,advisor_notes='',decided_by=null,decided_at=null;
+  end if;
+end $$;
+
+create or replace function public.decide_officer_removal_review(p_review_id uuid,p_status text,p_notes text)
+returns void language plpgsql security definer set search_path='' as $$ begin
+  if not public.is_peet_advisor() then raise exception 'Academy Advisor approval is required.'; end if;
+  if p_status is null or p_status not in ('retained','removal_approved') or p_notes is null or length(btrim(p_notes)) not between 10 and 10000 then raise exception 'Document the advisor’s decision and reasoning.'; end if;
+  perform 1 from public.officer_removal_reviews where id=p_review_id for update;
+  if p_status='removal_approved' and not exists(select 1 from public.officer_removal_reviews r where r.id=p_review_id and
+    (select count(*) from public.officer_strikes s where s.officer_id=r.officer_id and s.academic_year=r.academic_year and s.category=r.category and s.status='confirmed')>=3) then
+    raise exception 'Removal approval requires three currently confirmed strikes in the review category.';
+  end if;
+  update public.officer_removal_reviews set status=p_status,advisor_notes=p_notes,decided_by=auth.uid(),decided_at=now() where id=p_review_id and status='pending';
+  if not found then raise exception 'Review is no longer pending.'; end if;
+end $$;
+
+-- Also enforce Article IV: Presidents cannot evaluate their own performance.
+-- This trigger protects both the RPC and direct writes by trusted integrations.
+create or replace function public.check_peet_reviewer()
+returns trigger language plpgsql security definer set search_path='' as $$ begin
+  if exists(select 1 from public.tasks t join public.officer_profiles p on p.id=t.assigned_to
+    where t.id=new.task_id and p.reviewer_kind='president') and not exists(select 1 from public.officer_profiles where id=new.evaluated_by and role='admin' and reviewer_kind='advisor') then
+    raise exception 'The President’s PEET performance must be evaluated by the Academy Advisor.';
+  end if;
+  return new;
+end $$;
+drop trigger if exists peet_reviewer_check on public.peet_evaluations;
+create trigger peet_reviewer_check before insert or update on public.peet_evaluations for each row execute function public.check_peet_reviewer();
+
+-- Revoke Supabase default execution grants, including trigger helpers.
+do $$ declare f record; begin
+  for f in select p.oid::regprocedure signature from pg_proc p join pg_namespace n on n.oid=p.pronamespace
+    where n.nspname='public' and p.proname in ('is_peet_advisor','audit_officer_tracking','mark_peet_onboarding_seen','save_officer_accountability_notes','save_officer_event','record_officer_attendance','notify_officer_absence','set_officer_event_signup','submit_officer_volunteer','review_officer_volunteer','create_officer_strike','respond_officer_strike','decide_officer_strike','decide_officer_removal_review','check_peet_reviewer') loop
+    execute format('revoke all on function %s from public,anon,authenticated',f.signature);
+    if f.signature::text not like '%audit_officer_tracking(%' and f.signature::text not like '%check_peet_reviewer(%' then execute format('grant execute on function %s to authenticated',f.signature); end if;
+  end loop;
+end $$;
+commit;
+
+-- Run after officerboard.sql and officer-accountability.sql.
+-- Super admins are a trusted allowlist, never a signup/profile metadata claim.
+begin;
+create table if not exists public.super_admins (
+  auth_user_id uuid primary key references auth.users(id) on delete cascade,
+  created_at timestamptz not null default now()
+);
+alter table public.super_admins enable row level security;
+create or replace function public.is_super_admin()
+returns boolean language sql stable security definer set search_path='' as $$
+  select exists(select 1 from public.super_admins where auth_user_id=auth.uid());
+$$;
+drop policy if exists super_admins_read on public.super_admins;
+create policy super_admins_read on public.super_admins for select to authenticated
+  using(auth_user_id=auth.uid() or public.is_super_admin());
+revoke all on public.super_admins from public,anon,authenticated;
+grant select on public.super_admins to authenticated;
+grant all on public.super_admins to service_role;
+revoke all on function public.is_super_admin() from public,anon,authenticated;
+grant execute on function public.is_super_admin() to authenticated;
+
+create table if not exists public.account_management_audit (
+  id uuid primary key default gen_random_uuid(),
+  actor_id uuid not null references auth.users(id),
+  target_id uuid not null references auth.users(id),
+  account_kind text not null,
+  action text not null,
+  before_record jsonb,
+  after_record jsonb,
+  recorded_at timestamptz not null default now()
+);
+alter table public.account_management_audit enable row level security;
+drop policy if exists account_audit_read on public.account_management_audit;
+create policy account_audit_read on public.account_management_audit for select to authenticated using(public.is_super_admin());
+revoke all on public.account_management_audit from public,anon,authenticated;
+grant select on public.account_management_audit to authenticated;
+grant all on public.account_management_audit to service_role;
+
+-- Account writes are called only by the server using the service role, after it
+-- verifies the session. Recheck the supplied actor in the trusted allowlist here.
+create or replace function public.superadmin_save_account(
+  p_actor uuid,p_target uuid,p_kind text,p_name text,p_email text,
+  p_username text default null,p_class_year integer default null,p_student_id text default null,
+  p_portal_role text default 'officer',p_reviewer_kind text default null,p_position text default ''
+) returns void language plpgsql security definer set search_path='' as $$
+declare v_before jsonb; v_after jsonb; v_student_id text; begin
+  perform 1 from public.super_admins where auth_user_id=p_actor for share;
+  if not found then raise exception 'Super-admin access is required.'; end if;
+  if p_kind is null or p_kind not in ('student','teacher','officer') or p_name is null or length(btrim(p_name)) not between 1 and 160
+    or p_email is null or p_email !~* '^[^[:space:]@]+@lvjusd\.org$' then raise exception 'Enter a name and a valid @lvjusd.org email.'; end if;
+  perform 1 from auth.users where id=p_target and lower(email)=lower(p_email) for share;
+  if not found then raise exception 'The Auth account and profile email must match.'; end if;
+  if p_kind='student' then
+    if p_username is null or length(btrim(p_username)) not between 1 and 80 or p_class_year is null or p_class_year not between 2020 and 2100 then raise exception 'Enter a username and valid graduating class year.'; end if;
+    select to_jsonb(s)-'student_id_number',student_id_number into v_before,v_student_id from public.student_profiles s where auth_user_id=p_target for update;
+    v_student_id:=coalesce(nullif(btrim(p_student_id),''),v_student_id);
+    if v_student_id is null or length(v_student_id) not between 1 and 64 then raise exception 'A student ID is required for a new student profile.'; end if;
+    if exists(select 1 from public.student_email_blocks where school_email=lower(p_email) and is_active) then raise exception 'Unblock this student email in website administration before adding the account.'; end if;
+    insert into public.student_profiles(auth_user_id,auth_email,full_name,display_username,graduating_class_year,student_id_number,school_email)
+      values(p_target,lower(p_email),btrim(p_name),btrim(p_username),p_class_year,v_student_id,lower(p_email))
+      on conflict(auth_user_id) do update set auth_email=excluded.auth_email,full_name=excluded.full_name,
+        display_username=excluded.display_username,graduating_class_year=excluded.graduating_class_year,
+        student_id_number=excluded.student_id_number,school_email=excluded.school_email;
+    select to_jsonb(s)-'student_id_number' into v_after from public.student_profiles s where auth_user_id=p_target;
+  elsif p_kind='teacher' then
+    select to_jsonb(t) into v_before from public.teacher_profiles t where auth_user_id=p_target for update;
+    insert into public.teacher_profiles(auth_user_id,auth_email,full_name,school_email) values(p_target,lower(p_email),btrim(p_name),lower(p_email))
+      on conflict(auth_user_id) do update set auth_email=excluded.auth_email,full_name=excluded.full_name,school_email=excluded.school_email;
+    select to_jsonb(t) into v_after from public.teacher_profiles t where auth_user_id=p_target;
+  else
+    if p_portal_role is null or p_portal_role not in ('officer','admin') or p_position is null or length(p_position)>160
+      or (p_portal_role='admin' and (p_reviewer_kind is null or p_reviewer_kind not in ('president','advisor')))
+      or (p_portal_role='officer' and p_reviewer_kind is not null) then raise exception 'Choose an officer or designated reviewer role.'; end if;
+    if exists(select 1 from public.super_admins where auth_user_id=p_target) and (p_portal_role<>'admin' or p_reviewer_kind<>'president') then raise exception 'Super-admin portal membership cannot be downgraded here.'; end if;
+    select to_jsonb(p) into v_before from public.officer_profiles p where id=p_target for update;
+    insert into public.officer_profiles(id,name,role,position,reviewer_kind) values(p_target,btrim(p_name),p_portal_role,p_position,p_reviewer_kind)
+      on conflict(id) do update set name=excluded.name,role=excluded.role,position=excluded.position,reviewer_kind=excluded.reviewer_kind;
+    select to_jsonb(p) into v_after from public.officer_profiles p where id=p_target;
+  end if;
+  -- Keep login email references consistent when an existing Auth email is edited.
+  update public.student_profiles set auth_email=lower(p_email),school_email=lower(p_email) where auth_user_id=p_target;
+  update public.teacher_profiles set auth_email=lower(p_email),school_email=lower(p_email) where auth_user_id=p_target;
+  insert into public.account_management_audit(actor_id,target_id,account_kind,action,before_record,after_record)
+    values(p_actor,p_target,p_kind,case when v_before is null then 'add' else 'edit' end,v_before,v_after);
+end $$;
+
+create or replace function public.superadmin_remove_account(p_actor uuid,p_target uuid,p_kind text,p_reason text)
+returns void language plpgsql security definer set search_path='' as $$ declare v_before jsonb; begin
+  perform 1 from public.super_admins where auth_user_id=p_actor for share;
+  if not found then raise exception 'Super-admin access is required.'; end if;
+  if p_actor=p_target then raise exception 'You cannot remove your own account access here.'; end if;
+  if p_kind is null or p_kind not in ('student','teacher') or p_reason is null or length(btrim(p_reason)) not between 10 and 2000 then raise exception 'Choose student or teacher access and provide a removal reason.'; end if;
+  if p_kind='student' then
+    select to_jsonb(s)-'student_id_number' into v_before from public.student_profiles s where auth_user_id=p_target for update;
+    if v_before is null then raise exception 'Student profile not available.'; end if;
+    delete from public.upperclassmen where auth_user_id=p_target;
+    delete from public.student_profiles where auth_user_id=p_target;
+  else
+    select to_jsonb(t) into v_before from public.teacher_profiles t where auth_user_id=p_target for update;
+    if v_before is null then raise exception 'Teacher profile not available.'; end if;
+    -- Revoke outstanding invites so a removed teacher cannot reuse an old link.
+    delete from public.teacher_invites where lower(teacher_email)=lower(v_before->>'school_email');
+    delete from public.teacher_profiles where auth_user_id=p_target;
+  end if;
+  insert into public.account_management_audit(actor_id,target_id,account_kind,action,before_record,after_record)
+    values(p_actor,p_target,p_kind,'remove',v_before,jsonb_build_object('reason',p_reason));
+end $$;
+revoke all on function public.superadmin_save_account(uuid,uuid,text,text,text,text,integer,text,text,text,text),
+  public.superadmin_remove_account(uuid,uuid,text,text) from public,anon,authenticated;
+grant execute on function public.superadmin_save_account(uuid,uuid,text,text,text,text,integer,text,text,text,text),
+  public.superadmin_remove_account(uuid,uuid,text,text) to service_role;
+
+-- Full site and portal access for explicitly designated super admins.
+create or replace function public.is_admin() returns boolean language sql stable security definer set search_path='' as $$
+ select public.is_super_admin() or exists(select 1 from public.admins where auth_user_id=auth.uid());
+$$;
+create or replace function public.is_staff() returns boolean language sql stable security definer set search_path='' as $$
+ select public.is_admin() or exists(select 1 from public.teacher_profiles where auth_user_id=auth.uid());
+$$;
+create or replace function public.is_peet_admin() returns boolean language sql stable security definer set search_path='' as $$
+ select public.is_super_admin() or exists(select 1 from public.officer_profiles where id=auth.uid() and role='admin');
+$$;
+create or replace function public.is_peet_advisor() returns boolean language sql stable security definer set search_path='' as $$
+ select public.is_super_admin() or exists(select 1 from public.officer_profiles where id=auth.uid() and role='admin' and reviewer_kind='advisor');
+$$;
+create or replace function public.check_peet_reviewer() returns trigger language plpgsql security definer set search_path='' as $$ begin
+ if exists(select 1 from public.super_admins where auth_user_id=new.evaluated_by) then return new; end if;
+ if exists(select 1 from public.tasks t join public.officer_profiles p on p.id=t.assigned_to where t.id=new.task_id and p.reviewer_kind='president')
+   and not exists(select 1 from public.officer_profiles where id=new.evaluated_by and role='admin' and reviewer_kind='advisor') then
+   raise exception 'The President’s PEET performance must be evaluated by the Academy Advisor.';
+ end if;
+ return new;
+end $$;
+revoke all on function public.is_admin(),public.is_staff(),public.is_peet_admin(),public.is_peet_advisor() from public,anon,authenticated;
+grant execute on function public.is_admin(),public.is_staff() to anon,authenticated,service_role;
+grant execute on function public.is_peet_admin(),public.is_peet_advisor() to authenticated,service_role;
+
+-- Explicitly requested promotion, matched to an existing Auth account by email.
+-- No account is created and no password is changed by this migration.
+insert into public.super_admins(auth_user_id)
+ select id from auth.users where lower(email)='jaden.jir@lvjusd.org'
+ on conflict(auth_user_id) do nothing;
+insert into public.admins(auth_user_id,name)
+ select id,'Jaden Jirasevijinda' from auth.users where lower(email)='jaden.jir@lvjusd.org'
+ on conflict(auth_user_id) do nothing;
+insert into public.officer_profiles(id,name,role,position,reviewer_kind)
+ select id,'Jaden Jirasevijinda','admin','President','president' from auth.users where lower(email)='jaden.jir@lvjusd.org'
+ on conflict(id) do update set role='admin',position='President',reviewer_kind='president';
+commit;
+
+-- This result confirms whether the requested existing account was promoted.
+select auth_user_id as super_admin_user_id from public.super_admins
+where auth_user_id in (select id from auth.users where lower(email)='jaden.jir@lvjusd.org');
+
+-- Run after super-admin.sql. Existing and future teacher profiles receive
+-- super-admin, site-admin, and Officer Board access on their existing Auth login.
+begin;
+alter table public.super_admins add column if not exists explicit_grant boolean not null default true;
+alter table public.super_admins add column if not exists teacher_grant boolean not null default false;
+alter table public.officer_profiles add column if not exists access_enabled boolean not null default true;
+alter table public.officer_profiles add column if not exists teacher_managed boolean not null default false;
+create table if not exists public.teacher_access_grants (
+ auth_user_id uuid primary key references auth.users(id),
+ admin_added boolean not null,
+ officer_previous jsonb,
+ created_at timestamptz not null default now()
+);
+alter table public.teacher_access_grants enable row level security;
+revoke all on public.teacher_access_grants from public,anon,authenticated;
+grant all on public.teacher_access_grants to service_role;
+
+-- Creating teachers now grants full administration. Ordinary officer/site-admin
+-- accounts must not self-promote by inserting a teacher profile or invite.
+alter table public.teacher_profiles enable row level security;
+drop policy if exists teacher_profiles_admin_write on public.teacher_profiles;
+create policy teacher_profiles_admin_write on public.teacher_profiles for all to authenticated
+ using(public.is_super_admin()) with check(public.is_super_admin());
+alter table public.teacher_invites enable row level security;
+drop policy if exists teacher_invites_admin_manage on public.teacher_invites;
+create policy teacher_invites_admin_manage on public.teacher_invites for all to authenticated
+ using(public.is_super_admin()) with check(public.is_super_admin());
+
+create or replace function public.is_super_admin()
+returns boolean language sql stable security definer set search_path='' as $$
+ select exists(select 1 from public.super_admins s where s.auth_user_id=auth.uid()
+   and (s.explicit_grant or (s.teacher_grant and exists(select 1 from public.teacher_profiles t where t.auth_user_id=s.auth_user_id))));
+$$;
+drop policy if exists super_admins_read on public.super_admins;
+create policy super_admins_read on public.super_admins for select to authenticated using(
+ (explicit_grant or (teacher_grant and exists(select 1 from public.teacher_profiles t where t.auth_user_id=super_admins.auth_user_id)))
+ and (auth_user_id=auth.uid() or public.is_super_admin()));
+
+create or replace function public.has_officer_access()
+returns boolean language sql stable security definer set search_path='' as $$
+ select exists(select 1 from public.officer_profiles where id=auth.uid() and access_enabled);
+$$;
+create or replace function public.is_peet_admin()
+returns boolean language sql stable security definer set search_path='' as $$
+ select public.is_super_admin() or exists(select 1 from public.officer_profiles where id=auth.uid() and access_enabled and role='admin');
+$$;
+create or replace function public.is_peet_advisor()
+returns boolean language sql stable security definer set search_path='' as $$
+ select public.is_super_admin() or exists(select 1 from public.officer_profiles where id=auth.uid() and access_enabled and role='admin' and reviewer_kind='advisor');
+$$;
+drop policy if exists officer_profiles_read on public.officer_profiles;
+create policy officer_profiles_read on public.officer_profiles for select to authenticated
+ using(public.is_peet_admin() or (id=auth.uid() and access_enabled));
+
+create or replace function public.provision_teacher_access(p_id uuid,p_name text)
+returns void language plpgsql security definer set search_path='' as $$
+declare v_previous jsonb; begin
+ select to_jsonb(p) into v_previous from public.officer_profiles p where id=p_id;
+ insert into public.teacher_access_grants(auth_user_id,admin_added,officer_previous)
+   values(p_id,not exists(select 1 from public.admins where auth_user_id=p_id),v_previous)
+   on conflict(auth_user_id) do nothing;
+ insert into public.super_admins(auth_user_id,explicit_grant,teacher_grant) values(p_id,false,true)
+   on conflict(auth_user_id) do update set teacher_grant=true;
+ insert into public.admins(auth_user_id,name) values(p_id,p_name) on conflict(auth_user_id) do nothing;
+ -- Preserve an existing independent President/officer assignment. New teacher
+ -- memberships use advisor permissions and do not count as student officers.
+ insert into public.officer_profiles(id,name,role,position,reviewer_kind,access_enabled,teacher_managed)
+   values(p_id,p_name,'admin','Academy Advisor','advisor',true,true)
+   on conflict(id) do update set name=case when public.officer_profiles.teacher_managed then excluded.name else public.officer_profiles.name end,
+     teacher_managed=public.officer_profiles.teacher_managed or not public.officer_profiles.access_enabled,
+     access_enabled=true;
+end $$;
+
+create or replace function public.revoke_teacher_access(p_id uuid)
+returns void language plpgsql security definer set search_path='' as $$
+declare v_grant public.teacher_access_grants; begin
+ select * into v_grant from public.teacher_access_grants where auth_user_id=p_id for update;
+ if not found then return; end if;
+ update public.super_admins set teacher_grant=false where auth_user_id=p_id;
+ delete from public.super_admins where auth_user_id=p_id and not explicit_grant;
+ if v_grant.admin_added and not exists(select 1 from public.super_admins where auth_user_id=p_id and explicit_grant) then
+   delete from public.admins where auth_user_id=p_id;
+ end if;
+ if exists(select 1 from public.officer_profiles where id=p_id and teacher_managed)
+   and not exists(select 1 from public.super_admins where auth_user_id=p_id and explicit_grant) then
+   -- Preserve task, service, strike, and evaluation history without retaining
+   -- the automatically granted portal membership after teacher removal.
+   if v_grant.officer_previous is null then
+     update public.officer_profiles set access_enabled=false where id=p_id;
+   else
+     update public.officer_profiles set role=v_grant.officer_previous->>'role',
+       reviewer_kind=v_grant.officer_previous->>'reviewer_kind',
+       access_enabled=coalesce((v_grant.officer_previous->>'access_enabled')::boolean,true),
+       teacher_managed=coalesce((v_grant.officer_previous->>'teacher_managed')::boolean,false)
+       where id=p_id;
+   end if;
+ end if;
+ delete from public.teacher_access_grants where auth_user_id=p_id;
+end $$;
+
+create or replace function public.sync_teacher_access()
+returns trigger language plpgsql security definer set search_path='' as $$ begin
+ if tg_op='DELETE' then perform public.revoke_teacher_access(old.auth_user_id); return old; end if;
+ if tg_op='UPDATE' and old.auth_user_id<>new.auth_user_id then
+   raise exception 'Teacher accounts must keep their existing Auth user ID.';
+ end if;
+ perform public.provision_teacher_access(new.auth_user_id,new.full_name);
+ return new;
+end $$;
+drop trigger if exists teacher_super_admin_access on public.teacher_profiles;
+create trigger teacher_super_admin_access after insert or update or delete on public.teacher_profiles
+ for each row execute function public.sync_teacher_access();
+do $$ declare t record; begin
+ for t in select auth_user_id,full_name from public.teacher_profiles loop
+   perform public.provision_teacher_access(t.auth_user_id,t.full_name);
+ end loop;
+end $$;
+
+-- Every existing portal RPC is guarded at the database write boundary as well
+-- as by RLS. Disabled, former teacher memberships cannot mutate historical data.
+create or replace function public.guard_officer_membership()
+returns trigger language plpgsql security definer set search_path='' as $$ begin
+ if auth.uid() is not null and not public.has_officer_access() and not public.is_super_admin() then
+   raise exception 'Active officer access is required.';
+ end if;
+ if tg_op='DELETE' then return old; end if;
+ return new;
+end $$;
+do $$ declare t text; begin
+ foreach t in array array['tasks','peet_evaluations','officer_events','officer_attendance','officer_event_signups','officer_volunteer_logs','officer_strikes','officer_removal_reviews','officer_accountability_notes','officer_profiles'] loop
+   execute format('drop trigger if exists officer_membership_guard on public.%I',t);
+   execute format('create trigger officer_membership_guard before insert or update or delete on public.%I for each row execute function public.guard_officer_membership()',t);
+ end loop;
+end $$;
+revoke all on function public.provision_teacher_access(uuid,text),public.revoke_teacher_access(uuid),
+ public.sync_teacher_access(),public.guard_officer_membership() from public,anon,authenticated;
+revoke all on function public.has_officer_access() from public,anon,authenticated;
+grant execute on function public.has_officer_access() to authenticated,service_role;
+
+create or replace function public.superadmin_save_account(
+  p_actor uuid,p_target uuid,p_kind text,p_name text,p_email text,
+  p_username text default null,p_class_year integer default null,p_student_id text default null,
+  p_portal_role text default 'officer',p_reviewer_kind text default null,p_position text default ''
+) returns void language plpgsql security definer set search_path='' as $$
+declare v_before jsonb; v_after jsonb; v_student_id text; begin
+  perform 1 from public.super_admins where auth_user_id=p_actor and (explicit_grant or (teacher_grant and exists(select 1 from public.teacher_profiles where auth_user_id=p_actor))) for share;
+  if not found then raise exception 'Super-admin access is required.'; end if;
+  if p_kind is null or p_kind not in ('student','teacher','officer') or p_name is null or length(btrim(p_name)) not between 1 and 160
+    or p_email is null or p_email !~* '^[^[:space:]@]+@lvjusd\.org$' then raise exception 'Enter a name and a valid @lvjusd.org email.'; end if;
+  perform 1 from auth.users where id=p_target and lower(email)=lower(p_email) for share;
+  if not found then raise exception 'The Auth account and profile email must match.'; end if;
+  if p_kind='student' then
+    if p_username is null or length(btrim(p_username)) not between 1 and 80 or p_class_year is null or p_class_year not between 2020 and 2100 then raise exception 'Enter a username and valid graduating class year.'; end if;
+    select to_jsonb(s)-'student_id_number',student_id_number into v_before,v_student_id from public.student_profiles s where auth_user_id=p_target for update;
+    v_student_id:=coalesce(nullif(btrim(p_student_id),''),v_student_id);
+    if v_student_id is null or length(v_student_id) not between 1 and 64 then raise exception 'A student ID is required for a new student profile.'; end if;
+    if exists(select 1 from public.student_email_blocks where school_email=lower(p_email) and is_active) then raise exception 'Unblock this student email in website administration before adding the account.'; end if;
+    insert into public.student_profiles(auth_user_id,auth_email,full_name,display_username,graduating_class_year,student_id_number,school_email)
+      values(p_target,lower(p_email),btrim(p_name),btrim(p_username),p_class_year,v_student_id,lower(p_email))
+      on conflict(auth_user_id) do update set auth_email=excluded.auth_email,full_name=excluded.full_name,
+        display_username=excluded.display_username,graduating_class_year=excluded.graduating_class_year,
+        student_id_number=excluded.student_id_number,school_email=excluded.school_email;
+    select to_jsonb(s)-'student_id_number' into v_after from public.student_profiles s where auth_user_id=p_target;
+  elsif p_kind='teacher' then
+    select to_jsonb(t) into v_before from public.teacher_profiles t where auth_user_id=p_target for update;
+    insert into public.teacher_profiles(auth_user_id,auth_email,full_name,school_email) values(p_target,lower(p_email),btrim(p_name),lower(p_email))
+      on conflict(auth_user_id) do update set auth_email=excluded.auth_email,full_name=excluded.full_name,school_email=excluded.school_email;
+    select to_jsonb(t) into v_after from public.teacher_profiles t where auth_user_id=p_target;
+  else
+    if p_portal_role is null or p_portal_role not in ('officer','admin') or p_position is null or length(p_position)>160
+      or (p_portal_role='admin' and (p_reviewer_kind is null or p_reviewer_kind not in ('president','advisor')))
+      or (p_portal_role='officer' and p_reviewer_kind is not null) then raise exception 'Choose an officer or designated reviewer role.'; end if;
+    if exists(select 1 from public.super_admins where auth_user_id=p_target and explicit_grant) and (p_portal_role<>'admin' or p_reviewer_kind<>'president') then raise exception 'Super-admin portal membership cannot be downgraded here.'; end if;
+    select to_jsonb(p) into v_before from public.officer_profiles p where id=p_target for update;
+    insert into public.officer_profiles(id,name,role,position,reviewer_kind) values(p_target,btrim(p_name),p_portal_role,p_position,p_reviewer_kind)
+      on conflict(id) do update set name=excluded.name,role=excluded.role,position=excluded.position,reviewer_kind=excluded.reviewer_kind,access_enabled=true,teacher_managed=false;
+    select to_jsonb(p) into v_after from public.officer_profiles p where id=p_target;
+  end if;
+  -- Keep login email references consistent when an existing Auth email is edited.
+  update public.student_profiles set auth_email=lower(p_email),school_email=lower(p_email) where auth_user_id=p_target;
+  update public.teacher_profiles set auth_email=lower(p_email),school_email=lower(p_email) where auth_user_id=p_target;
+  insert into public.account_management_audit(actor_id,target_id,account_kind,action,before_record,after_record)
+    values(p_actor,p_target,p_kind,case when v_before is null then 'add' else 'edit' end,v_before,v_after);
+end $$;
+
+create or replace function public.superadmin_remove_account(p_actor uuid,p_target uuid,p_kind text,p_reason text)
+returns void language plpgsql security definer set search_path='' as $$ declare v_before jsonb; begin
+  perform 1 from public.super_admins where auth_user_id=p_actor and (explicit_grant or (teacher_grant and exists(select 1 from public.teacher_profiles where auth_user_id=p_actor))) for share;
+  if not found then raise exception 'Super-admin access is required.'; end if;
+  if p_actor=p_target then raise exception 'You cannot remove your own account access here.'; end if;
+  if p_kind is null or p_kind not in ('student','teacher') or p_reason is null or length(btrim(p_reason)) not between 10 and 2000 then raise exception 'Choose student or teacher access and provide a removal reason.'; end if;
+  if p_kind='student' then
+    select to_jsonb(s)-'student_id_number' into v_before from public.student_profiles s where auth_user_id=p_target for update;
+    if v_before is null then raise exception 'Student profile not available.'; end if;
+    delete from public.upperclassmen where auth_user_id=p_target;
+    delete from public.student_profiles where auth_user_id=p_target;
+  else
+    select to_jsonb(t) into v_before from public.teacher_profiles t where auth_user_id=p_target for update;
+    if v_before is null then raise exception 'Teacher profile not available.'; end if;
+    -- Revoke outstanding invites so a removed teacher cannot reuse an old link.
+    delete from public.teacher_invites where lower(teacher_email)=lower(v_before->>'school_email');
+    delete from public.teacher_profiles where auth_user_id=p_target;
+  end if;
+  insert into public.account_management_audit(actor_id,target_id,account_kind,action,before_record,after_record)
+    values(p_actor,p_target,p_kind,'remove',v_before,jsonb_build_object('reason',p_reason));
+end $$;
+
+commit;
+
+-- Officer task followthrough and batch assignment
+-- Run after teacher-super-admin.sql. Keep task history and require followthrough.
+begin;
+alter table public.tasks add column if not exists cancelled_at timestamptz;
+alter table public.tasks add column if not exists cancelled_by uuid references public.officer_profiles(id);
+alter table public.tasks add column if not exists cancellation_reason text;
+alter table public.tasks add column if not exists assignment_batch_id uuid;
+create table if not exists public.officer_task_cancellation_requests (
+ id uuid primary key default gen_random_uuid(),
+ task_id uuid not null references public.tasks(id),
+ requested_by uuid not null references public.officer_profiles(id),
+ reason text not null check(length(btrim(reason)) between 10 and 2000),
+ status text not null default 'pending' check(status in ('pending','approved','rejected')),
+ review_notes text not null default '' check(length(review_notes)<=2000),
+ reviewed_by uuid references public.officer_profiles(id),
+ created_at timestamptz not null default now(),
+ reviewed_at timestamptz
+);
+create unique index if not exists officer_task_cancellation_pending on public.officer_task_cancellation_requests(task_id) where status='pending';
+alter table public.officer_task_cancellation_requests enable row level security;
+drop policy if exists cancellation_requests_read on public.officer_task_cancellation_requests;
+create policy cancellation_requests_read on public.officer_task_cancellation_requests for select to authenticated
+ using(public.is_peet_admin() or (requested_by=auth.uid() and public.has_officer_access()));
+revoke all on public.officer_task_cancellation_requests from public,anon,authenticated;
+grant select on public.officer_task_cancellation_requests to authenticated;
+grant all on public.officer_task_cancellation_requests to service_role;
+
+create or replace function public.is_task_officer(p_id uuid)
+returns boolean language sql stable security definer set search_path='' as $$
+ select exists(select 1 from public.officer_profiles p where p.id=p_id and p.access_enabled and p.reviewer_kind is distinct from 'advisor')
+ and not exists(select 1 from public.teacher_profiles where auth_user_id=p_id);
+$$;
+create or replace function public.officer_directory()
+returns table(id uuid,name text,role text,"position" text,reviewer_kind text,peet_onboarding_seen_at timestamptz,access_enabled boolean,is_teacher boolean,email text)
+language sql stable security definer set search_path='' as $$
+ select p.id,p.name,p.role,p.position,p.reviewer_kind,p.peet_onboarding_seen_at,p.access_enabled,
+   exists(select 1 from public.teacher_profiles t where t.auth_user_id=p.id),u.email::text
+ from public.officer_profiles p join auth.users u on u.id=p.id
+ where p.access_enabled and (public.is_peet_admin() or (p.id=auth.uid() and public.has_officer_access()));
+$$;
+
+-- Enforce assignee eligibility for every caller, including older clients and RPCs.
+create or replace function public.guard_task_followthrough()
+returns trigger language plpgsql security definer set search_path='' as $$ begin
+ if tg_op='DELETE' then raise exception 'Task deletion is disabled. Request cancellation so the task history is preserved.'; end if;
+ if tg_op='INSERT' or new.assigned_to is distinct from old.assigned_to then
+   if not public.is_task_officer(new.assigned_to) then raise exception 'Assign tasks to active officers. Teachers and advisors cannot be assigned officer tasks.'; end if;
+ end if;
+ if tg_op='UPDATE' and old.cancelled_at is not null then raise exception 'Cancelled tasks are preserved and cannot be changed.'; end if;
+ return new;
+end $$;
+drop trigger if exists task_followthrough_guard on public.tasks;
+create trigger task_followthrough_guard before insert or update or delete on public.tasks for each row execute function public.guard_task_followthrough();
+create or replace function public.delete_officer_task(p_task_id uuid)
+returns void language plpgsql security definer set search_path='' as $$ begin
+ raise exception 'Task deletion is disabled. Submit a cancellation request for independent review.';
+end $$;
+
+create or replace function public.assign_officer_tasks(p_assignees uuid[],p_title text,p_description text default '',p_due_date date default null)
+returns uuid[] language plpgsql security definer set search_path='' as $$
+declare v_id uuid; v_ids uuid[]:='{}'; v_batch uuid:=gen_random_uuid(); v_person uuid; begin
+ if not public.has_officer_access() then raise exception 'Officer access is required.'; end if;
+ if p_assignees is null or cardinality(p_assignees) not between 1 and 100
+   or exists(select 1 from unnest(p_assignees) i where i is null or not public.is_task_officer(i)) then raise exception 'Choose between 1 and 100 active officers. Teachers cannot receive these tasks.'; end if;
+ if not public.is_peet_admin() and (cardinality(p_assignees)<>1 or p_assignees[1]<>auth.uid()) then raise exception 'Officers can only create their own tasks.'; end if;
+ for v_person in select distinct i from unnest(p_assignees) i loop
+   v_id:=public.save_officer_task(p_title,p_description,p_due_date,v_person);
+   update public.tasks set assignment_batch_id=v_batch where id=v_id;
+   v_ids:=array_append(v_ids,v_id);
+ end loop;
+ return v_ids;
+end $$;
+
+create or replace function public.request_officer_task_cancellation(p_task_id uuid,p_reason text)
+returns void language plpgsql security definer set search_path='' as $$ declare v_task public.tasks; begin
+ if not public.has_officer_access() then raise exception 'Active officer access is required.'; end if;
+ select * into v_task from public.tasks where id=p_task_id for update;
+ if not found or v_task.assigned_to<>auth.uid() then raise exception 'You can only request cancellation of your own tasks.'; end if;
+ if v_task.cancelled_at is not null or v_task.status='completed' then raise exception 'This task is already closed.'; end if;
+ if p_reason is null or length(btrim(p_reason)) not between 10 and 2000 then raise exception 'Explain why cancellation is needed in 10–2,000 characters.'; end if;
+ if exists(select 1 from public.officer_task_cancellation_requests where task_id=p_task_id and status='pending') then raise exception 'A cancellation request is already awaiting review.'; end if;
+ insert into public.officer_task_cancellation_requests(task_id,requested_by,reason) values(p_task_id,auth.uid(),btrim(p_reason));
+end $$;
+
+create or replace function public.review_officer_task_cancellation(p_request_id uuid,p_status text,p_notes text)
+returns void language plpgsql security definer set search_path='' as $$
+declare v_request public.officer_task_cancellation_requests; v_task public.tasks; v_task_id uuid; begin
+ if not public.is_peet_admin() then raise exception 'Reviewer access is required.'; end if;
+ select task_id into v_task_id from public.officer_task_cancellation_requests where id=p_request_id;
+ select * into v_task from public.tasks where id=v_task_id for update;
+ if not found then raise exception 'Task not available.'; end if;
+ select * into v_request from public.officer_task_cancellation_requests where id=p_request_id for update;
+ if not found or v_request.status<>'pending' then raise exception 'This request has already been reviewed.'; end if;
+ if v_request.requested_by=auth.uid() or v_task.assigned_to=auth.uid() then raise exception 'Someone else must review cancellation of your task.'; end if;
+ if p_status is null or p_status not in ('approved','rejected') or p_notes is null or length(btrim(p_notes)) not between 10 and 2000 then raise exception 'Choose a decision and document the reasoning.'; end if;
+ if p_status='approved' and (v_task.cancelled_at is not null or v_task.status='completed') then raise exception 'The task is already closed; reject this outdated request instead.'; end if;
+ if p_status='approved' then
+   update public.tasks set cancelled_at=now(),cancelled_by=auth.uid(),cancellation_reason=p_notes where id=v_task.id;
+ end if;
+ update public.officer_task_cancellation_requests set status=p_status,review_notes=p_notes,reviewed_by=auth.uid(),reviewed_at=now() where id=p_request_id;
+end $$;
+
+create or replace function public.cancel_officer_task(p_task_id uuid,p_reason text)
+returns void language plpgsql security definer set search_path='' as $$ declare v_task public.tasks; begin
+ if not public.is_peet_admin() then raise exception 'Reviewer access is required.'; end if;
+ select * into v_task from public.tasks where id=p_task_id for update;
+ if not found or v_task.cancelled_at is not null then raise exception 'Task not available.'; end if;
+ if v_task.assigned_to=auth.uid() then raise exception 'Submit a cancellation request. Someone else must review your own task.'; end if;
+ if p_reason is null or length(btrim(p_reason)) not between 10 and 2000 then raise exception 'Document why this task is being cancelled in 10–2,000 characters.'; end if;
+ update public.tasks set cancelled_at=now(),cancelled_by=auth.uid(),cancellation_reason=btrim(p_reason) where id=p_task_id;
+ update public.officer_task_cancellation_requests set status='approved',review_notes=btrim(p_reason),reviewed_by=auth.uid(),reviewed_at=now() where task_id=p_task_id and status='pending';
+end $$;
+
+create or replace function public.guard_cancelled_evaluation()
+returns trigger language plpgsql security definer set search_path='' as $$ begin
+ perform 1 from public.tasks where id=new.task_id and cancelled_at is null for update;
+ if not found then raise exception 'Cancelled tasks cannot be evaluated.'; end if;
+ return new;
+end $$;
+drop trigger if exists cancelled_evaluation_guard on public.peet_evaluations;
+create trigger cancelled_evaluation_guard before insert or update on public.peet_evaluations for each row execute function public.guard_cancelled_evaluation();
+
+-- Preserve audit records for cancellation requests as well as task changes.
+create or replace function public.audit_task_followthrough()
+returns trigger language plpgsql security definer set search_path='' as $$ declare v_old jsonb; v_new jsonb; v_owner uuid; begin
+ if tg_op<>'INSERT' then v_old:=to_jsonb(old); end if;
+ if tg_op<>'DELETE' then v_new:=to_jsonb(new); end if;
+ v_owner:=coalesce(v_new->>'assigned_to',v_old->>'assigned_to',v_new->>'requested_by',v_old->>'requested_by')::uuid;
+ insert into public.officer_tracking_audit(officer_id,table_name,record_id,actor_id,action,before_record,after_record)
+ values(v_owner,tg_table_name,coalesce(v_new->>'id',v_old->>'id')::uuid,auth.uid(),tg_op,v_old,v_new);
+ if tg_op='DELETE' then return old; end if; return new;
+end $$;
+drop trigger if exists task_followthrough_audit on public.tasks;
+create trigger task_followthrough_audit after insert or update on public.tasks for each row execute function public.audit_task_followthrough();
+drop trigger if exists task_followthrough_audit on public.officer_task_cancellation_requests;
+create trigger task_followthrough_audit after insert or update on public.officer_task_cancellation_requests for each row execute function public.audit_task_followthrough();
+
+revoke all on function public.is_task_officer(uuid),public.officer_directory(),public.assign_officer_tasks(uuid[],text,text,date),
+ public.request_officer_task_cancellation(uuid,text),public.review_officer_task_cancellation(uuid,text,text),public.cancel_officer_task(uuid,text),
+ public.guard_task_followthrough(),public.guard_cancelled_evaluation(),public.audit_task_followthrough() from public,anon,authenticated;
+grant execute on function public.officer_directory(),public.assign_officer_tasks(uuid[],text,text,date),
+ public.request_officer_task_cancellation(uuid,text),public.review_officer_task_cancellation(uuid,text,text),public.cancel_officer_task(uuid,text) to authenticated;
+create or replace function public.decide_officer_strike(p_strike_id uuid,p_status text,p_notes text)
+returns void language plpgsql security definer set search_path='' as $$
+declare v_strike public.officer_strikes; v_count integer; v_context jsonb; begin
+  if not public.is_peet_admin() then raise exception 'Reviewer access is required.'; end if;
+  select * into v_strike from public.officer_strikes where id=p_strike_id for update;
+  if not found then raise exception 'Concern not available.'; end if;
+  -- Serialize confirmations for the same officer, including different concerns.
+  perform 1 from public.officer_profiles where id=v_strike.officer_id for update;
+  if p_status is null or p_status not in ('confirmed','dismissed','revoked') or p_notes is null or length(btrim(p_notes)) not between 10 and 10000
+    or (v_strike.status='notified' and p_status='revoked') or (v_strike.status='confirmed' and p_status<>'revoked') or v_strike.status in ('dismissed','revoked') then raise exception 'Choose a valid decision and document your review of the circumstances.'; end if;
+  if p_status='confirmed' and v_strike.responded_at is null and now()<v_strike.response_due_at then raise exception 'Give the officer an opportunity to respond before confirming.'; end if;
+  if v_strike.attendance_id is not null then
+    perform 1 from public.officer_attendance a join public.officer_events e on e.id=a.event_id where a.id=v_strike.attendance_id for update of a,e;
+  end if;
+  if p_status='confirmed' and v_strike.attendance_id is not null and not exists(select 1 from public.officer_attendance a join public.officer_events e on e.id=a.event_id
+    where a.id=v_strike.attendance_id and a.status='unexcused' and e.mandatory and not e.cancelled) then raise exception 'The linked absence is no longer an unexcused mandatory absence.'; end if;
+  update public.officer_strikes set status=p_status,decision_notes=p_notes,decided_by=auth.uid(),decided_at=now() where id=p_strike_id;
+  select count(*) into v_count from public.officer_strikes where officer_id=v_strike.officer_id and academic_year=v_strike.academic_year and category=v_strike.category and status='confirmed';
+  if p_status='confirmed' and v_count>=3 then
+    select jsonb_build_object('confirmed_strikes',(select jsonb_agg(s) from public.officer_strikes s where s.officer_id=v_strike.officer_id and s.academic_year=v_strike.academic_year and s.category=v_strike.category and s.status='confirmed'),
+      'peet_score',(select avg((e.efficiency+e.effectiveness+e.time)/3)/4*100 from public.peet_evaluations e join public.tasks t on t.id=e.task_id where t.assigned_to=v_strike.officer_id and t.status='completed' and t.cancelled_at is null)) into v_context;
+    insert into public.officer_removal_reviews(officer_id,academic_year,category,context_snapshot)
+      values(v_strike.officer_id,v_strike.academic_year,v_strike.category,v_context) on conflict(officer_id,academic_year,category)
+      do update set status='pending',context_snapshot=excluded.context_snapshot,advisor_notes='',decided_by=null,decided_at=null;
+  end if;
+end $$;
+
+
+commit;
+
+-- Run after schema.sql to enable the admin year-end archive workflow.
+create table if not exists public.application_archives (
+  id uuid primary key default gen_random_uuid(),
+  created_at timestamptz not null default now(),
+  created_by uuid references auth.users(id) on delete set null,
+  application_count integer not null,
+  applications jsonb not null,
+  interview_slots jsonb not null,
+  cleared_at timestamptz
+);
+alter table public.application_archives enable row level security;
+drop policy if exists application_archives_staff_read on public.application_archives;
+create policy application_archives_staff_read on public.application_archives for select to authenticated using (public.is_staff());
+grant select on public.application_archives to authenticated;
+
+-- Capture every row server-side, without the API pagination limit. No deletion here.
+create or replace function public.prepare_application_archive() returns jsonb
+language plpgsql security definer set search_path = public as $$
+declare v_apps jsonb; v_slots jsonb; v_archive public.application_archives;
+begin
+  if not public.is_staff() then raise exception 'Staff access required.'; end if;
+  lock table public.applications in share mode;
+  lock table public.interview_slots in share mode;
+  select coalesce(jsonb_agg(to_jsonb(a) order by a.created_at, a.id), '[]'::jsonb) into v_apps from public.applications a;
+  if jsonb_array_length(v_apps) = 0 then raise exception 'No applications to archive.'; end if;
+  select coalesce(jsonb_agg(to_jsonb(s) order by s.id), '[]'::jsonb) into v_slots
+    from public.interview_slots s where s.application_id in (select (a->>'id')::uuid from jsonb_array_elements(v_apps) a)
+    or s.id in (select (a->>'booked_slot_id')::uuid from jsonb_array_elements(v_apps) a);
+  insert into public.application_archives(created_by, application_count, applications, interview_slots)
+    values (auth.uid(), jsonb_array_length(v_apps), v_apps, v_slots) returning * into v_archive;
+  return to_jsonb(v_archive);
+end;
+$$;
+
+-- Clear exactly the exported snapshot. Reject changed records and keep newer applications.
+create or replace function public.clear_archived_applications(p_archive_id uuid) returns integer
+language plpgsql security definer set search_path = public as $$
+declare v_archive public.application_archives; v_count integer;
+begin
+  if not public.is_staff() then raise exception 'Staff access required.'; end if;
+  select * into v_archive from public.application_archives where id = p_archive_id for update;
+  if not found then raise exception 'Archive not found.'; end if;
+  if v_archive.cleared_at is not null then return 0; end if;
+  if v_archive.created_by is distinct from auth.uid() then raise exception 'Only the creator can clear this archive.'; end if;
+  lock table public.applications in share row exclusive mode;
+  lock table public.interview_slots in share row exclusive mode;
+  if exists (
+    select 1 from jsonb_array_elements(v_archive.applications) snapshot
+    left join public.applications a on a.id = (snapshot->>'id')::uuid
+    where a.id is null or to_jsonb(a) is distinct from snapshot
+  ) or exists (
+    select 1 from jsonb_array_elements(v_archive.interview_slots) snapshot
+    left join public.interview_slots s on s.id = (snapshot->>'id')::uuid
+    where s.id is null or to_jsonb(s) is distinct from snapshot
+  ) then raise exception 'Applications or interviews changed after export. Create a fresh archive before clearing.'; end if;
+  update public.interview_slots set is_booked = false, application_id = null
+    where application_id in (select (a->>'id')::uuid from jsonb_array_elements(v_archive.applications) a);
+  delete from public.applications where id in (select (a->>'id')::uuid from jsonb_array_elements(v_archive.applications) a);
+  get diagnostics v_count = row_count;
+  update public.application_archives set cleared_at = now() where id = p_archive_id;
+  return v_count;
+end;
+$$;
+revoke all on function public.prepare_application_archive() from public, anon;
+revoke all on function public.clear_archived_applications(uuid) from public, anon;
+grant execute on function public.prepare_application_archive(), public.clear_archived_applications(uuid) to authenticated;
+
+
+-- Run after officer-task-followthrough.sql. Enforce task ownership and fixed deadline limits.
+begin;
+alter table public.tasks add column if not exists original_due_date date;
+-- Capture the current deadline once for existing records, including an original NULL.
+-- The trigger's presence distinguishes a first installation from a reapplication.
+do $$ begin
+ if not exists(select 1 from pg_trigger where tgrelid='public.tasks'::regclass and tgname='task_editing_guard' and not tgisinternal) then
+  update public.tasks set original_due_date=due_date where cancelled_at is null;
+ end if;
+end $$;
+
+create or replace function public.guard_officer_task_editing()
+returns trigger language plpgsql security definer set search_path='' as $$
+declare v_actor uuid:=auth.uid(); begin
+ if tg_op='INSERT' then new.original_due_date:=new.due_date; return new; end if;
+ if new.original_due_date is distinct from old.original_due_date or new.created_by is distinct from old.created_by then
+  raise exception 'The original deadline and task creator cannot be changed.';
+ end if;
+ if new.title is distinct from old.title or new.description is distinct from old.description
+  or new.due_date is distinct from old.due_date or new.assigned_to is distinct from old.assigned_to then
+  if v_actor is null or not public.has_officer_access() or old.created_by<>v_actor then
+   raise exception 'Only the person who assigned this task can edit it.';
+  end if;
+  if old.status='completed' or (old.created_by=old.assigned_to and old.status<>'in_progress') then
+   raise exception 'This task can no longer be edited.';
+  end if;
+  if old.created_by=old.assigned_to then
+   if new.title is distinct from old.title or new.assigned_to is distinct from old.assigned_to then
+    raise exception 'For self-created tasks, only the description and deadline can be edited.';
+   end if;
+   if new.due_date is distinct from old.due_date and
+    (old.original_due_date is null or new.due_date is null or abs(new.due_date-old.original_due_date)>3) then
+    raise exception 'The deadline must stay within three days of its original date and cannot be added or removed.';
+   end if;
+  end if;
+ end if;
+ return new;
+end $$;
+drop trigger if exists task_editing_guard on public.tasks;
+create trigger task_editing_guard before insert or update on public.tasks for each row execute function public.guard_officer_task_editing();
+
+create or replace function public.save_officer_task(
+ p_title text,p_description text default '',p_due_date date default null,
+ p_assigned_to uuid default null,p_task_id uuid default null
+) returns uuid language plpgsql security definer set search_path='' as $$
+declare v_actor uuid:=auth.uid(); v_assignee uuid; v_task public.tasks; v_id uuid; begin
+ if not public.has_officer_access() then raise exception 'Officer access is required.'; end if;
+ if p_title is null or length(btrim(p_title)) not between 1 and 200 or p_description is null or length(p_description)>10000 then
+  raise exception 'Enter a title of 1–200 characters and a description of at most 10,000 characters.';
+ end if;
+ if p_task_id is null then
+  v_assignee:=coalesce(p_assigned_to,v_actor);
+ else
+  select * into v_task from public.tasks where id=p_task_id for update;
+  if not found or v_task.created_by<>v_actor then raise exception 'Only the person who assigned this task can edit it.'; end if;
+  if v_task.cancelled_at is not null or v_task.status='completed' or (v_task.created_by=v_task.assigned_to and v_task.status<>'in_progress') then
+   raise exception 'This task can no longer be edited.';
+  end if;
+  v_assignee:=coalesce(p_assigned_to,v_task.assigned_to);
+ end if;
+ if not public.is_task_officer(v_assignee) or (not public.is_peet_admin() and v_assignee<>v_actor) then
+  raise exception 'Choose an active officer. Officers can only assign tasks to themselves.';
+ end if;
+ if p_task_id is null then
+  insert into public.tasks(title,description,due_date,assigned_to,created_by)
+   values(btrim(p_title),p_description,p_due_date,v_assignee,v_actor) returning id into v_id;
+  return v_id;
+ end if;
+ update public.tasks set title=btrim(p_title),description=p_description,due_date=p_due_date,assigned_to=v_assignee where id=p_task_id;
+ return p_task_id;
+end $$;
+revoke all on function public.guard_officer_task_editing(),public.save_officer_task(text,text,date,uuid,uuid) from public,anon,authenticated;
+grant execute on function public.save_officer_task(text,text,date,uuid,uuid) to authenticated;
+commit;
+
+
+-- Run after officer-task-editing.sql. Accept written work, a link, or both.
+begin;
+alter table public.tasks add column if not exists submission_description text not null default ''
+ check(length(submission_description)<=10000);
+-- Replace the original link-required submission constraint, preserving other checks.
+do $$ declare v_constraint record; begin
+ for v_constraint in select conname from pg_constraint
+  where conrelid='public.tasks'::regclass and contype='c'
+   and pg_get_constraintdef(oid) like '%final_product_url%'
+   and pg_get_constraintdef(oid) like '%submitted_at%'
+ loop
+  execute format('alter table public.tasks drop constraint %I',v_constraint.conname);
+ end loop;
+end $$;
+alter table public.tasks add constraint tasks_submission_evidence_check check(
+ status='in_progress' or (submitted_at is not null and
+ (final_product_url is not null or length(btrim(submission_description,E' \t\n\r'))>0))
+);
+create or replace function public.submit_officer_task(p_task_id uuid,p_url text,p_description text)
+returns void language plpgsql security definer set search_path='' as $$
+declare v_task public.tasks; v_url text:=nullif(btrim(p_url),'');
+ v_description text:=btrim(coalesce(p_description,''),E' \t\n\r'); begin
+ if not public.has_officer_access() then raise exception 'Officer access is required.'; end if;
+ select * into v_task from public.tasks where id=p_task_id for update;
+ if not found or (v_task.assigned_to<>auth.uid() and not public.is_peet_admin()) then
+  raise exception 'Task not available.';
+ end if;
+ if v_task.cancelled_at is not null or v_task.status<>'in_progress' then
+  raise exception 'This task can no longer be submitted.';
+ end if;
+ if length(v_description)>10000 then raise exception 'Keep the work description within 10,000 characters.'; end if;
+ if v_url is not null and (length(v_url)>2048 or v_url !~* '^https?://[^[:space:]/?#@]+([/?#][^[:space:]]*)?$') then
+  raise exception 'Enter a valid HTTP or HTTPS link, or leave the link blank.';
+ end if;
+ if v_url is null and v_description='' then raise exception 'Describe the completed work or add a link.'; end if;
+ update public.tasks set final_product_url=v_url,submission_description=v_description,
+  status='submitted',submitted_at=now() where id=p_task_id;
+end $$;
+-- Keep existing link-only clients compatible without ambiguous default arguments.
+create or replace function public.submit_officer_task(p_task_id uuid,p_url text)
+returns void language sql security definer set search_path='' as $$
+ select public.submit_officer_task(p_task_id,p_url,'');
+$$;
+revoke all on function public.submit_officer_task(uuid,text,text),public.submit_officer_task(uuid,text) from public,anon,authenticated;
+grant execute on function public.submit_officer_task(uuid,text,text),public.submit_officer_task(uuid,text) to authenticated;
+commit;

@@ -148,7 +148,7 @@ export default function ApplicationForm({
           </p>
         ) : (
           <p className="mt-3 text-sm text-graphite/80">
-            If you want the site to remember this application, sign in before applying next time so
+            If you want the site to remember this application, sign in to GEA One before applying next time so
             we can show your status on the leadership page.
           </p>
         )}

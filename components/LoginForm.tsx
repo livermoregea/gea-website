@@ -1,5 +1,7 @@
 "use client";
 
+import ActionError from "@/components/ActionError";
+
 import { useId, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
@@ -23,7 +25,7 @@ export default function LoginForm({
     e.preventDefault();
     try {
     if (disabled) {
-      setError("Login is disabled until Supabase is configured.");
+      setError("GEA One sign-in is disabled until Supabase is configured.");
       return;
     }
     setLoading(true);
@@ -48,7 +50,7 @@ export default function LoginForm({
     <form onSubmit={handleSubmit} className="space-y-5">
       <div>
         <label htmlFor={emailId} className="font-mono text-xs uppercase tracking-[0.15em] text-graphite/80">
-          Officer Email
+          GEA One email
         </label>
         <input
           id={emailId}
@@ -73,16 +75,14 @@ export default function LoginForm({
         />
       </div>
       {error && (
-        <p className="text-sm text-red-700" role="alert">
-          {error}
-        </p>
+        <ActionError message={error} className="text-sm text-red-700" />
       )}
       <button
         type="submit"
         disabled={loading || disabled}
         className="w-full rounded-sm bg-forest px-6 py-3 font-mono text-xs uppercase tracking-[0.15em] text-accent transition hover:bg-forestdeep disabled:opacity-50"
       >
-        {disabled ? "Disabled in Demo Mode" : loading ? "Signing in..." : "Sign In"}
+        {disabled ? "Disabled in Demo Mode" : loading ? "Signing in..." : "Sign in"}
       </button>
     </form>
   );

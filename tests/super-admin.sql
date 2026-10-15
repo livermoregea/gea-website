@@ -1,0 +1,63 @@
+-- Run after tests/officerboard.sql and tests/officer-accountability.sql in the
+-- SAME disposable local PostgreSQL database. Never run fixture tests in Supabase.
+alter table auth.users add column if not exists email text;
+grant select on auth.users to service_role;
+update auth.users set email='jaden.jir@lvjusd.org' where id='11111111-1111-1111-1111-111111111111';
+update auth.users set email='officer.a@lvjusd.org' where id='22222222-2222-2222-2222-222222222222';
+update auth.users set email='teacher.b@lvjusd.org' where id='33333333-3333-3333-3333-333333333333';
+create table if not exists public.admins(auth_user_id uuid primary key references auth.users(id),name text not null);
+create table if not exists public.student_profiles(id uuid primary key default gen_random_uuid(),auth_user_id uuid unique references auth.users(id),auth_email text unique,full_name text,school_email text unique,display_username text unique,graduating_class_year integer,student_id_number text unique);
+create table if not exists public.teacher_profiles(id uuid primary key default gen_random_uuid(),auth_user_id uuid unique references auth.users(id),auth_email text unique,full_name text,school_email text unique);
+create table if not exists public.student_email_blocks(school_email text primary key,is_active boolean);
+create table if not exists public.upperclassmen(id uuid primary key default gen_random_uuid(),auth_user_id uuid references auth.users(id));
+create table if not exists public.teacher_invites(id uuid primary key default gen_random_uuid(),teacher_email text);
+\ir ../supabase/super-admin.sql
+\ir ../supabase/super-admin.sql
+begin;
+do $$ declare actor uuid:='11111111-1111-1111-1111-111111111111'; student uuid:='22222222-2222-2222-2222-222222222222'; teacher uuid:='33333333-3333-3333-3333-333333333333'; begin
+ execute 'set local role authenticated';
+ perform set_config('request.jwt.claim.sub',actor::text,true);
+ perform public.test_assert(public.is_super_admin() and public.is_admin() and public.is_peet_admin() and public.is_peet_advisor(),'Bootstrap grants full site and portal privileges to requested existing email');
+ perform public.test_assert((select count(*)=1 from public.super_admins),'Only requested account is bootstrapped');
+ perform public.test_denied('insert into public.super_admins values (''22222222-2222-2222-2222-222222222222'',now())');
+ perform public.test_denied(format('select public.superadmin_save_account(%L,%L,''teacher'',''Fake'',''teacher.b@lvjusd.org'')',actor,teacher));
+ perform set_config('request.jwt.claim.sub',student::text,true);
+ perform public.test_assert(not public.is_super_admin(),'Officer does not gain root permissions');
+ perform public.test_assert((select count(*)=0 from public.super_admins),'Officer cannot enumerate privileged users');
+ perform public.test_denied('update public.super_admins set auth_user_id=auth.uid()');
+ perform public.test_assert((select count(*)=0 from public.account_management_audit),'Officer cannot read audit history');
+ execute 'set local role service_role';
+ perform public.test_denied(format('select public.superadmin_save_account(%L,%L,''student'',''Forged'',''officer.a@lvjusd.org'',''officer-a'',2027,''1001'')',student,student));
+ perform public.superadmin_save_account(actor,student,'student','Officer A','officer.a@lvjusd.org','officer-a',2027,'1001');
+ perform public.test_assert((select count(*)=1 from public.student_profiles),'Root creates student profile');
+ perform public.superadmin_save_account(actor,student,'student','Updated Student','officer.a@lvjusd.org','officer-new',2028,null);
+ perform public.test_assert((select full_name='Updated Student' and student_id_number='1001' and graduating_class_year=2028 from public.student_profiles),'Edit preserves omitted student ID');
+ perform public.superadmin_save_account(actor,teacher,'teacher','Teacher B','teacher.b@lvjusd.org');
+ perform public.test_assert((select count(*)=1 from public.teacher_profiles),'Root creates teacher profile');
+ perform public.superadmin_save_account(actor,teacher,'officer','Teacher B','teacher.b@lvjusd.org',null,null,null,'admin','advisor','Academy Advisor');
+ perform public.test_assert((select reviewer_kind='advisor' from public.officer_profiles where id=teacher),'Root designates advisor on existing login');
+ perform public.test_denied(format('select public.superadmin_save_account(%L,%L,''officer'',''Jaden'',''jaden.jir@lvjusd.org'',null,null,null,''officer'',null)',actor,actor));
+ perform public.test_denied(format('select public.superadmin_save_account(%L,%L,''student'',''Student'',''outside@example.com'',''x'',2028,''1001'')',actor,student));
+ perform public.test_assert((select count(*)=4 from public.account_management_audit),'Successful changes are audited exactly once');
+ perform public.test_assert(not exists(select 1 from public.account_management_audit where coalesce(before_record,'{}') ? 'student_id_number' or coalesce(after_record,'{}') ? 'student_id_number'),'Student IDs are excluded from audit snapshots');
+ insert into public.teacher_invites(teacher_email) values('teacher.b@lvjusd.org');
+ perform public.superadmin_remove_account(actor,teacher,'teacher','Teacher access no longer required.');
+ perform public.test_assert((select count(*)=0 from public.teacher_profiles),'Teacher access removed');
+ perform public.test_assert((select count(*)=0 from public.teacher_invites),'Outstanding invites are revoked');
+ perform public.test_assert(exists(select 1 from auth.users where id=teacher),'Removing teacher access retains login');
+ perform public.test_assert(exists(select 1 from public.officer_profiles where id=teacher),'Separate advisor permission retained');
+ insert into public.upperclassmen(auth_user_id) values(student);
+ perform public.superadmin_remove_account(actor,student,'student','Student enrollment no longer active.');
+ perform public.test_assert((select count(*)=0 from public.student_profiles),'Student profile removed');
+ perform public.test_assert((select count(*)=0 from public.upperclassmen),'Legacy student permission removed');
+ perform public.test_assert(exists(select 1 from auth.users where id=student),'Student login retained for other roles');
+ perform public.test_denied(format('select public.superadmin_remove_account(%L,%L,''teacher'',''Self removal must be denied.'')',actor,actor));
+ execute 'set local role authenticated';
+ perform set_config('request.jwt.claim.sub',actor::text,true);
+ perform public.test_assert((select count(*)=6 from public.account_management_audit),'Root can review audit history');
+ perform public.test_denied('delete from public.account_management_audit');
+ execute 'set local role anon';
+ perform public.test_denied('select public.is_super_admin()');
+ perform public.test_denied('select * from public.super_admins');
+end $$;
+rollback;

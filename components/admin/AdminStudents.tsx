@@ -8,7 +8,7 @@ import {
   getStudentEmailBlockReasonLabel,
   type StudentEmailBlockReason,
 } from "@/lib/student-access";
-import { isAdminNotificationSeen, markAdminNotificationSeen } from "@/lib/admin-notifications";
+import { isAdminNotificationSeen, markAdminNotificationSeen, subscribeToAdminNotifications } from "@/lib/admin-notifications";
 
 type StudentProfile = {
   id: string;
@@ -45,6 +45,8 @@ export default function AdminStudents() {
   const [schoolEmail, setSchoolEmail] = useState("");
   const [removalReason, setRemovalReason] = useState<StudentEmailBlockReason>("not_in_gea");
   const [removalNote, setRemovalNote] = useState("");
+  const [, setNotificationRevision] = useState(0);
+  useEffect(() => subscribeToAdminNotifications(() => setNotificationRevision((value) => value + 1)), []);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
@@ -158,7 +160,7 @@ export default function AdminStudents() {
       return;
     }
 
-    if (!window.confirm(`Remove ${fullName || "this student"} and block their email? Their account will be deleted. This cannot be undone.`)) return;
+    if (!window.confirm(`Remove ${fullName || "this student"} and block their email? Their GEA One account will be deleted. This cannot be undone.`)) return;
     setSaving(true);
     setMessage(null);
     const res = await fetch("/api/student-accounts/manage", {
@@ -232,7 +234,7 @@ export default function AdminStudents() {
           </p>
         </div>
         <p className="mt-3 max-w-2xl text-sm leading-relaxed text-graphite/80">
-          Students can create accounts right away. Use the blacklist below if someone is not in GEA
+          Students can create GEA One accounts right away. Use the blacklist below if someone is not in GEA
           or needs to be removed for inappropriate behavior.
         </p>
       </section>
@@ -298,7 +300,7 @@ export default function AdminStudents() {
               <button
                 key={student.id}
                 onClick={() => startEdit(student)}
-                className={`w-full rounded-sm border px-5 py-4 text-left transition ${
+                className={`block w-full rounded-sm border px-5 py-4 text-left transition ${
                   selectedId === student.id
                     ? "border-gold/40 bg-gold/10"
                     : "border-forest/10 bg-paper hover:bg-forest/[0.02]"
@@ -410,7 +412,7 @@ export default function AdminStudents() {
           <div className="rounded-sm border border-red-700/15 bg-red-50 p-4">
             <p className="font-mono text-xs uppercase tracking-[0.15em] text-red-700">Remove Student</p>
             <p className="mt-2 text-sm text-red-800/80">
-              Removing a student will delete their account and add their email to the blacklist until you unblacklist it.
+              Removing a student will delete their GEA One account and add their email to the blacklist until you unblacklist it.
             </p>
             <div className="mt-4">
               <label htmlFor="student-removal-reason" className="font-mono text-xs uppercase tracking-[0.15em] text-red-700">

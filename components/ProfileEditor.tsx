@@ -1,6 +1,9 @@
 "use client";
 
+import ActionError from "@/components/ActionError";
+
 import { useId, useState } from "react";
+import { useUnsavedChanges } from "@/lib/use-unsaved-changes";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { hasSupabaseConfig } from "@/lib/supabase/config";
@@ -44,6 +47,7 @@ type Props =
 
 export default function ProfileEditor(props: Props) {
   const router = useRouter();
+  const [submitted, setSubmitted] = useState(false);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [fullName, setFullName] = useState(props.profile.full_name);
@@ -62,6 +66,10 @@ export default function ProfileEditor(props: Props) {
 
   const hasPendingRequest = props.latestRequest?.status === "pending";
 
+  const dirty = fullName !== props.profile.full_name || schoolEmail !== (props.profile.school_email ?? props.profile.auth_email)
+    || (props.kind === "student" && (displayUsername !== props.profile.display_username || graduatingClassYear !== String(props.profile.graduating_class_year)));
+  useUnsavedChanges(dirty && !hasPendingRequest && !submitted);
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
 
@@ -70,7 +78,7 @@ export default function ProfileEditor(props: Props) {
       return;
     }
 
-    if (hasPendingRequest) {
+    if (hasPendingRequest || submitted) {
       setMessage("You already have a pending profile change request.");
       return;
     }
@@ -103,6 +111,7 @@ export default function ProfileEditor(props: Props) {
     setSaving(true);
     setMessage(null);
 
+    try {
     const supabase = createClient();
     const { error } = await supabase.from("profile_change_requests").insert({
       profile_type: props.kind,
@@ -124,18 +133,20 @@ export default function ProfileEditor(props: Props) {
       requested_fields: requestedFields,
       status: "pending",
     });
-    setSaving(false);
 
     if (error) {
-      setMessage(error.message);
+      setMessage("Could not submit your profile changes. Your entries are still here; please try again.");
       return;
     }
 
-    setMessage("Your profile change request was submitted for admin review.");
+    setSubmitted(true);
     router.refresh();
+    } catch {
+      setMessage("Could not submit your profile changes. Check your connection and try again; your entries are still here.");
+    } finally { setSaving(false); }
   }
 
-  if (hasPendingRequest) {
+  if (hasPendingRequest || submitted) {
     return (
       <div className="rounded-sm bg-forest/[0.03] p-6 ring-1 ring-forest/5">
         <p className="font-mono text-xs uppercase tracking-[0.2em] text-accent">Pending Review</p>
@@ -144,17 +155,13 @@ export default function ProfileEditor(props: Props) {
           You already have a profile change request in the queue. An admin needs to approve it
           before the update is applied.
         </p>
-        {props.latestRequest?.rejection_reason && props.latestRequest.status === "rejected" ? (
-          <p className="mt-3 rounded-sm bg-red-50 px-4 py-3 text-sm text-red-700 ring-1 ring-red-100">
-            Rejected: {props.latestRequest.rejection_reason}
-          </p>
-        ) : null}
+
       </div>
     );
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-5 rounded-sm bg-forest/[0.03] p-6 ring-1 ring-forest/5">
+    <form aria-busy={saving} onSubmit={handleSubmit} className="space-y-5 rounded-sm bg-forest/[0.03] p-6 ring-1 ring-forest/5">
       {props.latestRequest && props.latestRequest.status !== "pending" ? (
         <div className="rounded-sm bg-paper p-4 ring-1 ring-forest/10">
           <p className="font-mono text-xs uppercase tracking-[0.2em] text-accent">
@@ -228,14 +235,14 @@ export default function ProfileEditor(props: Props) {
         </>
       ) : null}
 
-      {message && <p className="text-sm text-graphite/80" role="status">{message}</p>}
+      {message && <ActionError className="rounded-sm border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800" message={message} />}
 
       <button
         type="submit"
         disabled={saving}
         className="rounded-sm bg-forest px-5 py-2.5 font-mono text-xs uppercase tracking-[0.15em] text-accent transition hover:bg-forestdeep disabled:opacity-50"
       >
-        {saving ? "Submitting..." : "Request Approval"}
+        {saving ? "Submitting..." : "Request profile changes"}
       </button>
     </form>
   );

@@ -33,3 +33,18 @@ test('The signup API rejects outside and malformed emails before accessing accou
   }
   assert.equal(accountCalls, 0);
 });
+test('Public student signup cannot replace the password of an existing teacher or staff account', async () => {
+  let changes=0;
+  const admin={
+    from:()=>({select:()=>({eq(){return this;},maybeSingle:async()=>({data:null,error:null})})}),
+    auth:{admin:{listUsers:async()=>({data:{users:[{id:'teacher',email:'teacher@lvjusd.org'}]},error:null}),updateUserById:async()=>{changes++;return {error:null};},createUser:async()=>{changes++;return {error:null};}}},
+  };
+  const {POST}=load('app/api/student-accounts/signup/route.ts',{
+    'next/server':{NextResponse:{json:(data,init)=>Response.json(data,init)}},
+    '@/lib/supabase/admin':{createAdminClient:()=>admin},
+    '@/lib/supabase/config':{hasSupabaseConfig:()=>true},
+    '@/lib/student-email':email,
+  },{Response,process:{env:{SUPABASE_SERVICE_ROLE_KEY:'test-only'}}});
+  const response=await POST(new Request('http://localhost/api/student-accounts/signup',{method:'POST',body:JSON.stringify({fullName:'Impersonator',displayUsername:'fake',schoolEmail:'teacher@lvjusd.org',graduatingClassYear:2028,studentIdNumber:'123456'})}));
+  assert.equal(response.status,409);assert.equal(changes,0);
+});

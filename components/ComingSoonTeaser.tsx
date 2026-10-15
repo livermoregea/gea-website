@@ -9,10 +9,10 @@ export default function ComingSoonTeaser() {
           <div>
             <p className="inline-flex rounded-full bg-forest px-4 py-2 font-mono text-xs uppercase tracking-[0.16em] text-goldlight">Coming soon to GEA</p>
             <h2 id="coming-soon-heading" className="mt-5 max-w-xl font-display text-3xl font-medium leading-tight text-forestdeep sm:text-5xl">Something new is coming.<br/>Bring your curiosity.</h2>
-            <p className="mt-5 max-w-xl text-base leading-relaxed text-graphite/85">A new chapter is taking shape. We’re keeping the details under wraps for now—GEA and LVJUSD students can create a student account and get ready for what’s next.</p>
+            <p className="mt-5 max-w-xl text-base leading-relaxed text-graphite/85">A new chapter is taking shape. We’re keeping the details under wraps for now—GEA and LVJUSD students can create a GEA One account and get ready for what’s next.</p>
             <div className="mt-7 flex flex-wrap items-center gap-4">
-              <Link href="/login?mode=signup#student-account" className="inline-flex min-h-11 items-center justify-center rounded-full bg-forest px-6 py-3 text-sm font-medium text-paper transition hover:bg-forestdeep focus-visible:outline-forest">Create an account <span aria-hidden="true" className="ml-3">→</span></Link>
-              <Link href="/login" className="inline-flex min-h-11 items-center text-sm font-medium text-forest underline underline-offset-4 focus-visible:outline-forest">Already have an account? Sign in</Link>
+              <Link href="/login?mode=signup#student-account" className="inline-flex min-h-11 items-center justify-center rounded-full bg-forest px-6 py-3 text-sm font-medium text-paper transition hover:bg-forestdeep focus-visible:outline-forest">Create GEA One account <span aria-hidden="true" className="ml-3">→</span></Link>
+              <Link href="/login" className="inline-flex min-h-11 items-center text-sm font-medium text-forest underline underline-offset-4 focus-visible:outline-forest">Already have GEA One? Sign in</Link>
             </div>
             <p className="mt-3 text-sm text-forest">GEA and LVJUSD students only · Use your @lvjusd.org student email.</p>
           </div>

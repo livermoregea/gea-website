@@ -116,7 +116,7 @@ export default function Builders({ stories, submissions, student, signedIn, read
     } catch { setError("We couldn’t update your sharing preference. Try again."); }
     finally { setBusy(false); }
   }
-  const accountPrompt = !ready ? <p className={builderCard}>Submissions and progress will open when GEA Builders is set up. You can explore the program, philosophy, and build ideas now.</p> : !student ? <div className={builderCard}><p>{signedIn ? "An approved GEA student account is needed to submit builds and view progress." : "Sign in with your GEA student account to submit builds and see your private progress."}</p><Link href={signedIn ? "/contact" : "/login"} className={`${builderButton} mt-4`}>{signedIn ? "Contact GEA" : "Sign in"}</Link></div> : null;
+  const accountPrompt = !ready ? <p className={builderCard}>Submissions and progress will open when GEA Builders is set up. You can explore the program, philosophy, and build ideas now.</p> : !student ? <div className={builderCard}><p>{signedIn ? "A GEA One account with student access is needed to submit builds and view progress." : "Sign in with your GEA One account to submit builds and see your private progress."}</p><Link href={signedIn ? "/contact" : "/login"} className={`${builderButton} mt-4`}>{signedIn ? "Contact GEA" : "Sign in to GEA One"}</Link></div> : null;
   return <div className="builders-page bg-paper">
     <section className="builders-dark-surface border-b border-gold/25 bg-forestdeep bg-blueprintgrid bg-grid text-paper">
       <div className="mx-auto grid max-w-6xl gap-10 px-4 py-14 sm:px-6 sm:py-20 lg:grid-cols-[1.4fr_1fr]">
@@ -141,7 +141,7 @@ export default function Builders({ stories, submissions, student, signedIn, read
       </>}
       {view === "submit" && <><Heading eyebrow="Turn an idea into impact" title={revision ? "Improve your build." : "Share your build."}>All project details are required. Working alone? Enter “Solo” for team members. Officers review your project and award up to 25 points.</Heading>{accountPrompt ?? <form key={draftKey} onChange={rememberDraft} onSubmit={submit} className={`${builderCard} grid gap-6 sm:grid-cols-2`}>
         <fieldset disabled={busy} className="contents">
-        <p className="sm:col-span-2 text-sm text-forest">Submitting as <strong>{student?.name}</strong>. Your account keeps your progress private.</p>
+        <p className="sm:col-span-2 text-sm text-forest">Submitting as <strong>{student?.name}</strong>. Your GEA One account keeps your progress private.</p>
         {revision && <div className="sm:col-span-2 border-l-2 border-gold bg-gold/10 p-4"><p className="font-medium">Officer feedback</p><p className="mt-2 whitespace-pre-wrap">{revision.officer_note}</p><p className="mt-2 text-sm">Your earlier submission and feedback will be preserved.</p></div>}
         <label>Project title<input className={builderInput} name="title" maxLength={100} required defaultValue={draft.title}/></label>
         <label>Where does it help?<select name="location" className={builderInput} defaultValue={draft.location}><option value="home">At home</option><option value="school">At school</option><option value="community">In the community</option></select></label>

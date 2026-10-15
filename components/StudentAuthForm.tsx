@@ -1,5 +1,7 @@
 "use client";
 
+import ActionError from "@/components/ActionError";
+
 import { useId, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
@@ -38,12 +40,12 @@ export default function StudentAuthForm({ redirectTo, initialMode = "signin" }: 
     setLoginError(null);
 
     if (!hasSupabaseConfig()) {
-      setLoginError("Sign-in is disabled until Supabase is configured.");
+      setLoginError("GEA One sign-in is disabled until Supabase is configured.");
       return;
     }
 
     const email = loginEmail.trim().toLowerCase();
-    const password = loginPassword.trim();
+    const password = loginPassword;
     if (!email || !password) return;
 
     setLoading(true);
@@ -63,34 +65,14 @@ export default function StudentAuthForm({ redirectTo, initialMode = "signin" }: 
       data: { user },
     } = await supabase.auth.getUser();
     if (!user) {
-      setLoginError("We signed you in, but couldn't resolve your account.");
+      setLoginError("We signed you in, but couldn't resolve your GEA One account.");
       setLoading(false);
       return;
     }
 
-    const [{ data: studentProfile }, { data: teacherProfile }, { data: adminProfile }] = await Promise.all([
-      supabase.from("student_profiles").select("id").eq("auth_user_id", user.id).maybeSingle(),
-      supabase.from("teacher_profiles").select("id").eq("auth_user_id", user.id).maybeSingle(),
-      supabase.from("admins").select("name").eq("auth_user_id", user.id).maybeSingle(),
-    ]);
-
+    // Resolve landing permissions on the server after the session is established.
+    router.push(redirectTo);
     router.refresh();
-
-    if (adminProfile) {
-      router.push("/admin-portal-x7k9");
-      return;
-    }
-    if (teacherProfile) {
-      router.push("/teacher");
-      return;
-    }
-    if (studentProfile) {
-      router.push(redirectTo);
-      return;
-    }
-
-    setLoading(false);
-    setLoginError("We couldn't match that account to a student, teacher, or admin profile.");
       } catch {
       setLoginError("We couldn’t reach the sign-in service. Check your connection and try again.");
     } finally {
@@ -142,12 +124,12 @@ export default function StudentAuthForm({ redirectTo, initialMode = "signin" }: 
 
     if (!res.ok) {
       setLoading(false);
-      setSignupError(data.error ?? "We couldn't create that account.");
+      setSignupError(data.error ?? "We couldn't create that GEA One account.");
       return;
     }
 
     setLoading(false);
-    setSignupSuccess(data.message ?? "Your account is ready. You can sign in now.");
+    setSignupSuccess(data.message ?? "Your GEA One account is ready. You can sign in now.");
     setSignupName("");
     setSignupUsername("");
     setSignupEmail("");
@@ -161,30 +143,34 @@ export default function StudentAuthForm({ redirectTo, initialMode = "signin" }: 
   }
 
   return (
-    <div className="rounded-sm bg-forest/[0.03] p-6 ring-1 ring-forest/5 sm:p-8">
-      <div className="grid grid-cols-2 gap-2 rounded-sm bg-paper p-1 ring-1 ring-forest/10">
+    <div className="min-w-0">
+      <div role="group" aria-label="Account access" className="grid grid-cols-2 gap-2 rounded-sm bg-paper p-1 ring-1 ring-forest/10">
         <button
           type="button"
           onClick={() => setMode("signin")}
+          aria-pressed={mode === "signin"}
+          disabled={loading}
           className={`rounded-sm px-3 py-2 font-mono text-xs uppercase tracking-[0.15em] transition ${
             mode === "signin" ? "bg-forest text-accent" : "text-forest/80 hover:text-forest"
           }`}
         >
-          Sign In
+          Sign in
         </button>
         <button
           type="button"
           onClick={() => setMode("signup")}
+          aria-pressed={mode === "signup"}
+          disabled={loading}
           className={`rounded-sm px-3 py-2 font-mono text-xs uppercase tracking-[0.15em] transition ${
             mode === "signup" ? "bg-forest text-accent" : "text-forest/80 hover:text-forest"
           }`}
         >
-          Create Account
+          Create account
         </button>
       </div>
 
       {mode === "signin" ? (
-        <form onSubmit={signIn} className="mt-6 space-y-5">
+        <form aria-busy={loading} onSubmit={signIn} className="mt-6 space-y-5">
           <div>
             <label htmlFor={loginEmailId} className="font-mono text-xs uppercase tracking-[0.15em] text-graphite/80">
               Email
@@ -216,9 +202,7 @@ export default function StudentAuthForm({ redirectTo, initialMode = "signin" }: 
           </div>
 
           {loginError && (
-            <p className="text-sm text-red-700" role="alert">
-              {loginError}
-            </p>
+            <ActionError message={loginError} className="text-sm text-red-700" />
           )}
 
           <button
@@ -226,11 +210,11 @@ export default function StudentAuthForm({ redirectTo, initialMode = "signin" }: 
             disabled={loading}
             className="w-full rounded-sm bg-forest px-6 py-3 font-mono text-xs uppercase tracking-[0.15em] text-accent transition hover:bg-forestdeep disabled:opacity-50"
           >
-            {loading ? "Signing in..." : "Sign In"}
+            {loading ? "Signing in..." : "Sign in"}
           </button>
         </form>
       ) : (
-        <form onSubmit={signUp} className="mt-6 space-y-5">
+        <form aria-busy={loading} onSubmit={signUp} className="mt-6 space-y-5">
           <div>
             <label htmlFor={signupNameId} className="font-mono text-xs uppercase tracking-[0.15em] text-graphite/80">
               Full Name
@@ -318,13 +302,11 @@ export default function StudentAuthForm({ redirectTo, initialMode = "signin" }: 
           </div>
 
           {signupError && (
-            <p className="text-sm text-red-700" role="alert">
-              {signupError}
-            </p>
+            <ActionError message={signupError} className="text-sm text-red-700" />
           )}
           {signupSuccess && (
             <p className="rounded-sm bg-forest/[0.04] px-4 py-3 text-sm text-forest" role="status">
-              {signupSuccess} You can sign in now.
+              {signupSuccess}
             </p>
           )}
 
@@ -333,7 +315,7 @@ export default function StudentAuthForm({ redirectTo, initialMode = "signin" }: 
             disabled={loading}
             className="w-full rounded-sm bg-forest px-6 py-3 font-mono text-xs uppercase tracking-[0.15em] text-accent transition hover:bg-forestdeep disabled:opacity-50"
           >
-            {loading ? "Creating account..." : "Create Student Account"}
+            {loading ? "Creating GEA One account..." : "Create account"}
           </button>
         </form>
       )}

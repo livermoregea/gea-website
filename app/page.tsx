@@ -1,6 +1,5 @@
 import { GEA_DONATION_URL } from "@/lib/donations";
 import Link from "next/link";
-import ComingSoonTeaser from "@/components/ComingSoonTeaser";
 import AcademyPhotoGallery from "@/components/AcademyPhotoGallery";
 import CommunityProjectCards from "@/components/CommunityProjectCards";
 import HomeHighlights from "@/components/HomeHighlights";
@@ -169,7 +168,6 @@ export default function HomePage() {
           <Link href="/contact" className="inline-flex min-h-11 w-fit shrink-0 items-center justify-center rounded-full bg-forest px-5 py-3 text-sm font-medium text-paper transition hover:bg-forestdeep focus-visible:outline-forest">Ask a question <span aria-hidden="true" className="ml-3">→</span></Link>
         </div>
       </section>
-      <ComingSoonTeaser />
     </div>
   );
 }
