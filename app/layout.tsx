@@ -6,6 +6,7 @@ import "katex/dist/katex.min.css";
 import "./globals.css";
 import Nav from "@/components/Nav";
 import Footer from "@/components/Footer";
+import RouteFooter from "@/components/RouteFooter";
 import SiteAnnouncements from "@/components/SiteAnnouncements";
 import { createClient } from "@/lib/supabase/server";
 import { hasSupabaseConfig } from "@/lib/supabase/config";
@@ -63,7 +64,7 @@ export default async function RootLayout({
         <main id="content" tabIndex={-1} className="min-w-0 flex-1">
           {children}
         </main>
-        <Footer />
+        <RouteFooter><Footer /></RouteFooter>
         <Analytics />
         <SpeedInsights />
       </body>

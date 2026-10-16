@@ -31,3 +31,12 @@ test('Service durations preserve minutes; event display uses school time across 
  assert.match(schoolDate('2026-10-03T15:10:00Z'),/8:10 AM PDT/);
  assert.match(schoolDate('2026-12-03T16:10:00Z'),/8:10 AM PST/);
 });
+
+test('Due-date minimum uses the Pacific calendar day at UTC midnight and across DST',()=>{
+ const {schoolToday}=exportsObject;
+ assert.equal(schoolToday(new Date('2026-10-15T02:00:00Z')),'2026-10-14');
+ assert.equal(schoolToday(new Date('2026-10-15T07:00:00Z')),'2026-10-15');
+ assert.equal(schoolToday(new Date('2026-12-15T07:59:00Z')),'2026-12-14');
+ assert.equal(schoolToday(new Date('2026-12-15T08:00:00Z')),'2026-12-15');
+ assert.equal(schoolToday(new Date('2026-03-08T10:00:00Z')),'2026-03-08');
+});

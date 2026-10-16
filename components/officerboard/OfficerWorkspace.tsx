@@ -4,7 +4,7 @@ import LoginForm from "@/components/LoginForm";
 import OfficerBoard from "@/components/officerboard/OfficerBoard";
 import { createClient } from "@/lib/supabase/server";
 import { hasSupabaseConfig } from "@/lib/supabase/config";
-import { peetError, type OfficerTask, type PeetEvaluation, type OfficerProfile, type TaskCancellationRequest } from "@/lib/peet";
+import { peetError, type OfficerTask, type PeetEvaluation, type OfficerProfile, type TaskCancellationRequest, type TaskTeammate } from "@/lib/peet";
 import type { OfficerEvent, OfficerAttendance, EventSignup, VolunteerLog, OfficerStrike, RemovalReview, AccountabilityNotes } from "@/lib/officer-tracking";
 
 
@@ -25,8 +25,8 @@ export default async function OfficerWorkspace({ embedded = false }: { embedded?
   if (error) return <AccessMessage message={peetError(error)} />;
   if (!profile || profile.access_enabled === false) return <AccessMessage message="Your GEA One account doesn’t have officer access. Ask a President or advisor to add you to the officer roster." />;
   const { data: superAdmin } = await supabase.from("super_admins").select("auth_user_id").eq("auth_user_id",user.id).maybeSingle();
-  const [tasks, evaluations, profiles, events, attendance, signups, volunteerLogs, strikes, reviews, generalNotes, cancellationRequests] = await Promise.all([
-    readAll<OfficerTask>((from, to) => supabase.from("tasks").select("id,title,description,assigned_to,created_by,due_date,original_due_date,status,final_product_url,submission_description,created_at,submitted_at,completed_at,cancelled_at,cancellation_reason").order("created_at", { ascending: false }).order("id").range(from, to)),
+  const [tasks, evaluations, profiles, events, attendance, signups, volunteerLogs, strikes, reviews, generalNotes, cancellationRequests, teammates] = await Promise.all([
+    readAll<OfficerTask>((from, to) => supabase.from("tasks").select("id,title,description,assigned_to,created_by,due_date,original_due_date,status,final_product_url,submission_description,created_at,submitted_at,completed_at,ended_by,end_notes,cancelled_at,cancellation_reason,officer_task_members(officer_id)").order("created_at", { ascending: false }).order("id").range(from, to)),
     readAll<PeetEvaluation>((from, to) => supabase.from("peet_evaluations").select("id,task_id,evaluated_by,efficiency,effectiveness,time,feedback_notes,evaluated_at").order("id").range(from, to)),
     readAll<OfficerProfile>((from,to) => supabase.rpc("officer_directory").order("name").order("id").range(from,to)),
     readAll<OfficerEvent>((from,to) => supabase.from("officer_events").select("id,title,kind,academic_year,starts_at,ends_at,location,mandatory,gea_approved,cancelled,notes").order("starts_at").order("id").range(from,to)),
@@ -37,10 +37,11 @@ export default async function OfficerWorkspace({ embedded = false }: { embedded?
     readAll<RemovalReview>((from,to) => supabase.from("officer_removal_reviews").select("id,officer_id,academic_year,category,status,advisor_notes,opened_at,context_snapshot").order("opened_at",{ascending:false}).order("id").range(from,to)),
     readAll<AccountabilityNotes>((from,to) => supabase.from("officer_accountability_notes").select("id,officer_id,academic_year,notes,updated_at").order("id").range(from,to)),
     readAll<TaskCancellationRequest>((from,to) => supabase.from("officer_task_cancellation_requests").select("id,task_id,requested_by,reason,status,review_notes,created_at,reviewed_at").order("created_at",{ascending:false}).order("id").range(from,to)),
+    readAll<TaskTeammate>((from,to) => supabase.rpc("officer_task_teammates").order("name").order("id").range(from,to)),
   ]);
-  const loadError = tasks.error || evaluations.error || profiles.error || events.error || attendance.error || signups.error || volunteerLogs.error || strikes.error || reviews.error || generalNotes.error || cancellationRequests.error;
+  const loadError = tasks.error || evaluations.error || profiles.error || events.error || attendance.error || signups.error || volunteerLogs.error || strikes.error || reviews.error || generalNotes.error || cancellationRequests.error || teammates.error;
   if (loadError) return <AccessMessage message={peetError(loadError)} />;
-  return <OfficerBoard embedded={embedded} cancellationRequests={cancellationRequests.data ?? []} profile={{...profile,...profiles.data?.find(person => person.id === profile.id)}} profiles={profiles.data ?? []} tasks={tasks.data ?? []} evaluations={evaluations.data ?? []} isSuperAdmin={Boolean(superAdmin)} tracking={{ events:events.data??[], attendance:attendance.data??[], signups:signups.data??[], volunteerLogs:volunteerLogs.data??[], strikes:strikes.data??[], reviews:reviews.data??[], generalNotes:generalNotes.data??[] }} />;
+  return <OfficerBoard teammates={teammates.data ?? []} embedded={embedded} cancellationRequests={cancellationRequests.data ?? []} profile={{...profile,...profiles.data?.find(person => person.id === profile.id)}} profiles={profiles.data ?? []} tasks={tasks.data ?? []} evaluations={evaluations.data ?? []} isSuperAdmin={Boolean(superAdmin)} tracking={{ events:events.data??[], attendance:attendance.data??[], signups:signups.data??[], volunteerLogs:volunteerLogs.data??[], strikes:strikes.data??[], reviews:reviews.data??[], generalNotes:generalNotes.data??[] }} />;
 }
 
 // Supabase caps rows per response. Fetch every visible page so older evaluations

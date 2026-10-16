@@ -6,9 +6,10 @@ export type OfficerProfile = {
 };
 export type OfficerTask = {
   id: string; title: string; description: string; assigned_to: string; created_by: string;
+  officer_task_members?: { officer_id: string }[];
   due_date: string | null; original_due_date: string | null; status: "in_progress" | "submitted" | "completed";
   final_product_url: string | null; submission_description: string; created_at: string; submitted_at: string | null;
-  completed_at: string | null; cancelled_at?: string | null; cancellation_reason?: string | null;
+  ended_by?: string | null; end_notes?: string | null; completed_at: string | null; cancelled_at?: string | null; cancellation_reason?: string | null;
 };
 export type PeetEvaluation = {
   id: string; task_id: string; evaluated_by: string; efficiency: number;
@@ -49,10 +50,11 @@ export function peetError(error: { code?: string; message?: string } | null) {
 export type TaskCancellationRequest = { id: string; task_id: string; requested_by: string; reason: string; status: "pending" | "approved" | "rejected"; review_notes: string; created_at: string; reviewed_at: string | null };
 export function taskOfficers(profiles: OfficerProfile[]) { return profiles.filter(person => !person.is_teacher && person.reviewer_kind !== "advisor" && person.access_enabled !== false); }
 
-/** Editing is based on creator identity, independently of reviewer privileges. */
-export function canEditOfficerTask(task: OfficerTask, actorId: string) {
-  return !task.cancelled_at && task.status !== "completed" && task.created_by === actorId
-    && (task.assigned_to !== actorId || task.status === "in_progress");
+/** Reviewers can manage other officers; ordinary creators keep their existing limits. */
+export function canEditOfficerTask(task: OfficerTask, actorId: string, reviewer = false) {
+  return !task.cancelled_at && task.status !== "completed"
+    && ((reviewer && !isOfficerTaskParticipant(task, actorId)) || (task.created_by === actorId
+      && (task.assigned_to !== actorId || task.status === "in_progress")));
 }
 
 export function selfTaskDeadlineBounds(originalDate: string | null) {
@@ -63,4 +65,13 @@ export function selfTaskDeadlineBounds(originalDate: string | null) {
     return date.toISOString().slice(0, 10);
   };
   return { min: shift(-3), max: shift(3) };
+}
+
+export type TaskTeammate = { id: string; name: string; position: string | null };
+
+export function officerTaskPeople(task: OfficerTask) {
+  return Array.from(new Set([task.assigned_to, ...(task.officer_task_members ?? []).map(member => member.officer_id)]));
+}
+export function isOfficerTaskParticipant(task: OfficerTask, officerId: string) {
+  return officerTaskPeople(task).includes(officerId);
 }

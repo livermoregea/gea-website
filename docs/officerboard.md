@@ -306,3 +306,79 @@ in addition to staff access, and reviewer/super-admin permissions remain unchang
 Staff visits to the legacy `/officerboard` route redirect into this workspace.
 Ordinary officers retain their standalone officer dashboard. GEA One home shows
 one academy-workspace card for staff and a separate community-forum card.
+
+
+## Task due dates
+
+Apply `supabase/officer-task-due-dates.sql` after `officer-task-submissions.sql`.
+New tasks and deadline changes accept only today or a future calendar date in
+America/Los_Angeles, matching the dashboard date picker. Deadlines remain optional.
+Existing overdue deadlines are preserved when other fields or task status change.
+Self-created deadlines must also stay within their original three-day adjustment
+window; once that window is entirely past, only the description can be edited.
+Run `tests/officer-task-due-dates.sql` after the earlier officer fixture tests in
+the disposable database.
+
+
+## Reviewer task management
+
+Apply `supabase/officer-task-reviewer-management.sql` after `officer-task-due-dates.sql`.
+Reviewers can edit another officer's active or submitted tasks, including self-created
+tasks. Those reviewer edits can change the title, description, assignee, and due date;
+new due dates must still be today or later. Original creator and original deadline
+remain immutable. Ordinary officers retain their existing editing limits.
+Reviewers can cancel directly even while a cancellation request is pending, or
+use **End task** with a reason to move a task to completed history without inventing
+submission evidence or adding a PEET score. Ending resolves pending cancellation
+requests and retains the reason and reviewer identity in the audited record.
+Reviewers cannot directly cancel or end their own tasks. Existing evaluation
+permissions, including advisor review for Presidents, remain in force.
+Run `tests/officer-task-reviewer-management.sql` after the earlier SQL fixtures.
+
+
+## Optional PEET scores when ending tasks
+
+Apply `supabase/officer-task-scored-ending.sql` after the reviewer-management migration.
+**End task** offers completion with or without PEET scores. Scored completion
+requires all three scores and uses the reason as evaluation feedback. It closes
+the task and saves scores atomically; invalid scores or insufficient evaluation
+permissions leave the task and any pending cancellation request unchanged.
+Advisor-only evaluation of Presidents continues to apply. Unscored completion
+adds no evaluation and does not change the officer's PEET average.
+Run `tests/officer-task-scored-ending.sql` after reviewer-management fixtures.
+
+
+## Compact task workspace
+
+Tasks & PEET uses a compact score strip and searchable disclosure lists. Pending
+reviews and cancellation requests appear first and open by default. Active tasks
+open when present; completed tasks, past requests, and cancelled tasks start
+collapsed with counts. Each task row exposes its status/date or average score;
+expanding it reveals descriptions, evidence, feedback, and permitted actions.
+Search covers titles, descriptions, submission text, closure notes, feedback, and
+cancellation reasons, and opens matching archive sections. Switching officers
+clears the search and resets expanded sections. Native details/summary controls
+support keyboard and screen-reader navigation.
+
+
+## Shared officer tasks
+
+Apply `supabase/officer-shared-tasks.sql` after `officer-task-scored-ending.sql`.
+Officers can expand **Add people** when creating or editing their own in-progress
+task. Presidents can select **Create one shared task with me** instead of assigning
+separate copies. The creator stays on the task and can add or remove other active
+officers until submission. Teachers and advisors cannot be added. The picker exposes
+only names and positions; ordinary officer-directory access stays private.
+
+A shared task has one record, deadline, submission, status, and evaluation. Every
+participant sees it in their own workspace, can submit the shared work, and receives
+the same PEET evaluation in their personal totals. One submission locks the task for
+everyone. Membership changes use the same task lock as submission and are audited.
+Only the creator can change the people; reviewers can edit assignment details,
+cancel, or end the task, but shared tasks retain their primary creator. Participants
+must request cancellation, and cannot review cancellation, end, or evaluate their
+own shared task even when they are reviewers. If any participant is a President,
+existing advisor/super-admin evaluation rules apply. Ending with or without scores
+continues to work for reviewers outside the team.
+
+Run `tests/officer-shared-tasks.sql` last in the disposable fixture database.

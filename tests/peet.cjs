@@ -73,3 +73,36 @@ test('Self-created deadlines stay within three calendar days across months and l
   assert.equal(year.min, '2025-12-29');
   assert.equal(year.max, '2026-01-04');
 });
+
+test('Reviewers edit other officers’ active and submitted tasks without creator ownership', () => {
+  const { canEditOfficerTask } = exported;
+  const selfTask = {created_by:'officer',assigned_to:'officer',status:'in_progress'};
+  assert.equal(canEditOfficerTask(selfTask,'reviewer',true),true);
+  assert.equal(canEditOfficerTask({...selfTask,status:'submitted'},'reviewer',true),true);
+  assert.equal(canEditOfficerTask(selfTask,'reviewer',false),false);
+  assert.equal(canEditOfficerTask({...selfTask,status:'completed'},'reviewer',true),false);
+  assert.equal(canEditOfficerTask({...selfTask,cancelled_at:'2026-10-14'},'reviewer',true),false);
+  assert.equal(canEditOfficerTask({...selfTask,status:'submitted'},'officer',true),false);
+});
+test('Reviewer-ended tasks count as completed without changing the PEET average', () => {
+  const result=peetSummary([task('scored'),{...task('ended'),ended_by:'reviewer'}],[evaluation('scored',3,3,3)]);
+  assert.equal(result.completed,2);
+  assert.equal(result.active,0);
+  assert.equal(result.evaluated,1);
+  assert.equal(result.score,75);
+});
+
+test('Shared tasks belong to all participants, with one evaluation counting in each officer’s totals', () => {
+  const {officerTaskPeople,isOfficerTaskParticipant,canEditOfficerTask}=exported;
+  const shared={...task('shared'),assigned_to:'creator',created_by:'creator',officer_task_members:[{officer_id:'teammate'},{officer_id:'teammate'}]};
+  assert.deepEqual(Array.from(officerTaskPeople(shared)),['creator','teammate']);
+  assert.equal(isOfficerTaskParticipant(shared,'teammate'),true);
+  assert.equal(isOfficerTaskParticipant(shared,'outsider'),false);
+  for(const officer of ['creator','teammate']){
+    const result=peetSummary([shared].filter(row=>isOfficerTaskParticipant(row,officer)),[evaluation('shared',3,3,3)]);
+    assert.equal(result.completed,1);assert.equal(result.evaluated,1);assert.equal(result.score,75);
+  }
+  assert.equal(canEditOfficerTask({...shared,status:'in_progress'},'teammate',true),false);
+  assert.equal(canEditOfficerTask({...shared,status:'in_progress'},'reviewer',true),true);
+  assert.equal(canEditOfficerTask({...shared,status:'in_progress'},'creator'),true);
+});
