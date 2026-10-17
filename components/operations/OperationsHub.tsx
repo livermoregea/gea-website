@@ -48,7 +48,7 @@ export default function OperationsHub({ data, initialView = 'overview', initialE
     function changeView(next: string) { if (!discard())
         return; setDirty(false); setDirtyScope(null); setView(next); if (next === 'tasks') setToolsVisited(true); const url = new URL(window.location.href); url.searchParams.set('view', next); url.searchParams.delete('task'); url.searchParams.delete('topic'); window.history.replaceState(window.history.state, '', url); setMessage(''); setError(''); }
     async function save(rpc: string, args: Record<string, unknown>, success: string) {
-        const scope = rpc === 'save_officer_event' ? `schedule-${args.p_event_id ?? 'new'}` : rpc === 'save_meeting_documents' ? 'documents' : rpc === 'save_meeting_notes' ? 'minutes' : rpc === 'add_meeting_agenda' ? 'agenda' : rpc === 'save_meeting_attendance' ? 'attendance' : rpc === 'assign_agenda_action' ? `action-${args.p_agenda_id}` : rpc === 'save_event_plan' ? 'plan' : rpc === 'save_event_checklist' ? 'checklist' : rpc === 'save_task_blocker' ? 'help' : null;
+        const scope = rpc === 'save_officer_event' ? `schedule-${args.p_event_id ?? 'new'}` : rpc === 'save_meeting_documents' ? 'documents' : rpc === 'save_meeting_notes' ? 'minutes' : rpc === 'add_meeting_agenda' ? 'agenda' : rpc === 'save_meeting_attendance' ? 'attendance' : rpc === 'assign_agenda_action' ? `action-${args.p_agenda_id}` : rpc === 'save_event_planning_document' ? 'plan' : rpc === 'save_event_checklist' ? 'checklist' : rpc === 'save_task_blocker' ? 'help' : null;
         if (dirtyScope && scope !== dirtyScope) {
             setError('Save your current changes or discard them before changing another item.');
             return false;

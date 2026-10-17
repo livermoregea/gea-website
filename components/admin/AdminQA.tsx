@@ -1,5 +1,7 @@
 "use client";
 
+import RouteLoading from "@/components/RouteLoading";
+
 import controls from "@/components/workspace-controls.module.css";
 import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
@@ -100,7 +102,7 @@ export default function AdminQA() {
     load();
   }
 
-  if (loading) return <p role="status" className="text-sm text-graphite/80">Loading...</p>;
+  if (loading) return <RouteLoading label="Loading..." />;
 
   return (
     <div className="grid gap-10 md:grid-cols-2">

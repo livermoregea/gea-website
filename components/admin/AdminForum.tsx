@@ -1,5 +1,7 @@
 "use client";
 
+import RouteLoading from "@/components/RouteLoading";
+
 import controls from "@/components/workspace-controls.module.css";
 import { useEffect, useMemo, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
@@ -385,7 +387,7 @@ export default function AdminForum() {
     load();
   }
 
-  if (loading) return <p role="status" className="text-sm text-graphite/80">Loading forum activity...</p>;
+  if (loading) return <RouteLoading label="Loading forum activity..." />;
 
   return (
     <div className="space-y-6">

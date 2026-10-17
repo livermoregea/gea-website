@@ -26,7 +26,7 @@ function rosterHarness(fail=false){
   '@/lib/use-unsaved-changes':{useUnsavedChanges(){}},'@/components/ActionError':{default:'action-error'},
   '@/lib/supabase/client':{createClient:()=>({rpc:async(name,args)=>{calls.push({name,args});return{error:fail?{message:'Offline'}:null};}})},
   '@/lib/peet':load('lib/peet.ts'),'@/lib/officer-tracking':load('lib/officer-tracking.ts'),
-  './OfficerAttendanceCards':{default:Cards},'./OfficerEventFields':{default:'event-fields'},'./Modal':{default:'modal'},'./officerboard.module.css':styles,
+  './EventParticipation':{default:'event-participation'},'./OfficerAttendanceCards':{default:Cards},'./OfficerEventFields':{default:'event-fields'},'./Modal':{default:'modal'},'./officerboard.module.css':styles,
  }).default;
  const data={events:[{id:'meeting',title:'Meeting',kind:'meeting',academic_year:'2026-2027',starts_at:'2026-11-01T18:00:00Z',ends_at:'2026-11-01T19:00:00Z',location:'Room 303',cancelled:false}],attendance:[{event_id:'meeting',officer_id:'b',status:'late',reviewer_notes:'Existing note'}],signups:[],volunteerLogs:[],strikes:[],reviews:[],generalNotes:[]};
  const props={profiles:people,data,year:'2026-2027',years:['2026-2027'],onYearChange(){},onOpenOfficer(){},onDirtyChange(){}};

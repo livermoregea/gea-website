@@ -9,7 +9,10 @@ export type OfficerAttendance = {
   status: "unmarked" | "present" | "late" | "excused" | "unexcused";
   absence_notice: string; notice_at: string | null; reviewer_notes: string;
 };
-export type EventSignup = { id: string; event_id: string; officer_id: string; committed: boolean };
+export type EventSignup = { id: string; event_id: string; officer_id: string; committed: boolean; assigned?: boolean; participation_role?: string; participation_notes?: string; version?: number };
+export function eventParticipationLabel(signup?: EventSignup) {
+  return signup?.assigned ? (signup.committed ? "Assigned · Requested" : "Assigned") : signup?.committed ? "Requested" : "Not requested";
+}
 export type VolunteerLog = {
   id: string; event_id: string; officer_id: string; check_in: string; check_out: string; minutes: number;
   notes: string; status: "pending" | "approved" | "rejected"; review_notes: string; reviewed_at: string | null;

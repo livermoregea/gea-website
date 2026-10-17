@@ -61,3 +61,59 @@ test('Overview shows the progress dashboard while Officers keeps the detailed to
  assert.ok(details.includes('Detailed officer editor'));
  assert.ok(!details.includes('Score and attendance dashboard'));
 });
+
+function eventFixture({reviewer=false,organizer='other',kind='volunteer',cancelled=false,url='https://docs.google.com/document/d/plan123/edit'}={}) {
+ const data=fixture(reviewer);
+ data.events=[{...data.events[0],id:'event',title:'Community event',kind,cancelled}];
+ data.plans=[{event_id:'event',organizer_id:organizer,planning_doc_url:url,staffing:'Old staffing',supplies:'Old supplies',recap:'Old recap',version:2}];
+ data.checklist=[{id:'prep',event_id:'event',title:'Old prep item',done:false}];
+ return data;
+}
+test('Event and volunteer plans use a Google Doc in place of planning fields and prep checklists',()=>{
+ for(const kind of ['volunteer','outreach']) {
+  const html=render(eventFixture({reviewer:true,kind}),'events','event');
+  assert.ok(html.includes('Google Doc planning sheet'));
+  assert.ok(html.includes('href="https://docs.google.com/document/d/plan123/edit"'));
+  assert.ok(html.includes('target="_blank"'));
+  assert.ok(html.includes('Save planning sheet link'));
+  assert.ok(html.includes('Open participation &amp; hours'));
+  for(const removed of ['<textarea','name="staffing"','name="supplies"','name="recap"','Preparation checklist','Old staffing','Old supplies','Old recap','Old prep item']) assert.ok(!html.includes(removed),removed);
+ }
+});
+test('Planning sheet edit access belongs to the assigned organizer and reviewers, with cancelled events read-only',()=>{
+ const reader=render(eventFixture(),'events','event');
+ assert.ok(reader.includes('Open planning sheet'));
+ assert.ok(!reader.includes('name="planning_doc_url"'));
+ assert.ok(render(eventFixture({organizer:'me'}),'events','event').includes('name="planning_doc_url"'));
+ assert.ok(render(eventFixture({reviewer:true}),'events','event').includes('name="organizer"'));
+ const cancelled=render(eventFixture({reviewer:true,cancelled:true}),'events','event');
+ assert.ok(cancelled.includes('Open planning sheet'));
+ assert.ok(!cancelled.includes('name="planning_doc_url"'));
+});
+test('Empty or invalid saved planning URLs never become clickable document links',()=>{
+ for(const url of [null,'javascript:alert(1)','https://evil.test/document/d/id']) {
+  const html=render(eventFixture({url}),'events','event');
+  assert.ok(html.includes('No planning sheet linked yet.'));
+  assert.ok(!html.includes('Open planning sheet'));
+ }
+});
+
+test('Event planning exposes reviewer assignment controls and officers can manage only their own participation request',()=>{
+ const data=eventFixture({reviewer:true});
+ data.signups=[{event_id:'event',officer_id:'me',committed:true,assigned:true,participation_role:'Setup lead',version:2}];
+ const reviewer=render(data,'events','event');
+ assert.ok(reviewer.includes('Event participants'));
+ assert.ok(reviewer.includes('Find officers'));
+ assert.ok(reviewer.includes('Assigned · Requested'));
+ assert.ok(reviewer.includes('Setup lead'));
+ assert.ok(reviewer.includes('>Unassign<span'));
+ assert.ok(reviewer.includes('>Assign<span'));
+ assert.ok(reviewer.includes('Edit details'));
+ data.reviewer=false;data.membership.isAdmin=false;
+ const officer=render(data,'events','event');
+ assert.ok(officer.includes('Withdraw request'));
+ assert.ok(!officer.includes('Find officers'));
+ assert.ok(!officer.includes('Edit details'));
+ assert.ok(!officer.includes('>Assign<span'));
+ assert.ok(!officer.includes('>Unassign<span'));
+});

@@ -10,7 +10,7 @@ The workspace has six sections:
 - **My work / Officers:** the existing task, PEET, attendance, volunteer, and private accountability records, with the directory and team roster for reviewers. Help requests live beneath the tasks. The selected officer’s **Summary** shows their progress; **Concerns & notes** holds private accountability records.
 - **Calendar:** filterable agenda containing meetings, volunteer/outreach events, task deadlines, and staff-only interview availability. Individual events and filtered lists export as `.ics`. These are imports, not live subscriptions; export again after changes.
 - **Meetings:** agenda and meeting-notes Google Docs, and secretary/reviewer roll call. The secretary and reviewers save an agenda Google Doc link and a meeting-notes Google Doc link. All officers can open the linked documents. Written agendas and minutes from the previous workflow remain in collapsed history.
-- **Events:** organizer, staffing, supplies, recap, and preparation checklists. Participation and verified hours remain in My work (Officers for reviewers).
+- **Events:** organizer and a Google Doc planning sheet link. Staffing, supplies, preparation items, and recaps live in the linked document. Participation and verified hours remain in My work (Officers for reviewers).
 - **Reports:** date-filtered accomplishments, completed projects, verified service, and attendance, with CSV and print/PDF exports. Personal evaluations and accountability records are excluded.
 
 Old `/operations` links redirect officers into the matching workspace section, preserving task and meeting identifiers. Saved digest links continue to work. Task and roster records stay mounted after opening My work (Officers for reviewers) so switching sections preserves roster drafts. Meeting/event forms prompt before discarding unsaved edits; sign-out and page navigation use the existing draft guard.
@@ -58,3 +58,19 @@ Run `tests/meeting-document-links.sql` after `tests/gea-operations.sql` only in 
 The officer workspace uses one page header and shared section navigation. Internal task, meeting, calendar, and event links switch the visible section without a page reload. Reviewer scheduling is available directly beside the meeting/event selector. Individual officer records use native section and officer selectors on phones, while desktop keeps the directory and record navigation. Active task sections are always expanded; archives remain disclosures. Document editing and help requests are secondary inline controls. Attendance saves stay reachable at the bottom on phones, and accomplishment reports use cards instead of a wide table. Officer records already loaded by the page are reused for updates and reports to avoid duplicate database reads.
 
 On wide screens (1100px and above), meeting documents and attendance sit side by side; overview updates and weekly summaries share a main column and a quieter side column. Tablet and phone layouts keep the same content order in a single column. Desktop retains the officer directory beside the selected record and the full report table.
+
+## Event and volunteer planning sheets
+
+Apply `supabase/event-planning-document.sql` after `gea-operations.sql` and `meeting-document-links.sql`, before deploying this update. Fresh installations include it in `schema.sql`. Organizers and reviewers can save or remove a Google Doc planning sheet link; only reviewers can reassign organizers. All active officers can open the saved link. Cancelled events are read-only. Google Docs controls document sharing.
+
+The website no longer edits staffing, supplies, recaps, or preparation checklists. Existing data remains stored without being overwritten by document-link saves. Link saves validate Google Docs URLs, reject stale versions, and use the existing audit log.
+
+Run `tests/event-planning-document.sql` after `tests/meeting-document-links.sql` only in a disposable fixture database.
+
+## Event requests and assignments
+
+Apply `supabase/event-participant-assignments.sql` after `officer-shared-tasks.sql` before deploying this update. Fresh installations include it in `schema.sql`. Existing commitments become participation requests.
+
+In Events, reviewers can find officers, assign or unassign them, and edit their role and participation notes. The volunteer roster and individual officer records offer the same controls. Officers can request participation or withdraw their request. Requests and assignments are independent: withdrawing a request leaves the reviewer assignment in place, and unassigning leaves an officer's request in place. Participation details are visible only to the officer and reviewers under existing row permissions. Cancelled events are read-only. Assignment edits reject stale versions and enter the audit log. Requests and assignments never award service hours; actual service still requires verification.
+
+Run `tests/event-participant-assignments.sql` in the disposable fixture database after `tests/officer-shared-tasks.sql`.

@@ -1,5 +1,7 @@
 "use client";
 
+import RouteLoading from "@/components/RouteLoading";
+
 import { use, useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { hasSupabaseConfig } from "@/lib/supabase/config";
@@ -90,7 +92,7 @@ export default function InterviewBookingPage({
   }
 
   if (status === "loading") {
-    return <div role="status" className="mx-auto max-w-xl px-4 py-16 text-sm text-graphite/80 sm:px-6 md:py-24">Loading interview options…</div>;
+    return <RouteLoading label="Loading interview options…" />;
   }
 
   if (status === "invalid") {

@@ -6,9 +6,10 @@ import { useState, useTransition, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { peetError, type OfficerProfile } from "@/lib/peet";
-import { CONTRACT_YEAR, durationLabel, localDateInput, schoolDate, trackingSummary, type TrackingData, type OfficerEvent, type OfficerStrike, type VolunteerLog, type RemovalReview } from "@/lib/officer-tracking";
+import { CONTRACT_YEAR, durationLabel, localDateInput, schoolDate, trackingSummary, eventParticipationLabel, type TrackingData, type OfficerEvent, type OfficerStrike, type VolunteerLog, type RemovalReview } from "@/lib/officer-tracking";
 import Modal from "./Modal";
 import OfficerEventFields from "./OfficerEventFields";
+import EventParticipation from "./EventParticipation";
 import styles from "./officerboard.module.css";
 
 type Action = { kind: "event"; event?: OfficerEvent } | { kind: "attendance" | "absence" | "volunteer"; event: OfficerEvent }
@@ -41,7 +42,6 @@ export default function TrackingPanel({ mode, profile, profiles, officerId, data
   const officerName = (id: string) => profiles.find(person => person.id === id)?.name ?? "Officer";
   const attendanceFor = (event: OfficerEvent) => data.attendance.find(row => row.event_id === event.id && row.officer_id === officerId);
   const logFor = (event: OfficerEvent) => data.volunteerLogs.find(row => row.event_id === event.id && row.officer_id === officerId);
-  const committed = (event: OfficerEvent) => data.signups.some(row => row.event_id === event.id && row.officer_id === officerId && row.committed);
   const pendingLogs = data.volunteerLogs.filter(log => log.status === "pending" && (!embedded || log.officer_id === officerId) && eventFor(log.event_id)?.academic_year === year);
   const responsePending = strikes.filter(strike => strike.status === "notified");
   const generalNotes = data.generalNotes.find(record => record.officer_id === officerId && record.academic_year === year);
@@ -114,26 +114,27 @@ export default function TrackingPanel({ mode, profile, profiles, officerId, data
 
     {mode === "volunteer" && <>
       {(!embedded || showMetrics) && <div className={styles.trackingMetrics}><article><h2>Approved events</h2><strong>{summary.volunteerEvents}{officerSubject ? "/2" : ""}</strong><p>{!officerSubject ? "Advisor account · officer minimum does not apply" : summary.volunteerEvents >= 2 ? "Contract minimum met" : `${Math.max(0,2-summary.volunteerEvents)} more approved events needed`}</p></article><article><h2>Verified volunteer time</h2><strong>{durationLabel(summary.volunteerMinutes)}</strong><p>Approved logs at GEA-approved events</p></article></div>}
-      <section className={styles.section}><div className={styles.sectionHeading}><div><h2>Outreach & volunteer events</h2><p>Commitments and verified participation are tracked separately. Check-in/check-out times determine service hours.</p></div>{admin && <button className={styles.primary} onClick={() => open({ kind: "event" })}>Add event</button>}</div>
+      <section className={styles.section}><div className={styles.sectionHeading}><div><h2>Outreach & volunteer events</h2><p>Request to participate or receive a reviewer assignment. Requests and assignments are separate from verified participation. Check-in/check-out times determine service hours.</p></div>{admin && <button className={styles.primary} onClick={() => open({ kind: "event" })}>Add event</button>}</div>
         {!events.length && <p className={styles.empty}>No service events recorded for this academic year.</p>}
         {events.map(event => {
           const log = logFor(event);
-          return <article key={event.id} className={styles.taskRow}><div className={styles.taskCopy}><h3>{event.title}</h3><p>{schoolDate(event.starts_at)} – {schoolDate(event.ends_at)}<br />{event.location}</p><span className={styles.badge}>{event.cancelled ? "Cancelled" : event.gea_approved ? "GEA-approved" : "Not yet GEA-approved"}</span> {committed(event) && <span className={styles.badge}>Committed</span>}
-            {event.notes && <p>{event.notes}</p>}{log && <><p><strong>{log.status === "approved" ? "Verified" : log.status === "rejected" ? "Returned for correction" : "Awaiting verification"}</strong> · {durationLabel(log.minutes)}</p>{logDetails(log)}{log.review_notes && <p>Reviewer feedback: {log.review_notes}</p>}</>}</div>
+          return <article key={event.id} className={styles.taskRow}><div className={styles.taskCopy}><h3>{event.title}</h3><p>{schoolDate(event.starts_at)} – {schoolDate(event.ends_at)}<br />{event.location}</p><span className={styles.badge}>{event.cancelled ? "Cancelled" : event.gea_approved ? "GEA-approved" : "Not yet GEA-approved"}</span>
+            {event.notes && <p>{event.notes}</p>}
+            <EventParticipation key={`${event.id}-${officerId}`} event={event} officerId={officerId} name={officerName(officerId)} signup={data.signups.find(row => row.event_id === event.id && row.officer_id === officerId)} canManage={admin && leadershipRoster.some(person => person.id === officerId)} isSelf={officerId === profile.id && leadershipRoster.some(person => person.id === officerId)} disabled={busy} />
+            {log && <><p><strong>{log.status === "approved" ? "Verified" : log.status === "rejected" ? "Returned for correction" : "Awaiting verification"}</strong> · {durationLabel(log.minutes)}</p>{logDetails(log)}{log.review_notes && <p>Reviewer feedback: {log.review_notes}</p>}</>}</div>
             <div className={styles.actions}>{admin && <button className={styles.secondary} onClick={() => open({ kind: "event", event })}>Edit event<span className="sr-only"> {event.title}</span></button>}{!event.cancelled && <>
-              {officerId === profile.id && <button className={styles.secondary} disabled={busy} onClick={() => mutate("set_officer_event_signup", { p_event_id: event.id, p_committed: !committed(event) }, "Event commitment updated.")}>{committed(event) ? "Cancel commitment" : "Commit to event"}<span className="sr-only"> {event.title}</span></button>}
               {log?.status !== "approved" && (admin || officerId === profile.id) && <button className={styles.primary} onClick={() => open({ kind: "volunteer", event })}>{log ? "Edit service log" : "Log service"}<span className="sr-only"> for {event.title}</span></button>}
               {admin && log?.status === "approved" && <button className={styles.secondary} onClick={() => open({ kind: "volunteerReview", log })}>Review verified log<span className="sr-only"> for {event.title}</span></button>}
             </>}</div></article>;
         })}
       </section>
       {admin && (!embedded || pendingLogs.length > 0) && <section className={styles.section}><div className={styles.sectionHeading}><h2>Service verification queue</h2><span className={styles.badge}>{pendingLogs.length} pending</span></div>{!pendingLogs.length && <p className={styles.empty}>No service logs awaiting verification.</p>}{pendingLogs.map(log => <article className={styles.taskRow} key={log.id}><div><h3>{officerName(log.officer_id)} · {eventFor(log.event_id)?.title}</h3>{logDetails(log)}</div><button className={styles.primary} onClick={() => open({ kind: "volunteerReview", log })}>Verify service<span className="sr-only"> for {officerName(log.officer_id)} at {eventFor(log.event_id)?.title}</span></button></article>)}</section>}
-      {admin && !embedded && events.length > 0 && <section className={styles.section}><div className={styles.sectionHeading}><h2>Volunteer participation roster</h2></div><div className={styles.tableScroll} tabIndex={0} role="region" aria-label="Volunteer participation roster; scroll for all events"><table className={styles.table}><caption className="sr-only">Leadership event commitments and verified service</caption><thead><tr><th scope="col">Officer</th>{events.map(event => <th scope="col" key={event.id}>{event.title}<span>{schoolDate(event.starts_at,false)}</span></th>)}<th scope="col">Approved events</th><th scope="col">Verified time</th></tr></thead><tbody>{leadershipRoster.map(person => {
+      {admin && !embedded && events.length > 0 && <section className={styles.section}><div className={styles.sectionHeading}><h2>Volunteer participation roster</h2></div><div className={styles.tableScroll} tabIndex={0} role="region" aria-label="Volunteer participation roster; scroll for all events"><table className={styles.table}><caption className="sr-only">Leadership event requests, assignments, and verified service</caption><thead><tr><th scope="col">Officer</th>{events.map(event => <th scope="col" key={event.id}>{event.title}<span>{schoolDate(event.starts_at,false)}</span></th>)}<th scope="col">Approved events</th><th scope="col">Verified time</th></tr></thead><tbody>{leadershipRoster.map(person => {
         const total=trackingSummary(data,person.id,year);
         return <tr key={person.id}><th scope="row">{person.name}<span>{person.position}</span></th>{events.map(event=>{
           const log=data.volunteerLogs.find(row=>row.officer_id===person.id && row.event_id===event.id);
-          const signup=data.signups.some(row=>row.officer_id===person.id && row.event_id===event.id && row.committed);
-          return <td key={event.id}>{log?.status==='approved' ? `Verified · ${durationLabel(log.minutes)}` : log?.status==='pending' ? "Awaiting verification" : signup ? "Committed" : "No verified participation"}</td>;
+          const signup=data.signups.find(row=>row.officer_id===person.id && row.event_id===event.id);
+          return <td key={event.id}>{log?.status==='approved' ? `Verified · ${durationLabel(log.minutes)}` : log?.status==='pending' ? "Awaiting verification" : eventParticipationLabel(signup)}</td>;
         })}<td>{total.volunteerEvents}/2</td><td>{durationLabel(total.volunteerMinutes)}</td></tr>;
       })}</tbody></table></div></section>}
     </>}

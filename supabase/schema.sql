@@ -3423,3 +3423,72 @@ end $$;
 revoke all on function public.is_google_doc_url(text),public.save_meeting_documents(uuid,text,text,integer) from public,anon,authenticated;
 grant execute on function public.is_google_doc_url(text),public.save_meeting_documents(uuid,text,text,integer) to authenticated;
 commit;
+
+
+-- Google Doc event and volunteer planning sheets.
+-- Apply after gea-operations.sql and meeting-document-links.sql.
+-- Retains existing staffing, supplies, recap, checklist, and audit records.
+begin;
+alter table public.gea_event_plans add column if not exists planning_doc_url text
+ check(public.is_google_doc_url(planning_doc_url));
+
+create or replace function public.save_event_planning_document(p_event_id uuid,p_organizer uuid,p_document_url text,p_version integer)
+returns void language plpgsql security definer set search_path='' as $$
+declare v_url text:=nullif(btrim(p_document_url),''); begin
+ if not public.has_officer_access() then raise exception 'Officer access required.'; end if;
+ perform 1 from public.officer_events where id=p_event_id and kind<>'meeting' and not cancelled for update;
+ if not found then raise exception 'Select an active event or volunteer activity.'; end if;
+ if not public.is_peet_admin() and not exists(select 1 from public.gea_event_plans where event_id=p_event_id and organizer_id=auth.uid()) then
+ raise exception 'Only the organizer or a reviewer can edit this plan.'; end if;
+ if p_organizer is not null and not public.is_task_officer(p_organizer) then raise exception 'Choose an active officer as organizer.'; end if;
+ if not public.is_peet_admin() and p_organizer is distinct from auth.uid() then raise exception 'A reviewer must reassign the organizer.'; end if;
+ if not public.is_google_doc_url(v_url) then raise exception 'Use a valid HTTPS Google Docs document link.'; end if;
+ if p_version is null or coalesce((select version from public.gea_event_plans where event_id=p_event_id),0)<>p_version then
+ raise exception 'Plan changed in another session. Reload before saving.'; end if;
+ insert into public.gea_event_plans(event_id,organizer_id,planning_doc_url,updated_by)
+ values(p_event_id,p_organizer,v_url,auth.uid()) on conflict(event_id) do update
+ set organizer_id=excluded.organizer_id,planning_doc_url=excluded.planning_doc_url,
+ version=public.gea_event_plans.version+1,updated_by=auth.uid(),updated_at=now();
+end $$;
+revoke all on function public.save_event_planning_document(uuid,uuid,text,integer) from public,anon,authenticated;
+grant execute on function public.save_event_planning_document(uuid,uuid,text,integer) to authenticated;
+commit;
+
+
+-- Event participation requests and reviewer assignments.
+-- Apply after officer-shared-tasks.sql. Requests and reviewer assignments are independent.
+begin;
+alter table public.officer_event_signups add column if not exists assigned boolean not null default false;
+alter table public.officer_event_signups add column if not exists participation_role text not null default '' check(length(participation_role)<=200);
+alter table public.officer_event_signups add column if not exists participation_notes text not null default '' check(length(participation_notes)<=5000);
+alter table public.officer_event_signups add column if not exists version integer not null default 1;
+
+create or replace function public.set_officer_event_signup(p_event_id uuid,p_committed boolean)
+returns void language plpgsql security definer set search_path='' as $$ begin
+ if not public.has_officer_access() or not public.is_task_officer(auth.uid()) then raise exception 'Active officer access is required.'; end if;
+ if p_committed is null then raise exception 'Choose your participation request status.'; end if;
+ perform 1 from public.officer_events where id=p_event_id and kind in ('volunteer','outreach') and not cancelled for update;
+ if not found then raise exception 'Event not available.'; end if;
+ insert into public.officer_event_signups(event_id,officer_id,committed) values(p_event_id,auth.uid(),p_committed)
+ on conflict(event_id,officer_id) do update set committed=excluded.committed,
+ version=public.officer_event_signups.version+1,updated_at=now();
+end $$;
+
+create or replace function public.save_officer_event_assignment(p_event_id uuid,p_officer_id uuid,p_assigned boolean,p_role text,p_notes text,p_version integer)
+returns void language plpgsql security definer set search_path='' as $$ begin
+ if not public.has_officer_access() or not public.is_peet_admin() then raise exception 'Reviewer access is required.'; end if;
+ perform 1 from public.officer_events where id=p_event_id and kind in ('volunteer','outreach') and not cancelled for update;
+ if not found then raise exception 'Select an active volunteer or outreach event.'; end if;
+ if not public.is_task_officer(p_officer_id) then raise exception 'Choose an active officer.'; end if;
+ if p_assigned is null then raise exception 'Choose an assignment status.'; end if;
+ if p_version is null or coalesce((select version from public.officer_event_signups where event_id=p_event_id and officer_id=p_officer_id),0)<>p_version then
+ raise exception 'Participation changed in another session. Reload before saving.'; end if;
+ insert into public.officer_event_signups(event_id,officer_id,committed,assigned,participation_role,participation_notes)
+ values(p_event_id,p_officer_id,false,p_assigned,btrim(coalesce(p_role,'')),btrim(coalesce(p_notes,'')))
+ on conflict(event_id,officer_id) do update set assigned=excluded.assigned,
+ participation_role=excluded.participation_role,participation_notes=excluded.participation_notes,
+ version=public.officer_event_signups.version+1,updated_at=now();
+end $$;
+revoke all on function public.set_officer_event_signup(uuid,boolean),public.save_officer_event_assignment(uuid,uuid,boolean,text,text,integer) from public,anon,authenticated;
+grant execute on function public.set_officer_event_signup(uuid,boolean),public.save_officer_event_assignment(uuid,uuid,boolean,text,text,integer) to authenticated;
+commit;

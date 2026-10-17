@@ -1,5 +1,7 @@
 "use client";
 
+import RouteLoading from "@/components/RouteLoading";
+
 import controls from "@/components/workspace-controls.module.css";
 import AdminApplicationArchive from "@/components/admin/AdminApplicationArchive";
 import { useRouter } from "next/navigation";
@@ -305,7 +307,7 @@ export default function AdminApplications() {
     }).format(new Date(slotTime));
   }
 
-  if (loading) return <p role="status" className="text-sm text-graphite/80">Loading applications...</p>;
+  if (loading) return <RouteLoading label="Loading applications..." />;
 
   return (
     <div className="space-y-8">

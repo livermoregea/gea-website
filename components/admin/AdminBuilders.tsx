@@ -1,5 +1,7 @@
 "use client";
 
+import RouteLoading from "@/components/RouteLoading";
+
 import controls from "@/components/workspace-controls.module.css";
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { createClient } from "@/lib/supabase/client";
@@ -45,7 +47,7 @@ export default function AdminBuilders() {
   }
   const profile = (id: string) => students.find(s => s.id === id);
   const earned = students.map(student => ({ student, points: submissions.filter(s => s.student_id === student.id).reduce((sum, s) => sum + s.points, 0) })).filter(s => s.points >= 10);
-  if (loading) return <p role="status" className="text-sm text-graphite/80">Loading builds…</p>;
+  if (loading) return <RouteLoading label="Loading builds…" />;
   return <div className="space-y-6">
     <p className="max-w-3xl text-sm leading-relaxed text-graphite/80">Review real-world student projects, prepare stories for the public Builder Wall, and track earned certificates and meeting shout-outs. New approvals stay off the wall until you publish an edited story.</p>
     <div className="flex flex-wrap gap-2">{[["review","Project reviews"],["wall","Wall stories"],["recognition","Recognition"]].map(([key,label]) => <button key={key} type="button" aria-current={view === key ? "page" : undefined} onClick={() => setView(key)} className={`${controls.control} min-h-11 rounded-[8px] px-4 text-sm ${view === key ? "bg-forest text-paper" : "border border-forest/20 text-forest"}`}>{label}</button>)}<button type="button" disabled={busy} onClick={() => {setError(""); void load();}} className={`${controls.control} ml-auto min-h-11 text-sm text-forest underline`}>Refresh</button></div>

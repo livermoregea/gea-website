@@ -38,16 +38,8 @@ export type AgendaItem = {
 export type EventPlan = {
     event_id: string;
     organizer_id: string | null;
-    staffing: string;
-    supplies: string;
-    recap: string;
+    planning_doc_url?: string | null;
     version: number;
-};
-export type ChecklistItem = {
-    id: string;
-    event_id: string;
-    title: string;
-    done: boolean;
 };
 export type Blocker = {
     task_id: string;

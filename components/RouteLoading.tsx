@@ -1,54 +1,62 @@
-export default function RouteLoading() {
+"use client";
+
+import { useEffect, useRef, useState } from "react";
+import { useReducedMotion } from "@/lib/use-reduced-motion";
+
+export default function RouteLoading({ label = "Loading page…" }: { label?: string }) {
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const reducedMotion = useReducedMotion();
+  const [paused, setPaused] = useState(false);
+  const [failed, setFailed] = useState(false);
+  const [ready, setReady] = useState(false);
+
+  // Avoid flashing the loading screen during quick navigations.
+  useEffect(() => {
+    const timeout = window.setTimeout(() => setReady(true), 350);
+    return () => window.clearTimeout(timeout);
+  }, []);
+
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video || !ready) return;
+    if (reducedMotion || paused) video.pause();
+    else void video.play().catch(() => setPaused(true));
+  }, [ready, reducedMotion, paused, failed]);
+
   return (
-    <div className="mx-auto max-w-6xl px-4 py-10 sm:px-6 md:py-14" role="status" aria-label="Loading page">
-      <span className="sr-only">Loading page…</span>
-      <div className="animate-pulse space-y-8" aria-hidden="true">
-        <div className="flex items-center justify-between gap-4">
-          <div className="space-y-3">
-            <div className="h-3 w-44 rounded-full bg-forest/10" />
-            <div className="h-8 w-72 max-w-full rounded-full bg-forest/15" />
-          </div>
-          <div className="h-10 w-28 rounded-sm bg-forest/10" />
+    <div className="mx-auto flex min-h-[60vh] max-w-6xl items-center justify-center px-4 py-10 sm:px-6" role="status" aria-live="polite">
+      <span className="sr-only">{label}</span>
+      {ready && (
+        <div className="flex flex-col items-center gap-4 text-center">
+          {reducedMotion || failed ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src="/images/gea-loading-poster.png" alt="" width={224} height={224} className="h-48 w-48 object-contain mix-blend-multiply sm:h-56 sm:w-56" aria-hidden="true" />
+          ) : (
+            <video
+              ref={videoRef}
+              muted
+              loop
+              playsInline
+              preload="auto"
+              poster="/images/gea-loading-poster.png"
+              className="h-48 w-48 object-contain mix-blend-multiply sm:h-56 sm:w-56"
+              aria-hidden="true"
+              tabIndex={-1}
+              disablePictureInPicture
+              disableRemotePlayback
+              onError={() => setFailed(true)}
+            >
+              <source src="/videos/gea-logo-spin.mp4" type="video/mp4" onError={() => setFailed(true)} />
+            </video>
+          )}
+          <p aria-hidden="true" className="text-sm text-graphite/80">{label}</p>
+          {!reducedMotion && !failed && (
+            <button type="button" onClick={() => setPaused(!paused)} className="rounded-sm px-3 text-xs text-graphite/70 underline underline-offset-4 hover:text-forest focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-forest">
+              {paused ? "Play animation" : "Pause animation"}
+            </button>
+          )}
         </div>
-
-        <div className="rounded-sm border border-forest/10 bg-paper p-5 sm:p-6">
-          <div className="grid gap-4 md:grid-cols-2">
-            <div className="space-y-3">
-              <div className="h-3 w-36 rounded-full bg-forest/10" />
-              <div className="h-20 rounded-sm bg-forest/5" />
-              <div className="h-10 w-32 rounded-sm bg-forest/10" />
-            </div>
-            <div className="space-y-3">
-              <div className="h-3 w-40 rounded-full bg-forest/10" />
-              <div className="h-20 rounded-sm bg-forest/5" />
-              <div className="h-10 w-32 rounded-sm bg-forest/10" />
-            </div>
-          </div>
-        </div>
-
-        <div className="grid gap-4 md:grid-cols-3">
-          <div className="h-44 rounded-sm bg-forest/[0.04] ring-1 ring-forest/5" />
-          <div className="h-44 rounded-sm bg-forest/[0.04] ring-1 ring-forest/5" />
-          <div className="h-44 rounded-sm bg-forest/[0.04] ring-1 ring-forest/5" />
-        </div>
-
-        <div className="rounded-sm bg-forest/[0.03] p-5 ring-1 ring-forest/5">
-          <div className="space-y-4">
-            <div className="h-3 w-32 rounded-full bg-forest/10" />
-            <div className="h-4 w-56 rounded-full bg-forest/15" />
-            <div className="grid gap-3">
-              <div className="h-12 rounded-sm bg-paper" />
-              <div className="h-24 rounded-sm bg-paper" />
-              <div className="h-11 w-44 rounded-sm bg-forest/15" />
-            </div>
-          </div>
-        </div>
-
-        <div className="grid gap-4 md:grid-cols-2">
-          <div className="h-32 rounded-sm bg-paper ring-1 ring-forest/5" />
-          <div className="h-32 rounded-sm bg-paper ring-1 ring-forest/5" />
-        </div>
-      </div>
+      )}
     </div>
   );
 }

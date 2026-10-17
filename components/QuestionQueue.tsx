@@ -1,5 +1,7 @@
 "use client";
 
+import RouteLoading from "@/components/RouteLoading";
+
 import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { hasSupabaseConfig } from "@/lib/supabase/config";
@@ -48,7 +50,7 @@ export default function QuestionQueue({
     load();
   }, []);
 
-  if (loading) return <p role="status" className="text-sm text-graphite/80">Loading questions...</p>;
+  if (loading) return <RouteLoading label="Loading questions..." />;
   if (questions.length === 0)
     return <p className="text-sm text-graphite/80">No approved questions waiting for an answer right now.</p>;
 

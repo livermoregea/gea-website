@@ -2,9 +2,9 @@ import { createClient } from './supabase/server';
 import { accountMemberships } from './account-landing';
 import { legacyPlanningHref, officerWorkspaceHref } from './officer-workspace-navigation';
 import { BUILDERS_ENABLED } from './site-features';
-import { taskAttention, type AttentionItem, type CalendarItem, type MeetingNotes, type AgendaItem, type EventPlan, type ChecklistItem, type Blocker, type Digest } from './gea-operations';
+import { taskAttention, type AttentionItem, type CalendarItem, type MeetingNotes, type AgendaItem, type EventPlan, type Blocker, type Digest } from './gea-operations';
 import type { OfficerTask, TaskTeammate } from './peet';
-import { schoolToday, type OfficerEvent, type OfficerAttendance, type VolunteerLog } from './officer-tracking';
+import { schoolToday, type OfficerEvent, type OfficerAttendance, type VolunteerLog, type EventSignup } from './officer-tracking';
 export async function allRows<T>(query: (from: number, to: number) => PromiseLike<{
     data: T[] | null;
     error: {
@@ -24,7 +24,7 @@ export async function allRows<T>(query: (from: number, to: number) => PromiseLik
 }
 export type OfficerOperationsSeed = {
     tasks: OfficerTask[]; events: OfficerEvent[]; attendance: OfficerAttendance[];
-    logs: VolunteerLog[]; people: TaskTeammate[];
+    logs: VolunteerLog[]; signups?: EventSignup[]; people: TaskTeammate[];
 };
 // The unified workspace has already read these permission-filtered officer records.
 export async function loadOperations(supabase: Awaited<ReturnType<typeof createClient>>, userId: string, seed?: OfficerOperationsSeed) {
@@ -35,16 +35,16 @@ export async function loadOperations(supabase: Awaited<ReturnType<typeof createC
     if (reviewerResult.error || secretaryResult.error)
         throw new Error('The operations database update is required.');
     const reviewer = Boolean(reviewerResult.data), canMeetings = Boolean(secretaryResult.data);
-    const [tasks, events, attendance, logs, people, notes, agenda, plans, checklist, blockers, reads, prefs, digests, cancellations, concerns] = await Promise.all([
+    const [tasks, events, attendance, logs, signups, people, notes, agenda, plans, blockers, reads, prefs, digests, cancellations, concerns] = await Promise.all([
         seed ? Promise.resolve(seed.tasks) : allRows<OfficerTask>((f, t) => supabase.from('tasks').select('id,title,description,assigned_to,created_by,due_date,status,cancelled_at,submitted_at,completed_at,created_at,officer_task_members(officer_id)').order('id').range(f, t)),
         seed ? Promise.resolve(seed.events) : allRows<OfficerEvent>((f, t) => supabase.from('officer_events').select('*').order('starts_at').order('id').range(f, t)),
         seed ? Promise.resolve(seed.attendance) : allRows<OfficerAttendance>((f, t) => supabase.from('officer_attendance').select('id,event_id,officer_id,status').order('id').range(f, t)),
         seed ? Promise.resolve(seed.logs) : allRows<VolunteerLog>((f, t) => supabase.from('officer_volunteer_logs').select('id,event_id,officer_id,status,minutes,check_in').order('id').range(f, t)),
+        seed?.signups ? Promise.resolve(seed.signups) : membership.isOfficer ? allRows<EventSignup>((f, t) => supabase.from('officer_event_signups').select('id,event_id,officer_id,committed,assigned,participation_role,participation_notes,version').order('id').range(f, t)) : Promise.resolve([]),
         seed ? Promise.resolve(seed.people) : membership.isOfficer ? allRows<TaskTeammate>((f, t) => supabase.rpc('officer_task_teammates').order('id').range(f, t)) : Promise.resolve([]),
         allRows<MeetingNotes>((f, t) => supabase.from('gea_meeting_notes').select('*').order('id').range(f, t)),
         allRows<AgendaItem>((f, t) => supabase.from('gea_agenda_items').select('*').order('created_at').order('id').range(f, t)),
-        allRows<EventPlan>((f, t) => supabase.from('gea_event_plans').select('*').order('id').range(f, t)),
-        allRows<ChecklistItem>((f, t) => supabase.from('gea_event_checklist').select('*').order('id').range(f, t)),
+        allRows<EventPlan>((f, t) => supabase.from('gea_event_plans').select('id,event_id,organizer_id,planning_doc_url,version').order('id').range(f, t)),
         allRows<Blocker>((f, t) => supabase.from('gea_task_blockers').select('*').order('id').range(f, t)),
         allRows<{
             notification_key: string;
@@ -134,6 +134,6 @@ export async function loadOperations(supabase: Awaited<ReturnType<typeof createC
             }
         }
     }
-    return { workspaceHref, userId, membership, reviewer, canMeetings, taskHref, tasks, events, attendance, logs, people, notes, agenda, plans, checklist, blockers, readKeys: reads.map(r => r.notification_key), digestEnabled: Boolean(prefs.data?.enabled), digests, attention, calendar: calendar.sort((a, b) => a.start.localeCompare(b.start)) };
+    return { workspaceHref, userId, membership, reviewer, canMeetings, taskHref, tasks, events, attendance, logs, signups, people, notes, agenda, plans, blockers, readKeys: reads.map(r => r.notification_key), digestEnabled: Boolean(prefs.data?.enabled), digests, attention, calendar: calendar.sort((a, b) => a.start.localeCompare(b.start)) };
 }
 export type OperationsData = Awaited<ReturnType<typeof loadOperations>>;

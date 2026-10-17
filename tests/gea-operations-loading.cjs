@@ -13,8 +13,8 @@ test('Required planning failures preserve the original database code for diagnos
 
 
 test('The integrated workspace reuses already-authorized officer records instead of reading them twice',async()=>{
- const h=harness();const seed={tasks:[],events:[],attendance:[],logs:[],people:[]};const result=await h.load(seed);
- for(const source of ['tasks','officer_events','officer_attendance','officer_volunteer_logs','officer_task_teammates'])assert.equal(h.requested.includes(source),false,source);
+ const h=harness();const seed={tasks:[],events:[],attendance:[],logs:[],signups:[],people:[]};const result=await h.load(seed);
+ for(const source of ['tasks','officer_events','officer_attendance','officer_volunteer_logs','officer_event_signups','officer_task_teammates'])assert.equal(h.requested.includes(source),false,source);
  assert.equal(result.tasks,seed.tasks);assert.equal(result.events,seed.events);
  assert.ok(h.requested.includes('gea_meeting_notes'));
 });

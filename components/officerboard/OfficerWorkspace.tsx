@@ -35,7 +35,7 @@ export default async function OfficerWorkspace({ embedded = false, search = {} }
     readAll<OfficerProfile>((from,to) => supabase.rpc("officer_directory").order("name").order("id").range(from,to)),
     readAll<OfficerEvent>((from,to) => supabase.from("officer_events").select("id,title,kind,academic_year,starts_at,ends_at,location,mandatory,gea_approved,cancelled,notes").order("starts_at").order("id").range(from,to)),
     readAll<OfficerAttendance>((from,to) => supabase.from("officer_attendance").select("id,event_id,officer_id,status,absence_notice,notice_at,reviewer_notes").order("id").range(from,to)),
-    readAll<EventSignup>((from,to) => supabase.from("officer_event_signups").select("id,event_id,officer_id,committed").order("id").range(from,to)),
+    readAll<EventSignup>((from,to) => supabase.from("officer_event_signups").select("id,event_id,officer_id,committed,assigned,participation_role,participation_notes,version").order("id").range(from,to)),
     readAll<VolunteerLog>((from,to) => supabase.from("officer_volunteer_logs").select("id,event_id,officer_id,check_in,check_out,minutes,notes,status,review_notes,reviewed_at").order("created_at",{ascending:false}).order("id").range(from,to)),
     readAll<OfficerStrike>((from,to) => supabase.from("officer_strikes").select("id,officer_id,academic_year,category,incident_date,reason,attendance_id,status,notified_at,response_due_at,officer_response,responded_at,decision_notes,decided_at").order("created_at",{ascending:false}).order("id").range(from,to)),
     readAll<RemovalReview>((from,to) => supabase.from("officer_removal_reviews").select("id,officer_id,academic_year,category,status,advisor_notes,opened_at,context_snapshot").order("opened_at",{ascending:false}).order("id").range(from,to)),
@@ -48,7 +48,7 @@ export default async function OfficerWorkspace({ embedded = false, search = {} }
   const tracking = { events: events.data ?? [], attendance: attendance.data ?? [], signups: signups.data ?? [], volunteerLogs: volunteerLogs.data ?? [], strikes: strikes.data ?? [], reviews: reviews.data ?? [], generalNotes: generalNotes.data ?? [] };
   const board = <OfficerBoard unified teammates={teammates.data ?? []} embedded={embedded} cancellationRequests={cancellationRequests.data ?? []} profile={{...profile,...profiles.data?.find(person => person.id === profile.id)}} profiles={profiles.data ?? []} tasks={tasks.data ?? []} evaluations={evaluations.data ?? []} isSuperAdmin={Boolean(superAdmin)} tracking={tracking} />;
   try {
-    let operations = await loadOperations(supabase, user.id, { tasks: tasks.data ?? [], events: events.data ?? [], attendance: attendance.data ?? [], logs: volunteerLogs.data ?? [], people: teammates.data ?? [] });
+    let operations = await loadOperations(supabase, user.id, { tasks: tasks.data ?? [], events: events.data ?? [], attendance: attendance.data ?? [], logs: volunteerLogs.data ?? [], signups: signups.data ?? [], people: teammates.data ?? [] });
     if (operations.digestEnabled) {
       const { error: digestError } = await supabase.rpc("save_gea_digest", { p_items: operations.attention });
       if (!digestError) {
