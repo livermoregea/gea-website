@@ -1,5 +1,6 @@
 "use client";
 
+import controls from "@/components/workspace-controls.module.css";
 import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { hasSupabaseConfig } from "@/lib/supabase/config";
@@ -72,27 +73,27 @@ export default function AdminApplicationArchive({ onCleared }: { onCleared: (cou
     finally { setBusy(false); }
   }
 
-  return <section className="rounded-sm border border-forest/15 bg-paper p-5">
+  return <section className="rounded-[8px] border border-forest/15 bg-paper p-5">
     <h3 className="font-display text-xl text-forest">Prepare for next year</h3>
     <p className="mt-2 text-sm text-graphite/80">Archive all applications, export a copy as CSV or PDF, then clear the active queue. Student accounts stay in place.</p>
-    <button type="button" onClick={prepare} disabled={busy || !hasSupabaseConfig()} className="mt-4 rounded-sm bg-forest px-4 py-2 text-sm text-accent disabled:opacity-50">{busy ? "Working…" : "Archive all applications"}</button>
-    {archive && <div className="mt-4 space-y-3 rounded-sm border border-forest/15 p-4">
+    <button type="button" onClick={prepare} disabled={busy || !hasSupabaseConfig()} className={`${controls.control} mt-4 rounded-[8px] bg-forest px-4 py-2 text-sm text-white disabled:opacity-50`}>{busy ? "Working…" : "Archive all applications"}</button>
+    {archive && <div className="mt-4 space-y-3 rounded-[8px] border border-forest/15 p-4">
       <p className="text-sm text-forest">Archive saved: {archive.application_count} applications. Export your copy before deleting.</p>
       <div className="flex flex-wrap gap-2">
-        <button type="button" disabled={busy} onClick={() => exportArchive(archive, "csv")} className="rounded-sm border border-forest/20 px-4 py-2 text-sm text-forest">Export CSV</button>
-        <button type="button" disabled={busy} onClick={() => exportArchive(archive, "pdf")} className="rounded-sm border border-forest/20 px-4 py-2 text-sm text-forest">Export PDF</button>
+        <button type="button" disabled={busy} onClick={() => exportArchive(archive, "csv")} className={`${controls.control} rounded-[8px] border border-forest/20 px-4 py-2 text-sm text-forest`}>Export CSV</button>
+        <button type="button" disabled={busy} onClick={() => exportArchive(archive, "pdf")} className={`${controls.control} rounded-[8px] border border-forest/20 px-4 py-2 text-sm text-forest`}>Export PDF</button>
       </div>
       <label className="flex items-center gap-2 text-sm text-graphite/80"><input type="checkbox" checked={saved} disabled={!exported || busy} onChange={(event) => setSaved(event.target.checked)} />I have saved the exported file.</label>
       <div className="flex flex-wrap gap-2">
-        <button type="button" onClick={clear} disabled={!exported || !saved || busy} className="rounded-sm bg-red-700 px-4 py-2 text-sm text-white disabled:opacity-50">Delete exported applications</button>
-        <button type="button" disabled={busy} onClick={() => setArchive(null)} className="rounded-sm border border-forest/20 px-4 py-2 text-sm text-forest">Cancel</button>
+        <button type="button" onClick={clear} disabled={!exported || !saved || busy} className={`${controls.control} rounded-[8px] bg-red-700 px-4 py-2 text-sm text-white disabled:opacity-50`}>Delete exported applications</button>
+        <button type="button" disabled={busy} onClick={() => setArchive(null)} className={`${controls.control} rounded-[8px] border border-forest/20 px-4 py-2 text-sm text-forest`}>Cancel</button>
       </div>
     </div>}
     {message && <p role="status" className="mt-3 text-sm text-graphite/80">{message}</p>}
     {history.length > 0 && <details className="mt-5 text-sm text-forest"><summary className="cursor-pointer">Recent saved archives</summary><ul className="mt-3 space-y-3">{history.map((item) => <li key={item.id} className="flex flex-wrap items-center gap-3">
       <span>{new Date(item.created_at).toLocaleString()} · {item.application_count} applications · {item.cleared_at ? "Queue cleared" : "Saved only"}</span>
-      <button type="button" disabled={busy} onClick={() => exportPrevious(item.id, "csv")} className="underline">CSV</button>
-      <button type="button" disabled={busy} onClick={() => exportPrevious(item.id, "pdf")} className="underline">PDF</button>
+      <button type="button" disabled={busy} onClick={() => exportPrevious(item.id, "csv")} className={`${controls.control} underline`}>CSV</button>
+      <button type="button" disabled={busy} onClick={() => exportPrevious(item.id, "pdf")} className={`${controls.control} underline`}>PDF</button>
     </li>)}</ul></details>}
   </section>;
 }

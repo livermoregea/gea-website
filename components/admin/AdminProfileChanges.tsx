@@ -1,9 +1,10 @@
 "use client";
 
+import controls from "@/components/workspace-controls.module.css";
 import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { hasSupabaseConfig } from "@/lib/supabase/config";
-import { markAdminNotificationSeen } from "@/lib/admin-notifications";
+import { markAllAdminNotificationsSeen } from "@/lib/admin-notifications";
 
 type ProfileChangeRequest = {
   id: string;
@@ -68,7 +69,7 @@ export default function AdminProfileChanges() {
   }, []);
 
   useEffect(() => {
-    requests.forEach((request) => markAdminNotificationSeen("profile-changes", request.id));
+    if (requests.length) void markAllAdminNotificationsSeen({ "profile-changes": requests.map(request => request.id) });
   }, [requests]);
 
   async function approveRequest(request: ProfileChangeRequest) {
@@ -140,11 +141,10 @@ export default function AdminProfileChanges() {
 
   return (
     <div className="space-y-6">
-      <section className="rounded-sm bg-paper p-5 ring-1 ring-forest/10">
+      <section className="border-b border-forest/10 pb-6">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
           <div>
-            <p className="font-mono text-xs uppercase tracking-[0.2em] text-accent">Profile Changes</p>
-            <h3 className="mt-2 font-display text-2xl text-forest">Pending changes</h3>
+            <h3 className="mt-2 text-xl font-semibold text-forest">Pending changes</h3>
           </div>
           <p className="text-sm text-graphite/80">{requests.length} pending request{requests.length === 1 ? "" : "s"}</p>
         </div>
@@ -152,16 +152,16 @@ export default function AdminProfileChanges() {
 
       <div className="space-y-4">
       {message && (
-        <p className="rounded-sm bg-forest/[0.05] p-4 text-sm text-graphite/80 ring-1 ring-forest/10" role="status">
+        <p className="rounded-[8px] bg-forest/[0.05] p-4 text-sm text-graphite/80 ring-1 ring-forest/10" role="status">
           {message}
         </p>
       )}
       {requests.length === 0 && <p className="text-sm text-graphite/80">No pending profile changes.</p>}
         {requests.map((request) => (
-          <div key={request.id} className="rounded-sm bg-forest/[0.03] p-5 ring-1 ring-forest/10">
+          <div key={request.id} className="border-b border-forest/10 py-5">
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div>
-                <p className="font-mono text-xs uppercase tracking-[0.2em] text-accent">
+                <p className="text-sm font-medium text-accent">
                   {request.profile_type} profile
                 </p>
                 <p className="mt-1 font-display text-lg text-forest">{request.requested_by_name}</p>
@@ -170,12 +170,12 @@ export default function AdminProfileChanges() {
             </div>
 
             <div className="mt-4 grid gap-3 sm:grid-cols-2">
-              <div className="rounded-sm bg-paper/80 p-4 ring-1 ring-forest/10">
-                <p className="font-mono text-xs uppercase tracking-[0.15em] text-graphite/80">Current</p>
+              <div className="rounded-[8px] bg-paper/80 p-4 ring-1 ring-forest/10">
+                <p className="text-sm font-medium text-graphite/80">Current</p>
                 <div className="mt-2 space-y-1 text-sm text-graphite/80">
                   {Object.entries(request.current_fields).map(([key, value]) => (
                     <p key={key}>
-                      <span className="font-mono text-xs uppercase tracking-[0.12em] text-graphite/80">
+                      <span className="text-sm font-medium text-graphite/80">
                         {fieldLabel(key)}:
                       </span>{" "}
                       {toText(value)}
@@ -183,12 +183,12 @@ export default function AdminProfileChanges() {
                   ))}
                 </div>
               </div>
-              <div className="rounded-sm bg-paper/80 p-4 ring-1 ring-forest/10">
-                <p className="font-mono text-xs uppercase tracking-[0.15em] text-graphite/80">Requested</p>
+              <div className="rounded-[8px] bg-paper/80 p-4 ring-1 ring-forest/10">
+                <p className="text-sm font-medium text-graphite/80">Requested</p>
                 <div className="mt-2 space-y-1 text-sm text-graphite/80">
                   {Object.entries(request.requested_fields).map(([key, value]) => (
                     <p key={key}>
-                      <span className="font-mono text-xs uppercase tracking-[0.12em] text-graphite/80">
+                      <span className="text-sm font-medium text-graphite/80">
                         {fieldLabel(key)}:
                       </span>{" "}
                       {toText(value)}
@@ -199,7 +199,7 @@ export default function AdminProfileChanges() {
             </div>
 
             {request.rejection_reason ? (
-              <p className="mt-3 rounded-sm bg-red-50 px-4 py-3 text-sm text-red-700 ring-1 ring-red-100">
+              <p className="mt-3 rounded-[8px] bg-red-50 px-4 py-3 text-sm text-red-700 ring-1 ring-red-100">
                 Rejection reason: {request.rejection_reason}
               </p>
             ) : null}
@@ -212,19 +212,19 @@ export default function AdminProfileChanges() {
               }
               rows={2}
               placeholder="Reason for rejection (required if you reject this request)"
-              className="mt-4 w-full rounded-sm border border-forest/65 bg-paper px-3 py-2 text-base outline-none focus:border-gold"
+              className="mt-4 w-full rounded-[8px] border border-forest/65 bg-paper px-3 py-2 text-base outline-none focus:border-gold"
             />
 
             <div className="mt-3 flex gap-3">
               <button
                 onClick={() => approveRequest(request)}
-                className="inline-flex min-h-11 items-center font-mono text-xs uppercase tracking-[0.15em] text-forest hover:underline"
+                className={`${controls.control} inline-flex min-h-11 items-center text-sm font-medium text-forest hover:underline`}
               >
                 Approve
               </button>
               <button
                 onClick={() => rejectRequest(request)}
-                className="inline-flex min-h-11 items-center font-mono text-xs uppercase tracking-[0.15em] text-red-700 hover:underline"
+                className={`${controls.control} inline-flex min-h-11 items-center text-sm font-medium text-red-700 hover:underline`}
               >
                 Reject
               </button>

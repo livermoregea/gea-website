@@ -1,6 +1,9 @@
 "use client";
 
+import controls from "@/components/workspace-controls.module.css";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import navigationStyles from "./admin-navigation.module.css";
 import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { hasSupabaseConfig } from "@/lib/supabase/config";
@@ -14,9 +17,11 @@ import AdminTeacherInvites from "@/components/admin/AdminTeacherInvites";
 import AdminWebsite from "@/components/admin/AdminWebsite";
 import AdminBuilders from "@/components/admin/AdminBuilders";
 import AdminDashboard from "@/components/admin/AdminDashboard";
+import { BUILDERS_ENABLED } from "@/lib/site-features";
 import { ADMIN_SECTIONS, type AdminSectionKey } from "@/components/admin/admin-sections";
 import {
   getUnreadAdminNotificationCount,
+  hydrateAdminNotifications,
   loadAdminNotificationIds,
   markAllAdminNotificationsSeen,
   subscribeToAdminNotifications,
@@ -40,6 +45,7 @@ const EMPTY_ALERTS: TabAlertCounts = {
 };
 
 export default function AdminTabs({ section = "dashboard", onSectionChange }: { section?: AdminSectionKey; onSectionChange?: (section: AdminSectionKey) => void }) {
+  const router = useRouter();
   const [alertCounts, setAlertCounts] = useState<TabAlertCounts>(EMPTY_ALERTS);
   const [clearing, setClearing] = useState(false);
   const [notificationMessage, setNotificationMessage] = useState<string | null>(null);
@@ -51,8 +57,9 @@ export default function AdminTabs({ section = "dashboard", onSectionChange }: { 
       if (!hasSupabaseConfig()) return;
       const supabase = createClient();
       try {
+        await hydrateAdminNotifications();
         const [ids, websiteAnnouncements] = await Promise.all([
-          loadAdminNotificationIds(supabase),
+          loadAdminNotificationIds(supabase, BUILDERS_ENABLED),
           supabase.from("website_announcements").select("id").eq("is_enabled", true),
         ]);
         const unread = (kind: Parameters<typeof getUnreadAdminNotificationCount>[0]) => getUnreadAdminNotificationCount(kind, ids[kind] ?? []);
@@ -66,16 +73,20 @@ export default function AdminTabs({ section = "dashboard", onSectionChange }: { 
       } catch { setNotificationMessage("Could not refresh notifications. Please try again."); }
     }
     loadAlerts();
-    return subscribeToAdminNotifications(loadAlerts);
+    const failed = () => setNotificationMessage("Notification read status could not be saved across devices. Please try again.");
+    window.addEventListener("gea-notification-save-failed", failed);
+    window.addEventListener("focus", loadAlerts);
+    const unsubscribe = subscribeToAdminNotifications(loadAlerts);
+    return () => { unsubscribe(); window.removeEventListener("gea-notification-save-failed", failed); window.removeEventListener("focus", loadAlerts); };
   }, []);
 
   async function clearNotifications() {
     setClearing(true);
     setNotificationMessage(null);
     try {
-      const ids = await loadAdminNotificationIds(createClient());
-      markAllAdminNotificationsSeen(ids);
-      setNotificationMessage("All new notifications cleared on this browser. Pending items still need review.");
+      const ids = await loadAdminNotificationIds(createClient(), BUILDERS_ENABLED);
+      if (!await markAllAdminNotificationsSeen(ids)) throw new Error("Could not save notification read status. Please try again.");
+      setNotificationMessage("All new notifications marked read across your devices. Pending items still need review.");
     } catch (error) {
       setNotificationMessage(error instanceof Error ? error.message : "Could not clear notifications.");
     } finally { setClearing(false); }
@@ -98,59 +109,31 @@ export default function AdminTabs({ section = "dashboard", onSectionChange }: { 
 
   return (
     <div className="space-y-5">
-      <div className="flex flex-wrap items-center justify-end gap-3">
-        {notificationMessage && <p role="status" className="text-sm text-graphite/80">{notificationMessage}</p>}
-        <button type="button" onClick={clearNotifications} disabled={clearing || !hasSupabaseConfig()} className="inline-flex min-h-11 items-center justify-center rounded-sm border border-forest/20 bg-paper px-4 py-2 text-sm text-forest hover:bg-forest/5 disabled:opacity-50">
-          {clearing ? "Clearing…" : "Clear all new notifications"}
-        </button>
-      </div>
-      <nav className="rounded-sm border border-forest/10 bg-paper p-2 shadow-[0_8px_24px_rgba(18,53,36,0.04)]" aria-label="Admin sections">
-        <div className="grid gap-2 sm:grid-cols-3">
-          {(["Workspace", "Website", "Operations"] as const).map((group) => (
-            <div key={group} className="min-w-0 rounded-sm bg-forest/[0.025] px-2 py-2">
-              <span className="px-2 font-mono text-xs uppercase tracking-[0.15em] text-graphite/80">{group}</span>
-              <div className="mt-2 grid grid-cols-2 items-stretch gap-2 sm:grid-cols-1 xl:grid-cols-2">
-                {ADMIN_SECTIONS.filter((item) => item.group === group).map((item) => {
-                const selected = section === item.key;
-                const count = alertCounts[item.key];
-                const contents = <>{item.label}{item.key === "website" && websiteActive && <span className="h-2.5 w-2.5 shrink-0 rounded-full bg-gold" aria-label="Website banner or popup is active" />}{count > 0 && <span className="inline-flex min-h-5 items-center rounded-full bg-red-600 px-1.5 text-white" aria-label={`${count} notifications`}>{count > 9 ? "9+" : count}</span>}</>;
-                if (onSectionChange) return <button key={item.key} onClick={() => onSectionChange(item.key)} aria-current={section === item.key ? "page" : undefined} className={`flex min-h-11 min-w-0 items-center justify-start gap-2 rounded-sm px-3 py-2 text-left text-xs ${section === item.key ? "bg-forest text-accent" : "text-graphite/80 hover:bg-forest/[0.05]"}`}>{contents}</button>;
-                return (
-                  <Link
-                    key={item.key}
-                    href={item.key === "dashboard" ? "/admin-portal-x7k9" : `/admin-portal-x7k9/${item.key}`}
-                    aria-current={selected ? "page" : undefined}
-                    className={`relative flex min-h-11 min-w-0 items-center justify-start gap-2 rounded-sm px-3 py-2 font-mono text-xs uppercase tracking-[0.1em] text-left leading-relaxed transition ${selected ? "bg-forest text-accent" : "text-graphite/80 hover:bg-forest/[0.05] hover:text-forest"}`}
-                  >
-                    <span className="min-w-0">{item.label}</span>
-                    {item.key === "website" && websiteActive && (
-                      <span className="h-2.5 w-2.5 shrink-0 rounded-full bg-gold shadow-[0_0_0_3px_rgba(201,160,74,0.18)]" aria-label="Website banner or popup is active" />
-                    )}
-                    {count > 0 && (
-                      <span
-                        className="flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full bg-red-600 px-1.5 text-xs font-semibold leading-none text-white shadow-sm"
-                        aria-label={`${count} notifications`}
-                      >
-                        {count > 9 ? "9+" : count}
-                      </span>
-                    )}
-                  </Link>
-                );
-                })}
-              </div>
-            </div>
-          ))}
-        </div>
+      <label className={navigationStyles.mobileSelect}>Administration section
+        <select value={section} onChange={event => {
+          if (!window.dispatchEvent(new Event("gea:before-navigation", { cancelable: true }))) return;
+          const key = event.target.value as AdminSectionKey;
+          if (onSectionChange) onSectionChange(key);
+          else router.push(key === "dashboard" ? "/admin-portal-x7k9" : `/admin-portal-x7k9/${key}`);
+        }}>
+          {(["Workspace", "Website", "Operations"] as const).map(group => <optgroup key={group} label={group}>{ADMIN_SECTIONS.filter(item => item.group === group && (item.key !== "builders" || BUILDERS_ENABLED)).map(item => <option key={item.key} value={item.key}>{item.label}{alertCounts[item.key] ? ` (${alertCounts[item.key]} new)` : ""}</option>)}</optgroup>)}
+        </select>
+      </label>
+      <nav className={navigationStyles.navigation} aria-label="Admin sections">
+        {ADMIN_SECTIONS.filter(item => item.key !== "builders" || BUILDERS_ENABLED).map(item => {
+          const contents = <>{item.label}{item.key === "website" && websiteActive && <span className={navigationStyles.activeBanner} aria-label="Website announcement active" />}{alertCounts[item.key] > 0 && <span className={navigationStyles.count}>{alertCounts[item.key]}<span className="sr-only"> new items</span></span>}</>;
+          return onSectionChange ? <button key={item.key} onClick={() => onSectionChange(item.key)} aria-current={section === item.key ? "page" : undefined} className={controls.control}>{contents}</button> : <Link key={item.key} href={item.key === "dashboard" ? "/admin-portal-x7k9" : `/admin-portal-x7k9/${item.key}`} aria-current={section === item.key ? "page" : undefined}>{contents}</Link>;
+        })}
       </nav>
 
       <div className="min-w-0">
-        <div className="mb-5 flex flex-col gap-1 border-b border-forest/10 pb-4 sm:flex-row sm:items-end sm:justify-between">
-          <div>
-            <p className="font-mono text-xs uppercase tracking-[0.25em] text-accent">Admin workspace</p>
-            <h2 className="mt-1 font-display text-2xl text-forest sm:text-3xl">{activeSection.label}</h2>
-          </div>
-          {section !== "dashboard" && (onSectionChange ? <button onClick={() => onSectionChange("dashboard")} className="text-xs text-forest underline">Back to dashboard</button> : <Link href="/admin-portal-x7k9" className="text-xs text-graphite/80 underline decoration-gold underline-offset-4 hover:text-forest">Back to dashboard</Link>)}
+        <div className={navigationStyles.sectionHeader}>
+          <h2>{activeSection.label}</h2>
+          <button type="button" onClick={clearNotifications} disabled={clearing || !hasSupabaseConfig()} className={`${controls.control} ${navigationStyles.textAction}`}>
+            {clearing ? "Marking read…" : "Mark all updates read"}
+          </button>
         </div>
+        {notificationMessage && <p role="status" className="mb-4 text-sm text-graphite/80">{notificationMessage}</p>}
         {renderSection()}
       </div>
     </div>

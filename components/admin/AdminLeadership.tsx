@@ -1,5 +1,6 @@
 "use client";
 
+import controls from "@/components/workspace-controls.module.css";
 import LeadershipPhotoCropper from "@/components/admin/LeadershipPhotoCropper";
 import { useEffect, useId, useMemo, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
@@ -322,30 +323,29 @@ export default function AdminLeadership() {
 
   return (
     <div className="space-y-6">
-      <section className="rounded-sm bg-paper p-5 ring-1 ring-forest/10">
-        <h3 className="font-display text-2xl text-forest">Manage roles</h3>
+      <section className="border-b border-forest/10 pb-6">
+        <h3 className="text-xl font-semibold text-forest">Manage roles</h3>
         <p className="mt-2 text-sm text-graphite/80">Add a role, edit its name, or remove an empty role from the board. Retire or vacate a filled seat before removing its role. Archives and applications are preserved.</p>
         {roleError && <p role="alert" className="mt-3 text-sm text-red-700">{roleError}</p>}
         <fieldset disabled={loading || !rolesReady || roleSaving || saving} className="mt-4 space-y-3 disabled:opacity-60">
           {activeRoles.map((item) => (
             <form key={item.slug} onSubmit={(event) => saveRole(event, item.slug)} className="flex flex-wrap items-center gap-2">
-              <input aria-label={`Name for ${item.label}`} required maxLength={100} value={roleDrafts[item.slug] ?? item.label} onChange={(event) => setRoleDrafts((drafts) => ({ ...drafts, [item.slug]: event.target.value }))} className="min-w-0 flex-1 rounded-sm border border-forest/65 bg-paper px-3 py-2 text-base" />
-              <button type="submit" className="min-h-11 rounded-sm border border-forest/15 px-3 text-sm text-forest">Save name</button>
-              <button type="button" onClick={() => removeRole(item)} disabled={members.some((member) => member.role === item.slug)} title={members.some((member) => member.role === item.slug) ? "Retire or vacate this seat first" : undefined} aria-label={`Remove ${item.label}`} className="min-h-11 px-3 text-sm text-red-700 disabled:opacity-40">Remove</button>
+              <input aria-label={`Name for ${item.label}`} required maxLength={100} value={roleDrafts[item.slug] ?? item.label} onChange={(event) => setRoleDrafts((drafts) => ({ ...drafts, [item.slug]: event.target.value }))} className="min-w-0 flex-1 rounded-[8px] border border-forest/65 bg-paper px-3 py-2 text-base" />
+              <button type="submit" className={`${controls.control} min-h-11 rounded-[8px] border border-forest/15 px-3 text-sm text-forest`}>Save name</button>
+              <button type="button" onClick={() => removeRole(item)} disabled={members.some((member) => member.role === item.slug)} title={members.some((member) => member.role === item.slug) ? "Retire or vacate this seat first" : undefined} aria-label={`Remove ${item.label}`} className={`${controls.control} min-h-11 px-3 text-sm text-red-700 disabled:opacity-40`}>Remove</button>
             </form>
           ))}
           {!activeRoles.length && <p className="text-sm text-graphite/80">No roles yet. Add a role to create a seat.</p>}
           <form onSubmit={(event) => saveRole(event)} className="flex flex-wrap gap-2 border-t border-forest/10 pt-3">
-            <input aria-label="New role name" placeholder="New role name" required maxLength={100} value={newRoleName} onChange={(event) => setNewRoleName(event.target.value)} className="min-w-0 flex-1 rounded-sm border border-forest/65 bg-paper px-3 py-2 text-base" />
-            <button type="submit" className="min-h-11 rounded-sm bg-forest px-4 py-2 text-sm text-accent">{roleSaving ? "Saving..." : "Add role"}</button>
+            <input aria-label="New role name" placeholder="New role name" required maxLength={100} value={newRoleName} onChange={(event) => setNewRoleName(event.target.value)} className="min-w-0 flex-1 rounded-[8px] border border-forest/65 bg-paper px-3 py-2 text-base" />
+            <button type="submit" className={`${controls.control} min-h-11 rounded-[8px] bg-forest px-4 py-2 text-sm text-white`}>{roleSaving ? "Saving..." : "Add role"}</button>
           </form>
         </fieldset>
       </section>
-      <section className="rounded-sm bg-paper p-5 ring-1 ring-forest/10">
+      <section className="border-b border-forest/10 pb-6">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
           <div>
-            <p className="font-mono text-xs uppercase tracking-[0.2em] text-accent">Leadership Board</p>
-            <h3 className="mt-2 font-display text-2xl text-forest">Seat editor</h3>
+            <h3 className="mt-2 text-xl font-semibold text-forest">Seat editor</h3>
             <p className="mt-2 max-w-2xl text-sm leading-relaxed text-graphite/80">
               Fill the seat and add a photo from your computer.
             </p>
@@ -355,7 +355,7 @@ export default function AdminLeadership() {
 
         <form onSubmit={fillSeat} className="mt-5 grid gap-3 sm:grid-cols-2">
           <div>
-            <label htmlFor={roleId} className="font-mono text-xs uppercase tracking-[0.15em] text-graphite/80">
+            <label htmlFor={roleId} className="text-sm font-medium text-graphite/80">
               Role
             </label>
             <select
@@ -368,7 +368,7 @@ export default function AdminLeadership() {
                 setCropFile(null);
                 setPhotoError("");
               }}
-              className="mt-2 block w-full rounded-sm border border-forest/65 bg-paper px-3 py-2 text-base"
+              className="mt-2 block w-full rounded-[8px] border border-forest/65 bg-paper px-3 py-2 text-base"
             >
               {activeRoles.map((r) => (
                 <option key={r.slug} value={r.slug}>
@@ -381,7 +381,7 @@ export default function AdminLeadership() {
             </p>
           </div>
           <div>
-            <label htmlFor={nameId} className="font-mono text-xs uppercase tracking-[0.15em] text-graphite/80">
+            <label htmlFor={nameId} className="text-sm font-medium text-graphite/80">
               Name
             </label>
             <input
@@ -389,13 +389,13 @@ export default function AdminLeadership() {
               required
               value={name}
               onChange={(e) => setName(e.target.value)}
-              className="mt-2 block w-full rounded-sm border border-forest/65 bg-paper px-3 py-2 text-base"
+              className="mt-2 block w-full rounded-[8px] border border-forest/65 bg-paper px-3 py-2 text-base"
             />
           </div>
           <div>
             <label
               htmlFor={contactEmailId}
-              className="font-mono text-xs uppercase tracking-[0.15em] text-graphite/80"
+              className="text-sm font-medium text-graphite/80"
             >
               Contact Email
             </label>
@@ -404,26 +404,26 @@ export default function AdminLeadership() {
               type="email"
               value={contactEmail}
               onChange={(e) => setContactEmail(e.target.value)}
-              className="mt-2 block w-full rounded-sm border border-forest/65 bg-paper px-3 py-2 text-base"
+              className="mt-2 block w-full rounded-[8px] border border-forest/65 bg-paper px-3 py-2 text-base"
               placeholder="name@lvjusd.org" autoComplete="username"
             />
           </div>
           <div>
-            <label htmlFor={bioId} className="font-mono text-xs uppercase tracking-[0.15em] text-graphite/80">
+            <label htmlFor={bioId} className="text-sm font-medium text-graphite/80">
               Bio (optional)
             </label>
             <input
               id={bioId}
               value={bio}
               onChange={(e) => setBio(e.target.value)}
-              className="mt-2 block w-full rounded-sm border border-forest/65 bg-paper px-3 py-2 text-base"
+              className="mt-2 block w-full rounded-[8px] border border-forest/65 bg-paper px-3 py-2 text-base"
             />
           </div>
           <div className="sm:col-span-2">
-            <label htmlFor={photoId} className="font-mono text-xs uppercase tracking-[0.15em] text-graphite/80">
+            <label htmlFor={photoId} className="text-sm font-medium text-graphite/80">
               Leadership Photo
             </label>
-            <div className="mt-2 grid gap-4 rounded-sm border border-dashed border-forest/15 bg-paper p-4 sm:grid-cols-[1fr_180px] sm:items-center">
+            <div className="mt-2 grid gap-4 rounded-[8px] border border-dashed border-forest/15 bg-paper p-4 sm:grid-cols-[1fr_180px] sm:items-center">
               <div>
                 <input
                   id={photoId}
@@ -436,7 +436,7 @@ export default function AdminLeadership() {
                     if (file) setCropFile(file);
                     e.target.value = "";
                   }}
-                  className="block w-full text-base text-graphite/80 file:mr-4 file:rounded-sm file:border-0 file:bg-forest file:px-4 file:py-2 file:font-mono file:text-xs file:uppercase file:tracking-[0.15em] file:text-accent hover:file:bg-forestdeep"
+                  className="block w-full text-base text-graphite/80 file:mr-4 file:rounded-[8px] file:border-0 file:bg-forest file:px-4 file:py-2 file:text-sm file:font-medium file:text-white hover:file:bg-forestdeep"
                 />
                 <p className="mt-2 text-xs leading-relaxed text-graphite/80">
                   Choose a photo, then crop it to a 4:5 portrait. Save the seat to publish your photo.
@@ -449,7 +449,7 @@ export default function AdminLeadership() {
                 {photoError && <p className="mt-2 text-xs text-red-700" role="alert">{photoError}</p>}
               </div>
               <div className="flex justify-start sm:justify-end">
-                <div className="flex aspect-[4/5] w-36 items-center justify-center overflow-hidden rounded-sm border border-forest/10 bg-forest/[0.03]">
+                <div className="flex aspect-[4/5] w-36 items-center justify-center overflow-hidden rounded-[8px] border border-forest/10 bg-forest/[0.03]">
                   {selectedPhotoPreview ? (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img
@@ -466,7 +466,7 @@ export default function AdminLeadership() {
                     />
                   ) : (
                     <div className="px-4 text-center">
-                      <p className="font-mono text-xs uppercase tracking-[0.2em] text-accent">
+                      <p className="text-sm font-medium text-accent">
                         Preview
                       </p>
                       <p className="mt-1 text-sm text-graphite/80">No photo selected yet</p>
@@ -488,7 +488,7 @@ export default function AdminLeadership() {
                     type="button"
                     onClick={clearPhoto}
                     disabled={removingPhoto || saving || !!cropFile}
-                    className="inline-flex min-h-11 items-center rounded-sm border border-red-700/20 px-4 py-2 font-mono text-xs uppercase tracking-[0.15em] text-red-700 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-60"
+                    className={`${controls.control} inline-flex min-h-11 items-center rounded-[8px] border border-red-700/20 px-4 py-2 text-sm font-medium text-red-700 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-60`}
                   >
                     {removingPhoto ? "Removing photo..." : "Remove current photo"}
                   </button>
@@ -504,7 +504,7 @@ export default function AdminLeadership() {
           <button
             type="submit"
             disabled={saving || loading || roleSaving || !!cropFile || activeRoles.length === 0}
-            className="rounded-sm bg-forest px-4 py-2.5 font-mono text-xs uppercase tracking-[0.15em] text-accent transition hover:bg-forestdeep disabled:cursor-not-allowed disabled:opacity-60 sm:col-span-2"
+            className={`${controls.control} rounded-[8px] bg-forest px-4 py-2.5 text-sm font-medium text-white transition hover:bg-forestdeep disabled:cursor-not-allowed disabled:opacity-60 sm:col-span-2`}
           >
             {saving ? "Saving..." : "Fill / Update Seat"}
           </button>
@@ -512,14 +512,14 @@ export default function AdminLeadership() {
       </section>
 
       <div className="space-y-3">
-        <div className="flex flex-col gap-3 rounded-sm bg-forest/[0.03] p-4 ring-1 ring-forest/10 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-col gap-3 border-t border-forest/10 pt-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <p className="font-mono text-xs uppercase tracking-[0.15em] text-accent">Current board</p>
+            <p className="text-sm font-medium text-accent">Current board</p>
             <p className="mt-1 text-sm text-graphite/80">Retiring a member preserves them on the public leadership archive.</p>
           </div>
           <label className="text-sm text-graphite/80">
             School year
-            <select value={retireYear} onChange={(event) => setRetireYear(event.target.value)} className="mt-1 block min-h-10 rounded-sm border border-forest/65 bg-paper px-3 py-2 text-base">
+            <select value={retireYear} onChange={(event) => setRetireYear(event.target.value)} className="mt-1 block min-h-10 rounded-[8px] border border-forest/65 bg-paper px-3 py-2 text-base">
               <option>2025-2026</option>
               <option>2026-2027</option>
               <option>2027-2028</option>
@@ -528,15 +528,15 @@ export default function AdminLeadership() {
         </div>
         {loading && <p className="text-sm text-graphite/80" role="status">Loading...</p>}
         {[...members].sort((a, b) => a.display_order - b.display_order).map((m, index, orderedMembers) => (
-          <div key={m.id} className="rounded-sm bg-forest/[0.03] p-4 ring-1 ring-forest/10">
+          <div key={m.id} className="border-t border-forest/10 pt-4">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div className="flex items-center gap-3">
-                <div className="flex aspect-[4/5] w-14 shrink-0 items-center justify-center overflow-hidden rounded-sm border border-forest/10 bg-paper">
+                <div className="flex aspect-[4/5] w-14 shrink-0 items-center justify-center overflow-hidden rounded-[8px] border border-forest/10 bg-paper">
                   {m.photo_url ? (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img src={m.photo_url} alt={m.name} className="h-full w-full object-cover" />
                   ) : (
-                    <span className="font-mono text-xs uppercase tracking-[0.15em] text-accent">
+                    <span className="text-sm font-medium text-accent">
                       {m.name
                         .split(" ")
                         .filter(Boolean)
@@ -547,27 +547,27 @@ export default function AdminLeadership() {
                   )}
                 </div>
                 <div>
-                  <p className="font-mono text-xs uppercase tracking-[0.15em] text-accent">{getRoleLabel(m.role, roles)}</p>
+                  <p className="text-sm font-medium text-accent">{getRoleLabel(m.role, roles)}</p>
                   <p className="font-medium text-graphite">{m.name}</p>
                   {m.contact_email && <p className="text-xs text-graphite/80">{m.contact_email}</p>}
                 </div>
               </div>
               <div className="flex flex-wrap gap-3">
                 <div className="flex items-center gap-1">
-                  <button type="button" onClick={() => moveMember(m, "up")} disabled={index === 0} className="rounded-sm border border-forest/15 px-2 py-1 font-mono text-xs text-forest hover:bg-paper disabled:opacity-30" aria-label={`Move ${m.name} up`}>↑</button>
-                  <button type="button" onClick={() => moveMember(m, "down")} disabled={index === orderedMembers.length - 1} className="rounded-sm border border-forest/15 px-2 py-1 font-mono text-xs text-forest hover:bg-paper disabled:opacity-30" aria-label={`Move ${m.name} down`}>↓</button>
+                  <button type="button" onClick={() => moveMember(m, "up")} disabled={index === 0} className={`${controls.control} rounded-[8px] border border-forest/15 px-2 py-1 text-sm text-forest hover:bg-paper disabled:opacity-30`} aria-label={`Move ${m.name} up`}>↑</button>
+                  <button type="button" onClick={() => moveMember(m, "down")} disabled={index === orderedMembers.length - 1} className={`${controls.control} rounded-[8px] border border-forest/15 px-2 py-1 text-sm text-forest hover:bg-paper disabled:opacity-30`} aria-label={`Move ${m.name} down`}>↓</button>
                 </div>
                 <button
                   type="button"
                   onClick={() => vacateSeat(m.id)}
-                  className="inline-flex min-h-11 items-center font-mono text-xs uppercase tracking-[0.15em] text-red-700 hover:underline"
+                  className={`${controls.control} inline-flex min-h-11 items-center text-sm font-medium text-red-700 hover:underline`}
                 >
                   Vacate
                 </button>
                 <button
                   type="button"
                   onClick={() => retireSeat(m)}
-                  className="inline-flex min-h-11 items-center rounded-sm border border-forest/15 px-3 font-mono text-xs uppercase tracking-[0.15em] text-forest transition hover:bg-paper"
+                  className={`${controls.control} inline-flex min-h-11 items-center rounded-[8px] border border-forest/15 px-3 text-sm font-medium text-forest transition hover:bg-paper`}
                 >
                   Retire
                 </button>
@@ -579,15 +579,15 @@ export default function AdminLeadership() {
 
       {formerMembers.length > 0 && (
         <section className="border-t border-forest/10 pt-6">
-          <p className="font-mono text-xs uppercase tracking-[0.2em] text-accent">Former Leadership</p>
-          <h3 className="mt-2 font-display text-2xl text-forest">Leadership archive</h3>
+          <p className="text-sm font-medium text-accent">Former Leadership</p>
+          <h3 className="mt-2 text-xl font-semibold text-forest">Leadership archive</h3>
           <div className="mt-4 space-y-5">
             {Array.from(new Set(formerMembers.map((member) => member.school_year))).map((schoolYear) => (
               <div key={schoolYear}>
                 <h4 className="font-display text-lg text-forest">{schoolYear}</h4>
                 <div className="mt-2 grid gap-2 sm:grid-cols-2">
                   {formerMembers.filter((member) => member.school_year === schoolYear).map((member) => (
-                    <div key={member.id} className="rounded-sm bg-forest/[0.03] px-4 py-3 text-sm text-graphite/80">
+                    <div key={member.id} className="rounded-[8px] bg-forest/[0.03] px-4 py-3 text-sm text-graphite/80">
                       <span className="font-medium text-forest">{member.name}</span> · {getRoleLabel(member.role, roles)}
                     </div>
                   ))}
@@ -599,15 +599,15 @@ export default function AdminLeadership() {
       )}
 
       <section className="border-t border-forest/10 pt-6">
-        <p className="font-mono text-xs uppercase tracking-[0.2em] text-accent">Archive entry</p>
-        <h3 className="mt-2 font-display text-2xl text-forest">Add former team member</h3>
+        <p className="text-sm font-medium text-accent">Archive entry</p>
+        <h3 className="mt-2 text-xl font-semibold text-forest">Add former team member</h3>
         <p className="mt-2 max-w-2xl text-sm leading-relaxed text-graphite/80">
           Add someone from an earlier leadership team without filling a current seat first.
         </p>
         <form onSubmit={addFormerMember} className="mt-5 grid gap-3 sm:grid-cols-2">
           <label className="text-sm text-graphite/80">
             School year
-            <select value={formerYear} onChange={(event) => setFormerYear(event.target.value)} className="mt-2 block w-full rounded-sm border border-forest/65 bg-paper px-3 py-2 text-base">
+            <select value={formerYear} onChange={(event) => setFormerYear(event.target.value)} className="mt-2 block w-full rounded-[8px] border border-forest/65 bg-paper px-3 py-2 text-base">
               <option>2024-2025</option>
               <option>2025-2026</option>
               <option>2026-2027</option>
@@ -616,23 +616,23 @@ export default function AdminLeadership() {
           </label>
           <label className="text-sm text-graphite/80">
             Role
-            <select value={formerRole} onChange={(event) => setFormerRole(event.target.value)} className="mt-2 block w-full rounded-sm border border-forest/65 bg-paper px-3 py-2 text-base">
+            <select value={formerRole} onChange={(event) => setFormerRole(event.target.value)} className="mt-2 block w-full rounded-[8px] border border-forest/65 bg-paper px-3 py-2 text-base">
               {activeRoles.map((item) => <option key={item.slug} value={item.slug}>{item.label}</option>)}
             </select>
           </label>
           <label className="text-sm text-graphite/80">
             Name
-            <input required value={formerName} onChange={(event) => setFormerName(event.target.value)} className="mt-2 block w-full rounded-sm border border-forest/65 bg-paper px-3 py-2 text-base" />
+            <input required value={formerName} onChange={(event) => setFormerName(event.target.value)} className="mt-2 block w-full rounded-[8px] border border-forest/65 bg-paper px-3 py-2 text-base" />
           </label>
           <label className="text-sm text-graphite/80">
             Contact email (optional)
-            <input type="email" value={formerEmail} onChange={(event) => setFormerEmail(event.target.value)} className="mt-2 block w-full rounded-sm border border-forest/65 bg-paper px-3 py-2 text-base" autoComplete="username" />
+            <input type="email" value={formerEmail} onChange={(event) => setFormerEmail(event.target.value)} className="mt-2 block w-full rounded-[8px] border border-forest/65 bg-paper px-3 py-2 text-base" autoComplete="username" />
           </label>
           <label className="text-sm text-graphite/80 sm:col-span-2">
             Bio (optional)
-            <input value={formerBio} onChange={(event) => setFormerBio(event.target.value)} className="mt-2 block w-full rounded-sm border border-forest/65 bg-paper px-3 py-2 text-base" />
+            <input value={formerBio} onChange={(event) => setFormerBio(event.target.value)} className="mt-2 block w-full rounded-[8px] border border-forest/65 bg-paper px-3 py-2 text-base" />
           </label>
-          <button type="submit" disabled={saving || loading || roleSaving || activeRoles.length === 0} className="rounded-sm bg-forest px-4 py-2.5 font-mono text-xs uppercase tracking-[0.15em] text-accent transition hover:bg-forestdeep disabled:cursor-not-allowed disabled:opacity-60 sm:col-span-2">
+          <button type="submit" disabled={saving || loading || roleSaving || activeRoles.length === 0} className={`${controls.control} rounded-[8px] bg-forest px-4 py-2.5 text-sm font-medium text-white transition hover:bg-forestdeep disabled:cursor-not-allowed disabled:opacity-60 sm:col-span-2`}>
             {saving ? "Adding..." : "Add Former Member"}
           </button>
         </form>

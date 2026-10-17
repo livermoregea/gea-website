@@ -166,3 +166,5 @@ Use the [live-release checklist](docs/live-release-checklist.md) before deployin
 the GEA One and officer-accountability changes. Keep the regression tests and
 production migrations in version control; fixture SQL belongs only in disposable
 test databases.
+
+GEA One's planning dashboard, calendar, meeting minutes, secretary roll call, event planning, shared notification read state, weekly inbox digests, task help requests, and accomplishment reports are documented in [GEA operations](docs/gea-operations.md). Apply `supabase/gea-operations.sql` after the shared-task migration before deploying these features.

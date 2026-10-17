@@ -382,3 +382,7 @@ existing advisor/super-admin evaluation rules apply. Ending with or without scor
 continues to work for reviewers outside the team.
 
 Run `tests/officer-shared-tasks.sql` last in the disposable fixture database.
+
+## Unified officer workspace
+
+Tasks, progress, updates, meeting minutes, secretary roll call, event planning, and reports share one Officer workspace. Its sections are Overview, Tasks & progress, Calendar, Meetings, Events, and Reports. The old Planning & inbox entry is removed; existing `/operations` links redirect into the matching section. The secretary and reviewers take roll call and save Google Doc links for the agenda and meeting notes. All officers can open the links; prior written notes remain in history. Apply `supabase/meeting-document-links.sql` after the operations migration for the document fields. See [GEA operations](gea-operations.md) for setup and permissions.

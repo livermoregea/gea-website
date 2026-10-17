@@ -1,5 +1,6 @@
 "use client";
 
+import controls from "@/components/workspace-controls.module.css";
 import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { hasSupabaseConfig } from "@/lib/supabase/config";
@@ -104,17 +105,17 @@ export default function AdminQA() {
   return (
     <div className="grid gap-10 md:grid-cols-2">
       {message && (
-        <p className="md:col-span-2 rounded-sm bg-forest/[0.05] p-4 text-sm text-graphite/80 ring-1 ring-forest/10" role="status">
+        <p className="md:col-span-2 rounded-[8px] bg-forest/[0.05] p-4 text-sm text-graphite/80 ring-1 ring-forest/10" role="status">
           {message}
         </p>
       )}
       <div>
-        <p className="font-mono text-xs uppercase tracking-[0.2em] text-accent">Pending Questions</p>
+        <p className="text-sm font-medium text-accent">Pending Questions</p>
         <div className="mt-4 space-y-3">
           {questions.length === 0 && <p className="text-sm text-graphite/80">Nothing pending.</p>}
           {questions.map((q) => (
-            <div key={q.id} className="rounded-sm bg-forest/[0.03] p-4 ring-1 ring-forest/5">
-              <p className="font-mono text-xs uppercase tracking-[0.15em] text-graphite/80">
+            <div key={q.id} className="rounded-[8px] bg-forest/[0.03] p-4 ring-1 ring-forest/5">
+              <p className="text-sm font-medium text-graphite/80">
                 {q.asked_by_name}
               </p>
               <QuestionContent question={q.question} className="mt-1" />
@@ -126,18 +127,18 @@ export default function AdminQA() {
                 }
                 rows={2}
                 placeholder="Reason for rejection (required if you reject this question)"
-                className="mt-3 w-full rounded-sm border border-forest/65 bg-paper px-3 py-2 text-base outline-none focus:border-gold"
+                className="mt-3 w-full rounded-[8px] border border-forest/65 bg-paper px-3 py-2 text-base outline-none focus:border-gold"
               />
               <div className="mt-3 flex gap-3">
                 <button
                   onClick={() => setQuestionStatus(q.id, "approved")}
-                  className="inline-flex min-h-11 items-center font-mono text-xs uppercase tracking-[0.15em] text-forest hover:underline"
+                  className={`${controls.control} inline-flex min-h-11 items-center text-sm font-medium text-forest hover:underline`}
                 >
                   Approve
                 </button>
                 <button
                   onClick={() => setQuestionRejection(q.id)}
-                  className="inline-flex min-h-11 items-center font-mono text-xs uppercase tracking-[0.15em] text-red-700 hover:underline"
+                  className={`${controls.control} inline-flex min-h-11 items-center text-sm font-medium text-red-700 hover:underline`}
                 >
                   Reject
                 </button>
@@ -148,12 +149,12 @@ export default function AdminQA() {
       </div>
 
       <div>
-        <p className="font-mono text-xs uppercase tracking-[0.2em] text-accent">Pending Answers</p>
+        <p className="text-sm font-medium text-accent">Pending Answers</p>
         <div className="mt-4 space-y-3">
           {answers.length === 0 && <p className="text-sm text-graphite/80">Nothing pending.</p>}
           {answers.map((a) => (
-            <div key={a.id} className="rounded-sm bg-forest/[0.03] p-4 ring-1 ring-forest/5">
-              <p className="font-mono text-xs uppercase tracking-[0.15em] text-graphite/80">
+            <div key={a.id} className="rounded-[8px] bg-forest/[0.03] p-4 ring-1 ring-forest/5">
+              <p className="text-sm font-medium text-graphite/80">
                 {a.answered_by_name}
               </p>
               <p className="mt-1 text-sm text-graphite whitespace-pre-wrap">{a.answer}</p>
@@ -165,18 +166,18 @@ export default function AdminQA() {
                 }
                 rows={2}
                 placeholder="Reason for rejection (required if you reject this answer)"
-                className="mt-3 w-full rounded-sm border border-forest/65 bg-paper px-3 py-2 text-base outline-none focus:border-gold"
+                className="mt-3 w-full rounded-[8px] border border-forest/65 bg-paper px-3 py-2 text-base outline-none focus:border-gold"
               />
               <div className="mt-3 flex gap-3">
                 <button
                   onClick={() => setAnswerStatus(a.id, "approved")}
-                  className="inline-flex min-h-11 items-center font-mono text-xs uppercase tracking-[0.15em] text-forest hover:underline"
+                  className={`${controls.control} inline-flex min-h-11 items-center text-sm font-medium text-forest hover:underline`}
                 >
                   Approve
                 </button>
                 <button
                   onClick={() => setAnswerRejection(a.id)}
-                  className="inline-flex min-h-11 items-center font-mono text-xs uppercase tracking-[0.15em] text-red-700 hover:underline"
+                  className={`${controls.control} inline-flex min-h-11 items-center text-sm font-medium text-red-700 hover:underline`}
                 >
                   Reject
                 </button>

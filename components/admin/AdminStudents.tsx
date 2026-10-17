@@ -1,5 +1,6 @@
 "use client";
 
+import controls from "@/components/workspace-controls.module.css";
 import { useEffect, useId, useMemo, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { hasSupabaseConfig } from "@/lib/supabase/config";
@@ -222,11 +223,10 @@ export default function AdminStudents() {
 
   return (
     <div className="space-y-8">
-      <section className="rounded-sm bg-paper p-5 ring-1 ring-forest/10">
+      <section className="border-b border-forest/10 pb-6">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
           <div>
-            <p className="font-mono text-xs uppercase tracking-[0.2em] text-accent">Students</p>
-            <h3 className="mt-2 font-display text-2xl text-forest">Student profiles</h3>
+            <h3 className="mt-2 text-xl font-semibold text-forest">Student profiles</h3>
           </div>
           <p className="text-sm text-graphite/80">
             {students.length} student{students.length === 1 ? "" : "s"} · {blocks.length} blocked email
@@ -241,11 +241,11 @@ export default function AdminStudents() {
 
       <div className="grid gap-8 lg:grid-cols-[1.05fr_0.95fr]">
         <div className="space-y-4">
-          <div className="rounded-sm bg-paper p-5 ring-1 ring-forest/10">
+          <div className="border-b border-forest/10 pb-6">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
               <div>
-                <p className="font-mono text-xs uppercase tracking-[0.2em] text-accent">Roster</p>
-                <h3 className="mt-2 font-display text-2xl text-forest">Student profiles</h3>
+                <p className="text-sm font-medium text-accent">Roster</p>
+                <h3 className="mt-2 text-xl font-semibold text-forest">Student profiles</h3>
               </div>
               <p className="text-sm text-graphite/80">
                 {filteredStudents.length} shown of {students.length}
@@ -257,14 +257,14 @@ export default function AdminStudents() {
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search by name, username, email, or class year"
-              className="mt-5 w-full rounded-sm border border-forest/65 bg-paper px-4 py-3 text-base outline-none placeholder:text-graphite/80 focus:border-gold"
+              className="mt-5 w-full rounded-[8px] border border-forest/65 bg-paper px-4 py-3 text-base outline-none placeholder:text-graphite/80 focus:border-gold"
             />
           </div>
 
           <div className="space-y-4">
             {filteredStudents.length > 0 && (
-              <div className="flex flex-col gap-3 rounded-sm bg-paper px-4 py-3 ring-1 ring-forest/10 sm:flex-row sm:items-center sm:justify-between">
-                <p className="font-mono text-xs uppercase tracking-[0.15em] text-graphite/80">
+              <div className="flex flex-col gap-3 rounded-[8px] bg-paper px-4 py-3 ring-1 ring-forest/10 sm:flex-row sm:items-center sm:justify-between">
+                <p className="text-sm font-medium text-graphite/80">
                   Showing {showingStart}-{showingEnd} of {filteredStudents.length}
                 </p>
                 <div className="flex items-center gap-2">
@@ -272,18 +272,18 @@ export default function AdminStudents() {
                     type="button"
                     onClick={() => setPage((current) => Math.max(1, current - 1))}
                     disabled={currentPage <= 1}
-                    className="rounded-sm border border-forest/15 px-3 py-2 font-mono text-xs uppercase tracking-[0.12em] text-forest transition hover:bg-forest/[0.03] disabled:cursor-not-allowed disabled:opacity-40"
+                    className={`${controls.control} rounded-[8px] border border-forest/15 px-3 py-2 text-sm font-medium text-forest transition hover:bg-forest/[0.03] disabled:cursor-not-allowed disabled:opacity-40`}
                   >
                     Previous
                   </button>
-                  <span className="font-mono text-xs uppercase tracking-[0.15em] text-graphite/80">
+                  <span className="text-sm font-medium text-graphite/80">
                     Page {currentPage} of {totalPages}
                   </span>
                   <button
                     type="button"
                     onClick={() => setPage((current) => Math.min(totalPages, current + 1))}
                     disabled={currentPage >= totalPages}
-                    className="rounded-sm border border-forest/15 px-3 py-2 font-mono text-xs uppercase tracking-[0.12em] text-forest transition hover:bg-forest/[0.03] disabled:cursor-not-allowed disabled:opacity-40"
+                    className={`${controls.control} rounded-[8px] border border-forest/15 px-3 py-2 text-sm font-medium text-forest transition hover:bg-forest/[0.03] disabled:cursor-not-allowed disabled:opacity-40`}
                   >
                     Next
                   </button>
@@ -300,7 +300,7 @@ export default function AdminStudents() {
               <button
                 key={student.id}
                 onClick={() => startEdit(student)}
-                className={`block w-full rounded-sm border px-5 py-4 text-left transition ${
+                className={`${controls.control} block w-full rounded-[8px] border px-5 py-4 text-left transition ${
                   selectedId === student.id
                     ? "border-gold/40 bg-gold/10"
                     : "border-forest/10 bg-paper hover:bg-forest/[0.02]"
@@ -313,7 +313,7 @@ export default function AdminStudents() {
                     )}
                     <p className="font-display text-lg text-forest">{student.full_name}</p>
                   </div>
-                  <p className="font-mono text-xs uppercase tracking-[0.15em] text-accent">
+                  <p className="text-sm font-medium text-accent">
                     Class of {student.graduating_class_year}
                   </p>
                 </div>
@@ -322,11 +322,11 @@ export default function AdminStudents() {
           </div>
           </div>
 
-          <div className="rounded-sm bg-paper p-5 ring-1 ring-forest/10">
+          <div className="border-b border-forest/10 pb-6">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
               <div>
-                <p className="font-mono text-xs uppercase tracking-[0.2em] text-accent">Blacklist</p>
-                <h3 className="mt-2 font-display text-2xl text-forest">Blocked emails</h3>
+                <p className="text-sm font-medium text-accent">Blacklist</p>
+                <h3 className="mt-2 text-xl font-semibold text-forest">Blocked emails</h3>
               </div>
             </div>
             <div className="mt-4 space-y-3">
@@ -335,11 +335,11 @@ export default function AdminStudents() {
                 <p className="text-sm text-graphite/80" role="status">No emails are blocked right now.</p>
               )}
               {blocks.map((block) => (
-                <div key={block.school_email} className="rounded-sm border border-forest/10 bg-forest/[0.02] p-4">
+                <div key={block.school_email} className="rounded-[8px] border border-forest/10 bg-forest/[0.02] p-4">
                   <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                     <div>
                       <p className="font-medium text-forest">{block.school_email}</p>
-                      <p className="mt-1 text-xs uppercase tracking-[0.12em] text-graphite/80">
+                      <p className="mt-1 text-sm text-graphite/80">
                         {getStudentEmailBlockReasonLabel(block.reason)}
                       </p>
                       {block.note ? <p className="mt-1 text-sm text-graphite/80">{block.note}</p> : null}
@@ -348,7 +348,7 @@ export default function AdminStudents() {
                       type="button"
                       onClick={() => unblacklist(block.school_email)}
                       disabled={saving}
-                      className="rounded-sm border border-forest/15 px-4 py-2 font-mono text-xs uppercase tracking-[0.15em] text-forest transition hover:bg-paper disabled:opacity-50"
+                      className={`${controls.control} rounded-[8px] border border-forest/15 px-4 py-2 text-sm font-medium text-forest transition hover:bg-paper disabled:opacity-50`}
                     >
                       Unblacklist
                     </button>
@@ -359,70 +359,70 @@ export default function AdminStudents() {
           </div>
         </div>
 
-        <form onSubmit={save} className="space-y-4 rounded-sm bg-forest/[0.03] p-5 ring-1 ring-forest/5">
-          <p className="font-mono text-xs uppercase tracking-[0.2em] text-accent">Edit Profile</p>
+        <form onSubmit={save} className="space-y-4 rounded-[8px] bg-forest/[0.03] p-5 ring-1 ring-forest/5">
+          <p className="text-sm font-medium text-accent">Edit Profile</p>
           <p className="text-sm text-graphite/80">
             Select a student to update their profile or remove them from GEA.
           </p>
           <div>
-            <label htmlFor={fullNameId} className="font-mono text-xs uppercase tracking-[0.15em] text-graphite/80">
+            <label htmlFor={fullNameId} className="text-sm font-medium text-graphite/80">
               Full Name
             </label>
             <input
               id={fullNameId}
               value={fullName}
               onChange={(e) => setFullName(e.target.value)}
-              className="mt-2 w-full rounded-sm border border-forest/65 bg-paper px-3 py-2 text-base"
+              className="mt-2 w-full rounded-[8px] border border-forest/65 bg-paper px-3 py-2 text-base"
             />
           </div>
           <div>
-            <label htmlFor={displayUsernameId} className="font-mono text-xs uppercase tracking-[0.15em] text-graphite/80">
+            <label htmlFor={displayUsernameId} className="text-sm font-medium text-graphite/80">
               Display Username
             </label>
             <input
               id={displayUsernameId}
               value={displayUsername}
               onChange={(e) => setDisplayUsername(e.target.value)}
-              className="mt-2 w-full rounded-sm border border-forest/65 bg-paper px-3 py-2 text-base"
+              className="mt-2 w-full rounded-[8px] border border-forest/65 bg-paper px-3 py-2 text-base"
             />
           </div>
           <div>
-            <label htmlFor={graduatingClassYearId} className="font-mono text-xs uppercase tracking-[0.15em] text-graphite/80">
+            <label htmlFor={graduatingClassYearId} className="text-sm font-medium text-graphite/80">
               Graduating Class Year
             </label>
             <input
               id={graduatingClassYearId}
               value={graduatingClassYear}
               onChange={(e) => setGraduatingClassYear(e.target.value)}
-              className="mt-2 w-full rounded-sm border border-forest/65 bg-paper px-3 py-2 text-base"
+              className="mt-2 w-full rounded-[8px] border border-forest/65 bg-paper px-3 py-2 text-base"
             />
           </div>
           <div>
-            <label htmlFor={schoolEmailId} className="font-mono text-xs uppercase tracking-[0.15em] text-graphite/80">
+            <label htmlFor={schoolEmailId} className="text-sm font-medium text-graphite/80">
               School Email
             </label>
             <input
               id={schoolEmailId}
               value={schoolEmail}
               onChange={(e) => setSchoolEmail(e.target.value)}
-              className="mt-2 w-full rounded-sm border border-forest/65 bg-paper px-3 py-2 text-base"
+              className="mt-2 w-full rounded-[8px] border border-forest/65 bg-paper px-3 py-2 text-base"
             />
           </div>
 
-          <div className="rounded-sm border border-red-700/15 bg-red-50 p-4">
-            <p className="font-mono text-xs uppercase tracking-[0.15em] text-red-700">Remove Student</p>
+          <div className="rounded-[8px] border border-red-700/15 bg-red-50 p-4">
+            <p className="text-sm font-medium text-red-700">Remove Student</p>
             <p className="mt-2 text-sm text-red-800/80">
               Removing a student will delete their GEA One account and add their email to the blacklist until you unblacklist it.
             </p>
             <div className="mt-4">
-              <label htmlFor="student-removal-reason" className="font-mono text-xs uppercase tracking-[0.15em] text-red-700">
+              <label htmlFor="student-removal-reason" className="text-sm font-medium text-red-700">
                 Why are you removing them?
               </label>
               <select
                 id="student-removal-reason"
                 value={removalReason}
                 onChange={(e) => setRemovalReason(e.target.value as StudentEmailBlockReason)}
-                className="mt-2 w-full rounded-sm border border-red-200 bg-white px-3 py-2 text-base outline-none focus:border-red-400"
+                className="mt-2 w-full rounded-[8px] border border-red-200 bg-white px-3 py-2 text-base outline-none focus:border-red-400"
               >
                 {STUDENT_EMAIL_BLOCK_REASONS.map((reason) => (
                   <option key={reason.value} value={reason.value}>
@@ -433,7 +433,7 @@ export default function AdminStudents() {
             </div>
             {removalReason === "other" ? (
               <div className="mt-4">
-                <label htmlFor="student-removal-note" className="font-mono text-xs uppercase tracking-[0.15em] text-red-700">
+                <label htmlFor="student-removal-note" className="text-sm font-medium text-red-700">
                   Note
                 </label>
                 <textarea
@@ -441,7 +441,7 @@ export default function AdminStudents() {
                   value={removalNote}
                   onChange={(e) => setRemovalNote(e.target.value)}
                   rows={3}
-                  className="mt-2 w-full rounded-sm border border-red-200 bg-white px-3 py-2 text-base outline-none focus:border-red-400"
+                  className="mt-2 w-full rounded-[8px] border border-red-200 bg-white px-3 py-2 text-base outline-none focus:border-red-400"
                   placeholder="Add a short reason"
                 />
               </div>
@@ -450,7 +450,7 @@ export default function AdminStudents() {
               type="button"
               onClick={removeAndBlacklist}
               disabled={!selectedId || saving}
-              className="mt-4 w-full rounded-sm bg-red-700 px-4 py-2.5 font-mono text-xs uppercase tracking-[0.15em] text-white transition hover:bg-red-800 disabled:opacity-50"
+              className={`${controls.control} mt-4 w-full rounded-[8px] bg-red-700 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-red-800 disabled:opacity-50`}
             >
               {saving ? "Removing..." : selectedId ? "Remove & Blacklist" : "Select a Student"}
             </button>
@@ -460,7 +460,7 @@ export default function AdminStudents() {
           <button
             type="submit"
             disabled={!selectedId || saving}
-            className="w-full rounded-sm bg-forest px-4 py-2.5 font-mono text-xs uppercase tracking-[0.15em] text-accent transition hover:bg-forestdeep disabled:opacity-50"
+            className={`${controls.control} w-full rounded-[8px] bg-forest px-4 py-2.5 text-sm font-medium text-white transition hover:bg-forestdeep disabled:opacity-50`}
           >
             {saving ? "Saving..." : selectedId ? "Save Profile" : "Select a Student"}
           </button>

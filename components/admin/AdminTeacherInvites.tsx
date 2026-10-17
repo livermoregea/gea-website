@@ -1,5 +1,6 @@
 "use client";
 
+import controls from "@/components/workspace-controls.module.css";
 import { useEffect, useId, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { hasSupabaseConfig } from "@/lib/supabase/config";
@@ -96,29 +97,28 @@ export default function AdminTeacherInvites() {
 
   return (
     <div className="space-y-6">
-      <section className="rounded-sm bg-paper p-5 ring-1 ring-forest/10">
+      <section className="border-b border-forest/10 pb-6">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
           <div>
-            <p className="font-mono text-xs uppercase tracking-[0.2em] text-accent">Teacher Invites</p>
-            <h3 className="mt-2 font-display text-2xl text-forest">Invite queue</h3>
+            <h3 className="mt-2 text-xl font-semibold text-forest">Invite queue</h3>
           </div>
           <p className="text-sm text-graphite/80">{invites.length} invite{invites.length === 1 ? "" : "s"}</p>
         </div>
         <form onSubmit={createInvite} className="mt-5 grid gap-3 lg:grid-cols-[1.05fr_1.05fr_0.55fr_auto]">
           <div>
-            <label htmlFor={nameId} className="font-mono text-xs uppercase tracking-[0.15em] text-graphite/80">
+            <label htmlFor={nameId} className="text-sm font-medium text-graphite/80">
               Teacher Name
             </label>
             <input
               id={nameId}
               value={teacherName}
               onChange={(e) => setTeacherName(e.target.value)}
-              className="mt-2 w-full rounded-sm border border-forest/65 bg-paper px-3 py-2 text-base"
+              className="mt-2 w-full rounded-[8px] border border-forest/65 bg-paper px-3 py-2 text-base"
               placeholder="Teacher full name"
             />
           </div>
           <div>
-            <label htmlFor={emailId} className="font-mono text-xs uppercase tracking-[0.15em] text-graphite/80">
+            <label htmlFor={emailId} className="text-sm font-medium text-graphite/80">
               Teacher Email
             </label>
             <input
@@ -126,12 +126,12 @@ export default function AdminTeacherInvites() {
               type="email"
               value={teacherEmail}
               onChange={(e) => setTeacherEmail(e.target.value)}
-              className="mt-2 w-full rounded-sm border border-forest/65 bg-paper px-3 py-2 text-base"
+              className="mt-2 w-full rounded-[8px] border border-forest/65 bg-paper px-3 py-2 text-base"
               placeholder="name@lvjusd.org" autoComplete="username"
             />
           </div>
           <div>
-            <label htmlFor={expiryId} className="font-mono text-xs uppercase tracking-[0.15em] text-graphite/80">
+            <label htmlFor={expiryId} className="text-sm font-medium text-graphite/80">
               Expire Days
             </label>
             <input
@@ -139,14 +139,14 @@ export default function AdminTeacherInvites() {
               inputMode="numeric"
               value={expiryDays}
               onChange={(e) => setExpiryDays(e.target.value)}
-              className="mt-2 w-full rounded-sm border border-forest/65 bg-paper px-3 py-2 text-base"
+              className="mt-2 w-full rounded-[8px] border border-forest/65 bg-paper px-3 py-2 text-base"
               placeholder="7"
             />
           </div>
           <button
             type="submit"
             disabled={saving}
-            className="rounded-sm bg-forest px-4 py-2.5 font-mono text-xs uppercase tracking-[0.15em] text-accent transition hover:bg-forestdeep disabled:opacity-50"
+            className={`${controls.control} rounded-[8px] bg-forest px-4 py-2.5 text-sm font-medium text-white transition hover:bg-forestdeep disabled:opacity-50`}
           >
             {saving ? "Generating..." : "Generate"}
           </button>
@@ -162,18 +162,18 @@ export default function AdminTeacherInvites() {
           const used = Boolean(invite.used_at);
           const status = used ? "used" : expired ? "expired" : "active";
           return (
-            <div key={invite.id} className="rounded-sm bg-forest/[0.03] p-4 ring-1 ring-forest/10">
+            <div key={invite.id} className="border-t border-forest/10 pt-4">
               <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div>
                   <p className="font-display text-lg text-forest">{invite.teacher_name}</p>
                   <p className="text-sm text-graphite/80">{invite.teacher_email}</p>
-                  <p className="mt-1 font-mono text-xs uppercase tracking-[0.15em] text-accent">
+                  <p className="mt-1 text-sm font-medium text-accent">
                     {status}
                   </p>
                 </div>
                 <a
                   href={`/teacher/signup/${invite.invite_token}`}
-                  className="inline-flex min-h-11 items-center justify-center rounded-sm border border-forest/15 px-3 py-2 font-mono text-xs uppercase tracking-[0.15em] text-forest"
+                  className="inline-flex min-h-11 items-center justify-center rounded-[8px] border border-forest/15 px-3 py-2 text-sm font-medium text-forest"
                 >
                   Open Link
                 </a>

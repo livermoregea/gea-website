@@ -1,0 +1,51 @@
+/* Shared by administration, officer records, and planning tools. */
+.tokens {
+  --workspace-ink: #172d25;
+  --workspace-muted: #53665d;
+  --workspace-line: #d6dfd8;
+  --workspace-accent: #064e3b;
+  --workspace-accent-hover: #043e2f;
+  --workspace-paper: #fff;
+  --workspace-tint: #edf3ef;
+  --workspace-radius: 8px;
+}
+.control {
+  min-height: 44px;
+  border-radius: 8px;
+  font-family: inherit;
+  font-size: .875rem;
+  font-weight: 600;
+  letter-spacing: normal;
+  text-transform: none;
+  line-height: 1.4;
+  cursor: pointer;
+}
+.control:disabled { cursor: default; }
+.action {
+  composes: control;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: .5rem;
+  min-height: 44px;
+  max-width: 100%;
+  padding: .625rem 1rem;
+  border: 1px solid #b8c8c0;
+  border-radius: 8px;
+  background: #fff;
+  color: #064e3b;
+  font-family: inherit;
+  font-size: .875rem;
+  font-weight: 600;
+  line-height: 1.4;
+  text-align: center;
+  text-decoration: none;
+  overflow-wrap: anywhere;
+  cursor: pointer;
+  transition: background-color 120ms ease, border-color 120ms ease;
+}
+.action:hover:not(:disabled) { background: #edf3ef; border-color: #8aa597; }
+.action:disabled { opacity: .5; cursor: default; }
+.action:focus-visible { outline: 3px solid #064e3b; outline-offset: 3px; }
+@media (prefers-reduced-motion: reduce) { .action { transition: none; } }
+@media (forced-colors: active) { .action { border-color: ButtonText; } }

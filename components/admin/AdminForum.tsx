@@ -1,5 +1,6 @@
 "use client";
 
+import controls from "@/components/workspace-controls.module.css";
 import { useEffect, useMemo, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { hasSupabaseConfig } from "@/lib/supabase/config";
@@ -132,12 +133,12 @@ function renderCommentNode({
   return (
     <div
       key={node.id}
-      className={`rounded-sm bg-paper p-4 ring-1 ring-forest/10 ${depth > 0 ? "border-l-2 border-gold/30" : ""}`}
+      className={`rounded-[8px] bg-paper p-4 ring-1 ring-forest/10 ${depth > 0 ? "border-l-2 border-gold/30" : ""}`}
       style={{ marginLeft: depth * 18 }}
     >
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <p className="font-mono text-xs uppercase tracking-[0.15em] text-graphite/80">
+          <p className="text-sm font-medium text-graphite/80">
             {node.answered_by_name}
           </p>
           <p className="mt-1 text-xs text-graphite/80">
@@ -145,7 +146,7 @@ function renderCommentNode({
           </p>
         </div>
         <div className="text-right">
-          <p className="font-mono text-xs uppercase tracking-[0.15em] text-graphite/80">
+          <p className="text-sm font-medium text-graphite/80">
             +{node.upvote_count} / -{node.downvote_count}
           </p>
           <p className="mt-1 text-xs text-graphite/80">{node.report_count} reports</p>
@@ -158,7 +159,7 @@ function renderCommentNode({
         <button
           type="button"
           onClick={() => onDeleteAnswer(node.id, node.answer)}
-          className="rounded-full bg-red-50 px-3 py-1.5 font-mono text-xs uppercase tracking-[0.15em] text-red-700 transition hover:bg-red-100"
+          className={`${controls.control} rounded-full bg-red-50 px-3 py-1.5 text-sm font-medium text-red-700 transition hover:bg-red-100`}
         >
           Delete Comment
         </button>
@@ -389,34 +390,34 @@ export default function AdminForum() {
   return (
     <div className="space-y-6">
       {message && (
-        <p className="rounded-sm bg-forest/[0.05] p-4 text-sm text-graphite/80 ring-1 ring-forest/10" role="status">
+        <p className="rounded-[8px] bg-forest/[0.05] p-4 text-sm text-graphite/80 ring-1 ring-forest/10" role="status">
           {message}
         </p>
       )}
 
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        <div className="rounded-sm bg-forest/[0.03] p-4 ring-1 ring-forest/5">
-          <p className="font-mono text-xs uppercase tracking-[0.15em] text-accent">Posts</p>
-          <p className="mt-2 font-display text-2xl text-forest">{questions.length}</p>
+        <div className="rounded-[8px] bg-forest/[0.03] p-4 ring-1 ring-forest/5">
+          <p className="text-sm font-medium text-accent">Posts</p>
+          <p className="mt-2 text-xl font-semibold text-forest">{questions.length}</p>
         </div>
-        <div className="rounded-sm bg-forest/[0.03] p-4 ring-1 ring-forest/5">
-          <p className="font-mono text-xs uppercase tracking-[0.15em] text-accent">Comments</p>
-          <p className="mt-2 font-display text-2xl text-forest">{answers.length}</p>
+        <div className="rounded-[8px] bg-forest/[0.03] p-4 ring-1 ring-forest/5">
+          <p className="text-sm font-medium text-accent">Comments</p>
+          <p className="mt-2 text-xl font-semibold text-forest">{answers.length}</p>
         </div>
-        <div className="rounded-sm bg-forest/[0.03] p-4 ring-1 ring-forest/5">
-          <p className="font-mono text-xs uppercase tracking-[0.15em] text-accent">Votes</p>
-          <p className="mt-2 font-display text-2xl text-forest">{votes.length}</p>
+        <div className="rounded-[8px] bg-forest/[0.03] p-4 ring-1 ring-forest/5">
+          <p className="text-sm font-medium text-accent">Votes</p>
+          <p className="mt-2 text-xl font-semibold text-forest">{votes.length}</p>
         </div>
-        <div className="rounded-sm bg-forest/[0.03] p-4 ring-1 ring-forest/5">
-          <p className="font-mono text-xs uppercase tracking-[0.15em] text-accent">Reports</p>
-          <p className="mt-2 font-display text-2xl text-forest">{reports.length}</p>
+        <div className="rounded-[8px] bg-forest/[0.03] p-4 ring-1 ring-forest/5">
+          <p className="text-sm font-medium text-accent">Reports</p>
+          <p className="mt-2 text-xl font-semibold text-forest">{reports.length}</p>
         </div>
       </div>
 
       <div className="grid gap-6 xl:grid-cols-[320px_minmax(0,1fr)]">
         <aside className="space-y-3">
-          <div className="rounded-sm bg-forest/[0.03] p-4 ring-1 ring-forest/5">
-            <p className="font-mono text-xs uppercase tracking-[0.2em] text-accent">Posts</p>
+          <div className="rounded-[8px] bg-forest/[0.03] p-4 ring-1 ring-forest/5">
+            <p className="text-sm font-medium text-accent">Posts</p>
             <p className="mt-2 text-sm text-graphite/80">Newest posts first. Select one to view it.</p>
           </div>
 
@@ -432,13 +433,13 @@ export default function AdminForum() {
                   key={question.id}
                   type="button"
                   onClick={() => setSelectedQuestionId(question.id)}
-                  className={`block w-full rounded-sm border p-4 text-left transition ${
+                  className={`${controls.control} block w-full rounded-[8px] border p-4 text-left transition ${
                     isActive
                       ? "border-gold bg-paper shadow-sm"
                       : "border-forest/10 bg-paper/70 hover:border-forest/20 hover:bg-paper"
                   }`}
                 >
-                  <p className="font-mono text-xs uppercase tracking-[0.15em] text-graphite/80">
+                  <p className="text-sm font-medium text-graphite/80">
                     {question.asked_by_name}
                   </p>
                   <p className="mt-2 line-clamp-3 font-display text-base text-forest whitespace-pre-wrap">
@@ -456,14 +457,14 @@ export default function AdminForum() {
 
         <main className="space-y-6">
           {!selectedQuestion ? (
-            <div className="rounded-sm bg-paper p-5 ring-1 ring-forest/10">
+            <div className="border-b border-forest/10 pb-6">
               <p className="text-sm text-graphite/80">Select a post to view it.</p>
             </div>
           ) : (
-            <div className="space-y-6 rounded-sm bg-paper p-5 ring-1 ring-forest/10">
+            <div className="space-y-6 border-b border-forest/10 pb-6">
               <div className="flex flex-wrap items-start justify-between gap-4">
                 <div>
-                  <p className="font-mono text-xs uppercase tracking-[0.2em] text-accent">
+                  <p className="text-sm font-medium text-accent">
                     {selectedQuestion.asked_by_name}
                   </p>
                   <QuestionContent question={selectedQuestion.question} className="mt-2" />
@@ -472,7 +473,7 @@ export default function AdminForum() {
                 <button
                   type="button"
                   onClick={() => deleteQuestion(selectedQuestion.id, selectedQuestion.question)}
-                  className="rounded-full bg-red-50 px-3 py-1.5 font-mono text-xs uppercase tracking-[0.15em] text-red-700 transition hover:bg-red-100"
+                  className={`${controls.control} rounded-full bg-red-50 px-3 py-1.5 text-sm font-medium text-red-700 transition hover:bg-red-100`}
                 >
                   Delete post
                 </button>
@@ -480,7 +481,7 @@ export default function AdminForum() {
 
               <section>
                 <div className="flex flex-wrap items-center justify-between gap-3">
-                  <p className="font-mono text-xs uppercase tracking-[0.2em] text-accent">Comments</p>
+                  <p className="text-sm font-medium text-accent">Comments</p>
                   <p className="text-sm text-graphite/80">
                     {answersForSelectedQuestion.length} top-level comment
                     {answersForSelectedQuestion.length === 1 ? "" : "s"}
@@ -505,10 +506,10 @@ export default function AdminForum() {
         </main>
       </div>
 
-      <section className="rounded-sm bg-forest/[0.03] p-6 ring-1 ring-forest/5">
+      <section className="rounded-[8px] bg-forest/[0.03] p-6 ring-1 ring-forest/5">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <p className="font-mono text-xs uppercase tracking-[0.2em] text-accent">Activity</p>
+            <p className="text-sm font-medium text-accent">Activity</p>
             <h2 className="mt-2 font-display text-xl text-forest">Recent activity</h2>
           </div>
           <p className="text-sm text-graphite/80">Latest {activityItems.length} activity items</p>
@@ -519,10 +520,10 @@ export default function AdminForum() {
             <p className="text-sm text-graphite/80">No activity yet.</p>
           ) : (
             activityItems.slice(0, 50).map((item) => (
-              <div key={item.key} className="rounded-sm bg-paper p-4 ring-1 ring-forest/10">
+              <div key={item.key} className="rounded-[8px] bg-paper p-4 ring-1 ring-forest/10">
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div>
-                    <p className="font-mono text-xs uppercase tracking-[0.15em] text-graphite/80">
+                    <p className="text-sm font-medium text-graphite/80">
                       {item.type}
                     </p>
                     <p className="mt-1 text-sm font-medium text-forest">{item.label}</p>

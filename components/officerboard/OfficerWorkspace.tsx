@@ -1,3 +1,7 @@
+import OperationsHub from "@/components/operations/OperationsHub";
+import OfficerDashboard from "@/components/operations/OfficerDashboard";
+import { loadOperations } from "@/lib/gea-operations-data";
+import { workspaceView } from "@/lib/officer-workspace-navigation";
 import GEAOneBadge from "@/components/GEAOneBadge";
 import Link from "next/link";
 import LoginForm from "@/components/LoginForm";
@@ -8,14 +12,14 @@ import { peetError, type OfficerTask, type PeetEvaluation, type OfficerProfile, 
 import type { OfficerEvent, OfficerAttendance, EventSignup, VolunteerLog, OfficerStrike, RemovalReview, AccountabilityNotes } from "@/lib/officer-tracking";
 
 
-export default async function OfficerWorkspace({ embedded = false }: { embedded?: boolean }) {
+export default async function OfficerWorkspace({ embedded = false, search = {} }: { embedded?: boolean; search?: { view?: string; event?: string; task?: string; topic?: string; officer?: string } }) {
   if (!hasSupabaseConfig()) return <AccessMessage message="The officer portal is awaiting account setup. Please contact an advisor." />;
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return (
     <div className="mx-auto max-w-md px-4 py-16 sm:px-6">
       <GEAOneBadge />
-      <p className="mt-4 text-sm font-semibold text-[#064e3b]">GEA Officer Board</p>
+      <p className="mt-4 text-sm font-semibold text-[#064e3b]">GEA Officer workspace</p>
       <h1 className="mt-3 text-3xl font-semibold text-forestdeep">Your work. Your progress.</h1>
       <p className="mb-8 mt-3 text-graphite/80">Sign in with your GEA One account. Access is reserved for designated officers and PEET reviewers.</p>
       <LoginForm redirectTo="/account/redirect" />
@@ -41,7 +45,24 @@ export default async function OfficerWorkspace({ embedded = false }: { embedded?
   ]);
   const loadError = tasks.error || evaluations.error || profiles.error || events.error || attendance.error || signups.error || volunteerLogs.error || strikes.error || reviews.error || generalNotes.error || cancellationRequests.error || teammates.error;
   if (loadError) return <AccessMessage message={peetError(loadError)} />;
-  return <OfficerBoard teammates={teammates.data ?? []} embedded={embedded} cancellationRequests={cancellationRequests.data ?? []} profile={{...profile,...profiles.data?.find(person => person.id === profile.id)}} profiles={profiles.data ?? []} tasks={tasks.data ?? []} evaluations={evaluations.data ?? []} isSuperAdmin={Boolean(superAdmin)} tracking={{ events:events.data??[], attendance:attendance.data??[], signups:signups.data??[], volunteerLogs:volunteerLogs.data??[], strikes:strikes.data??[], reviews:reviews.data??[], generalNotes:generalNotes.data??[] }} />;
+  const tracking = { events: events.data ?? [], attendance: attendance.data ?? [], signups: signups.data ?? [], volunteerLogs: volunteerLogs.data ?? [], strikes: strikes.data ?? [], reviews: reviews.data ?? [], generalNotes: generalNotes.data ?? [] };
+  const board = <OfficerBoard unified teammates={teammates.data ?? []} embedded={embedded} cancellationRequests={cancellationRequests.data ?? []} profile={{...profile,...profiles.data?.find(person => person.id === profile.id)}} profiles={profiles.data ?? []} tasks={tasks.data ?? []} evaluations={evaluations.data ?? []} isSuperAdmin={Boolean(superAdmin)} tracking={tracking} />;
+  try {
+    let operations = await loadOperations(supabase, user.id, { tasks: tasks.data ?? [], events: events.data ?? [], attendance: attendance.data ?? [], logs: volunteerLogs.data ?? [], people: teammates.data ?? [] });
+    if (operations.digestEnabled) {
+      const { error: digestError } = await supabase.rpc("save_gea_digest", { p_items: operations.attention });
+      if (!digestError) {
+        const { data: digests } = await supabase.from("gea_weekly_digests").select("id,week_of,items").order("week_of", { ascending: false }).limit(52);
+        if (digests) operations = { ...operations, digests };
+      }
+    }
+    const overview = <OfficerDashboard data={operations} profile={profile} profiles={profiles.data ?? []} tasks={tasks.data ?? []} evaluations={evaluations.data ?? []} tracking={tracking} />;
+    return <OperationsHub data={operations} officerOverview={overview} officerTools={board} embedded={embedded} initialView={workspaceView(search.view, search.task, search.topic)} initialEvent={search.event} initialTask={search.task} />;
+  } catch (error) {
+    console.error("[GEA officer workspace] Could not load updates", { message: (error as Error).message });
+    return <><p role="status" className="mb-4 rounded border border-forest/20 p-4">Updates and meeting planning could not load. Your officer records are still available below.</p>{board}</>;
+  }
+
 }
 
 // Supabase caps rows per response. Fetch every visible page so older evaluations
@@ -61,7 +82,7 @@ async function readAll<T>(query: (from: number, to: number) => PromiseLike<{
 
 function AccessMessage({ message }: { message: string }) {
   return <div className="mx-auto max-w-lg px-4 py-16 sm:px-6">
-    <h1 className="text-3xl font-semibold text-forestdeep">Officer Board</h1>
+    <h1 className="text-3xl font-semibold text-forestdeep">Officer workspace</h1>
     <p className="mt-4 text-graphite/80">{message}</p>
     <Link href="/" className="mt-6 inline-flex min-h-11 items-center text-forest underline">Back to GEA</Link>
   </div>;

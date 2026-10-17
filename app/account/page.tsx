@@ -21,8 +21,8 @@ export default async function AccountHomePage() {
   const staff = membership.isAdmin || membership.isTeacher;
   const destinations = [
     { href: "/dashboard#qa", title: "Community forum", detail: "Ask a question. Share an idea. Join the conversation.", action: "Open forum", icon: "forum" },
-    ...(staff ? [{ href: "/admin-portal-x7k9", title: "Academy workspace", detail: membership.isOfficer ? "Academy administration and officer accountability, together." : "Your academy tools, organized in one place.", action: "Open workspace", icon: "workspace" }]
-      : membership.isOfficer ? [{ href: "/officerboard", title: "Officer workspace", detail: "Your tasks, PEET scores, and officer activities.", action: "Open Officer Board", icon: "workspace" }] : []),
+    ...(staff ? [{ href: "/admin-portal-x7k9", title: "Academy workspace", detail: membership.isOfficer ? "Academy administration and the officer workspace, together." : "Your academy tools, organized in one place.", action: "Open workspace", icon: "workspace" }]
+      : membership.isOfficer ? [{ href: "/officerboard", title: "Officer workspace", detail: "Tasks, updates, meetings, events, and progress in one place.", action: "Open workspace", icon: "workspace" }] : []),
   ];
 
   return <div className={styles.page}>

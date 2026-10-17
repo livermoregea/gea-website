@@ -52,3 +52,17 @@ test('Notification loading fetches more than 1000 IDs and fails before clearing 
   assert.equal(result.applications.length, 1003);
   await assert.rejects(api.loadAdminNotificationIds(client(true)), /Could not load all notifications/);
 });
+
+test('Disabled Builders does not block admin badge loading when its table is absent', async () => {
+  const { api } = notifications();
+  const requested = [];
+  const client = { from: table => {
+    requested.push(table);
+    const query = { select() { return this; }, order() { return this; }, range() { return this; }, eq() { return this; }, then(resolve) {
+      resolve({ data: [], error: table === 'builder_submissions' ? { message: 'Table missing' } : null });
+    } }; return query;
+  } };
+  await api.loadAdminNotificationIds(client, false);
+  assert.equal(requested.includes('builder_submissions'), false);
+  assert.ok(requested.includes('applications'));
+});

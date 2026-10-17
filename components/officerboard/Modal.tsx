@@ -18,7 +18,7 @@ export default function Modal({ title, children, onClose, busy = false }: {
   return <dialog ref={ref} className={styles.modal} aria-label={title}
     onCancel={event => { event.preventDefault(); if (!busy) onClose(); }}>
     <div className={styles.modalHeader}>
-      <span className={styles.eyebrow}>GEA Officer Board</span>
+      <span className={styles.eyebrow}>Officer workspace</span>
       <button type="button" className={styles.secondary} onClick={onClose} disabled={busy}>Close</button>
     </div>
     {children}

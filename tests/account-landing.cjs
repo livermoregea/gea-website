@@ -100,3 +100,14 @@ test('Legacy officer route takes staff into the merged workspace and leaves ordi
  supabase=client({officer_profiles:true,student_profiles:true});
  assert.match(renderToStaticMarkup(await page()),/Officer dashboard/);
 });
+
+
+test('GEA One home exposes one workspace entry instead of separate officer and planning cards',async()=>{
+ for(const roles of [{officer_profiles:true},{admins:true,officer_profiles:true},{teacher_profiles:true,officer_profiles:true}]){
+  const html=renderToStaticMarkup(await accountHome(client(roles)));
+  assert.ok(!html.includes('href="/operations"'));
+  assert.ok(!html.includes('Planning &amp; inbox'));
+  const paths=[...html.matchAll(/href="(\/officerboard|\/admin-portal-x7k9)"/g)];
+  assert.equal(paths.length,1);
+ }
+});
