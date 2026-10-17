@@ -450,3 +450,50 @@
 .unified .section{border:0;border-radius:0;background:transparent;margin-top:16px}.unified .section>.sectionHeading{padding:12px 0}.unified .section>.empty{padding:12px 0}.unified .trackingMetrics{gap:16px}.unified .rosterControls{position:static;background:transparent;padding:8px 0}.unified .accountToolbar,.unified .accountFilters{padding-left:0;padding-right:0}
 .unified .taskSectionBody{border-top:0}.unified .openTaskSection>.taskSectionSummary:hover{background:transparent}
 @media(max-width:760px){.unified .taskRowSummary{display:grid}.unified .taskRowSummary>.rowMeta{padding-left:0;flex-basis:auto}}
+
+.serviceRoster { margin-block: 1.5rem; }
+.bulkStatus { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; font-size: .875rem; }
+.bulkStatus select { min-height: 44px; padding: .5rem; border: 1px solid #a8b8ae; border-radius: 8px; background: white; color: #123524; }
+@media (max-width: 760px) {
+  .serviceRoster { padding-bottom: calc(7rem + env(safe-area-inset-bottom)); }
+  .serviceRoster .rosterSaveBar > p { display: block; }
+}
+
+.serviceRows { list-style: none; padding: 0; margin: 12px 0; border-top: 1px solid #cbd7cf; }
+.serviceRow { display: flex; align-items: stretch; border-bottom: 1px solid #d6dfd8; min-width: 0; }
+.serviceRow[data-pending] { background: #f1f6f0; box-shadow: inset 3px 0 #527d63; }
+.serviceSelection { display: flex; align-items: center; justify-content: center; min-width: 44px; cursor: pointer; }
+.serviceSelection input { width: 20px; height: 20px; accent-color: #064e3b; }
+.serviceRowButton { flex: 1; min-width: 0; min-height: 64px; display: flex; align-items: center; gap: 16px; padding: 12px 8px; text-align: left; background: transparent; border: 0; color: #172d25; cursor: pointer; }
+.serviceRowButton:hover { background: #edf3ef; }
+.serviceRowIdentity { flex: 1; min-width: 0; display: grid; gap: 3px; }
+.serviceRowIdentity strong { font-size: .95rem; overflow-wrap: anywhere; }
+.serviceRowIdentity > span { font-size: .8rem; color: #53665d; overflow-wrap: anywhere; }
+.serviceRowStatus { display: grid; gap: 3px; text-align: right; flex-shrink: 0; font-size: .8rem; color: #53665d; }
+.serviceRowStatus strong { color: #172d25; font-size: .95rem; font-variant-numeric: tabular-nums; }
+.serviceChevron { font-size: 1.5rem; color: #53665d; }
+.serviceEditorHint { margin: 12px 0; color: #53665d; font-size: .875rem; }
+.serviceEditorNavigation { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 16px; font-size: .875rem; }
+.serviceParticipation { padding-block: 12px; border-block: 1px solid #d6dfd8; }
+.serviceParticipation summary { min-height: 44px; display: flex; align-items: center; cursor: pointer; font-weight: 600; }
+@media (max-width: 760px) {
+  .serviceRowButton { gap: 8px; padding-block: 10px; }
+  .attendanceCards { gap: 0; }
+  .attendanceCard { display: grid; grid-template-columns: minmax(0, 1fr) minmax(110px, 140px); column-gap: 12px; border: 0; border-bottom: 1px solid #d6dfd8; border-radius: 0; background: transparent; padding: 10px 0; }
+  .attendanceCard[data-pending="true"] { border-color: #d6dfd8; box-shadow: inset 3px 0 #9b7b26; padding-left: 8px; }
+  .attendanceCardHeader { align-items: flex-start; flex-wrap: wrap; gap: 2px; }
+  .attendanceCardHeader .rosterPerson { min-height: 32px; text-align: left; }
+  .attendanceStatus { margin: 0; display: block; align-self: center; }
+  .attendanceStatus > span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+  .attendanceCardNotes { grid-column: 1 / -1; margin-top: 0; }
+  .attendanceCardNotes .link { min-height: 32px; }
+}
+.serviceBulkHelp { flex-basis: 100%; color: #53665d; font-size: .8rem; }
+.serviceBulkHelp summary { cursor: pointer; min-height: 44px; align-content: center; }
+.serviceBulkHelp p { margin-block: 8px; }
+@media (max-width: 760px) {
+  .serviceRoster .rosterSaveBar > .actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+  .serviceRoster .rosterSaveBar > .actions > button { min-width: 0; min-height: 44px; padding: 8px; font-size: .8rem; white-space: normal; }
+}
+.workspaceOfficerFilter { display: grid; gap: 6px; margin-block: 12px; font-size: .875rem; font-weight: 600; color: #53665d; }
+.workspaceOfficerFilter select { min-height: 44px; width: 100%; max-width: 440px; padding: 10px 12px; border: 1px solid #b8c8c0; border-radius: 8px; background: white; color: #172d25; font-size: 1rem; }

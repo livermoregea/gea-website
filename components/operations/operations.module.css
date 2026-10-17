@@ -745,3 +745,12 @@
   .snapshotRow > div:first-child { grid-column: 1 / -1; }
 }
 @media print { .dashboardMetrics > a { color: #000; } .dashboardColumns { display: block; } }
+
+/* Workspace destinations share one navigation layer. */
+.nav { flex-wrap: wrap; gap: 0 1.15rem; }
+.mobileSectionPicker { display: none; }
+@media (max-width: 760px) {
+  .hub > .nav { display: none; }
+  .mobileSectionPicker { display: grid; gap: 6px; margin-bottom: 16px; color: var(--workspace-muted); font-size: .875rem; font-weight: 600; }
+  .mobileSectionPicker select { width: 100%; min-height: 48px; padding: 10px 12px; border: 1px solid var(--workspace-line); border-radius: 8px; color: var(--workspace-ink); background: var(--workspace-paper); font-size: 1rem; }
+}

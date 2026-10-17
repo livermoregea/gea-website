@@ -57,7 +57,7 @@ export default async function OfficerWorkspace({ embedded = false, search = {} }
       }
     }
     const overview = <OfficerDashboard data={operations} profile={profile} profiles={profiles.data ?? []} tasks={tasks.data ?? []} evaluations={evaluations.data ?? []} tracking={tracking} />;
-    return <OperationsHub data={operations} officerOverview={overview} officerTools={board} embedded={embedded} initialView={workspaceView(search.view, search.task, search.topic)} initialEvent={search.event} initialTask={search.task} />;
+    return <OperationsHub data={operations} officerOverview={overview} officerTools={board} embedded={embedded} initialView={workspaceView(search.view, search.task, search.topic, search.officer)} initialEvent={search.event} initialTask={search.task} />;
   } catch (error) {
     console.error("[GEA officer workspace] Could not load updates", { message: (error as Error).message });
     return <><p role="status" className="mb-4 rounded border border-forest/20 p-4">Updates and meeting planning could not load. Your officer records are still available below.</p>{board}</>;

@@ -1,11 +1,12 @@
 "use client";
 
+import WorkspaceActivity from "@/components/WorkspaceActivity";
 import ActionError from "@/components/ActionError";
 import Link from "next/link";
 
 import GEAOneBadge from "@/components/GEAOneBadge";
 
-import { useEffect, useRef, useState, useTransition, type FormEvent } from "react";
+import { useContext, useEffect, useRef, useState, useTransition, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { peetError, officerTaskPeople, isOfficerTaskParticipant, canEditOfficerTask, selfTaskDeadlineBounds, peetSummary, productLink, taskAverage, type TaskTeammate, type OfficerProfile, type OfficerTask, type PeetEvaluation, type TaskCancellationRequest, taskOfficers } from "@/lib/peet";
@@ -22,6 +23,7 @@ import OfficerTopicNavigation, { type OfficerTopic } from "./OfficerTopicNavigat
 import { CONTRACT_YEAR, durationLabel, schoolToday, trackingSummary, type TrackingData } from "@/lib/officer-tracking";
 import AccountsPanel from "./AccountsPanel";
 import AdminTabs, { type AdminSectionKey } from "@/components/admin/AdminTabs";
+import { WorkspaceNavigationContext } from "@/lib/workspace-navigation-context";
 import { officerRecordTarget } from "@/lib/officer-workspace-navigation";
 
 type Action = { kind: "add" } | { kind: "edit" | "submit" | "cancel" | "review" | "end"; task: OfficerTask } | { kind: "cancellationReview"; task: OfficerTask; request: TaskCancellationRequest };
@@ -36,6 +38,8 @@ export default function OfficerBoard({ profile, profiles, tasks, evaluations, tr
   profile: OfficerProfile; profiles: OfficerProfile[]; tasks: OfficerTask[]; evaluations: PeetEvaluation[]; tracking: TrackingData; isSuperAdmin?: boolean; cancellationRequests?: TaskCancellationRequest[];
 }) {
   const router = useRouter();
+  const workspace = useContext(WorkspaceNavigationContext);
+  const section = workspace?.view;
   const [explainer, setExplainer] = useState(false);
   const [action, setAction] = useState<Action | null>(null);
   const [selectedOfficer, setSelectedOfficer] = useState(isSuperAdmin || profile.role === "admin" ? "all" : profile.id);
@@ -48,17 +52,20 @@ export default function OfficerBoard({ profile, profiles, tasks, evaluations, tr
   const [saving, setSaving] = useState(false);
   const [endWithScore, setEndWithScore] = useState(false);
   const [refreshing, startTransition] = useTransition();
+  const [backgroundRefreshing, startBackgroundRefresh] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState("");
-  const [view, setView] = useState<"dashboard" | "roster" | "accounts" | "site">("dashboard");
+  const [localView, setView] = useState<"dashboard" | "roster" | "accounts" | "site">("dashboard");
   const [rosterDirty, setRosterDirty] = useState(false);
-  const [topic, setTopic] = useState<OfficerTopic>(unified ? "tasks" : "overview");
+  const [localTopic, setTopic] = useState<OfficerTopic>("overview");
   const [academicYear, setAcademicYear] = useState(CONTRACT_YEAR);
   const linkedTaskOpened = useRef<string | null>(null);
   const studentHeading = useRef<HTMLHeadingElement>(null);
   const [siteSection, setSiteSection] = useState<AdminSectionKey>("website");
   const admin = isSuperAdmin || profile.role === "admin";
   const busy = saving || refreshing;
+  const view = admin && (section === "attendance" || section === "volunteer") ? "roster" : section === "accounts" ? "accounts" : section === "tasks" || section === "people" ? "dashboard" : localView;
+  const topic = section === "tasks" ? "tasks" : !admin && (section === "attendance" || section === "volunteer") ? section : section === "people" && localTopic === "tasks" ? "overview" : localTopic;
   const editingSelfTask = action?.kind === "edit" && action.task.created_by === profile.id && action.task.assigned_to === profile.id;
   const deadlineBounds = editingSelfTask && action?.kind === "edit" ? selfTaskDeadlineBounds(action.task.original_due_date) : null;
   const today = schoolToday();
@@ -72,14 +79,14 @@ export default function OfficerBoard({ profile, profiles, tasks, evaluations, tr
   const selectedPerson = profiles.find(person => person.id === selectedOfficer);
   const recordSummary = trackingSummary(tracking, selectedOfficer, academicYear);
   const years = [...new Set([CONTRACT_YEAR,...tracking.events.map(event => event.academic_year),...tracking.strikes.map(strike => strike.academic_year)])].sort().reverse();
-  const selectedRequests = cancellationRequests.filter(request => tasks.some(task => task.id === request.task_id && isOfficerTaskParticipant(task, selectedOfficer)));
-  function chooseOfficer(id: string) { setSelectedOfficer(id); setTaskSearch(""); if (id === "all") setTopic("overview"); setView("dashboard"); setError(null); setNotice(""); }
-  function chooseTopic(next: OfficerTopic) { setTopic(next); setNotice(""); setError(null); studentHeading.current?.scrollIntoView({block:"start"}); }
+  const selectedRequests = cancellationRequests.filter(request => tasks.some(task => task.id === request.task_id && (overview || isOfficerTaskParticipant(task, selectedOfficer))));
+  function chooseOfficer(id: string) { if (workspace && section !== "tasks" && section !== "people") workspace.navigate("people"); setSelectedOfficer(id); setTaskSearch(""); if (id === "all" || section === "attendance" || section === "volunteer") setTopic("overview"); setView("dashboard"); setError(null); setNotice(""); }
+  function chooseTopic(next: OfficerTopic) { if (workspace && next === "tasks") workspace.navigate("tasks"); setTopic(next); setNotice(""); setError(null); studentHeading.current?.scrollIntoView({block:"start"}); }
   useEffect(() => { if (view === "dashboard" && selectedOfficer !== "all") studentHeading.current?.focus(); }, [selectedOfficer,view]);
   const summary = peetSummary(visibleTasks, evaluations);
   const evaluationFor = (task: OfficerTask) => evaluations.find(evaluation => evaluation.task_id === task.id);
   const ownerName = (task: OfficerTask) => { const person = profiles.find(person => person.id === task.assigned_to) ?? teammates.find(person => person.id === task.assigned_to); return person ? `${person.name}${"email" in person && person.email ? ` (${person.email})` : ""}` : "Officer"; };
-  const reviewQueue = admin ? tasks.filter(task => isOfficerTaskParticipant(task, selectedOfficer) && !task.cancelled_at && task.status === "submitted") : [];
+  const reviewQueue = admin ? tasks.filter(task => (overview || isOfficerTaskParticipant(task, selectedOfficer)) && !task.cancelled_at && task.status === "submitted") : [];
   const canEvaluate = (task: OfficerTask) => (officerTaskPeople(task).length === 1 || !isOfficerTaskParticipant(task, profile.id)) &&
     (isSuperAdmin || profile.reviewer_kind === "advisor" || !officerTaskPeople(task).some(id => profiles.find(person => person.id === id)?.reviewer_kind === "president"));
   const peopleNames = Object.fromEntries([...teammates, ...profiles].map(person => [person.id, person.name]));
@@ -108,10 +115,14 @@ export default function OfficerBoard({ profile, profiles, tasks, evaluations, tr
     if (!profile.peet_onboarding_seen_at) setExplainer(true);
   }, [profile.id, profile.peet_onboarding_seen_at]);
   useEffect(() => {
-    const refresh = () => { if (!document.hidden && !document.querySelector('[data-workspace-dirty="true"]')) startTransition(() => router.refresh()); };
+    const refresh = () => {
+      // The unified workspace owns refreshing when this board is nested inside it.
+      if (document.hidden || saving || refreshing || backgroundRefreshing || document.querySelector('[data-workspace-refresh-owner], [data-workspace-dirty="true"], [data-workspace-busy="true"], dialog[open]')) return;
+      startBackgroundRefresh(() => router.refresh());
+    };
     window.addEventListener("focus", refresh);
     return () => window.removeEventListener("focus", refresh);
-  }, [router]);
+  }, [router, saving, refreshing, backgroundRefreshing]);
   async function closeExplainer() {
     setExplainer(false);
     if (!profile.peet_onboarding_seen_at) await mutate("mark_peet_onboarding_seen", {}, "PEET introduction saved.");
@@ -194,22 +205,23 @@ export default function OfficerBoard({ profile, profiles, tasks, evaluations, tr
     return <>{officerTaskPeople(task).length > 1 && <p className={styles.sharedPeople}>Shared with {officerTaskPeople(task).map(id => peopleNames[id] || "Former officer").join(", ")} · One submission and evaluation</p>}<OfficerTaskSubmission task={task} /></>;
   }
 
-  return <div className={`${styles.board} ${embedded ? styles.embedded : ""} ${unified ? styles.unified : ""}`}>
-    <header className={unified ? styles.workToolbar : styles.header}>
+  return <div className={`${styles.board} ${embedded ? styles.embedded : ""} ${unified ? styles.unified : ""}`} data-workspace-dirty={rosterDirty ? "true" : undefined} data-workspace-busy={busy ? "true" : undefined}>
+    <WorkspaceActivity saving={saving} refreshing={refreshing || backgroundRefreshing} background={!busy} />
+    {(!workspace || (view !== "roster" && view !== "accounts")) && <header className={unified ? styles.workToolbar : styles.header}>
       {!embedded && !unified && <GEAOneBadge size="compact" />}
-      <div>{unified ? <h2>{admin ? "Officer records" : "My assignments"}</h2> : <><p className={styles.eyebrow}>Tasks, progress &amp; participation</p>{embedded ? <h2 className={styles.boardTitle}>Officer workspace</h2> : <h1>Officer workspace</h1>}</>}</div>
+      <div>{unified ? <h2>{section === "tasks" ? "Tasks & PEET" : section === "attendance" ? "Attendance" : section === "volunteer" ? "Volunteer service" : section === "accounts" ? "Accounts" : admin ? "Officer records" : "My assignments"}</h2> : <><p className={styles.eyebrow}>Tasks, progress &amp; participation</p>{embedded ? <h2 className={styles.boardTitle}>Officer workspace</h2> : <h1>Officer workspace</h1>}</>}</div>
       <div className={styles.actions}>
         <button className={unified ? styles.link : styles.secondary} onClick={() => setExplainer(true)} disabled={busy}>What is PEET?</button>
-        {view === "dashboard" && (overview || topic !== "tasks") && <button className={styles.primary} onClick={() => openAction({ kind: "add" })} disabled={busy}>{admin ? "Assign task" : "Add task"}</button>}
+        {view === "dashboard" && section !== "people" && (section === "tasks" || overview || topic !== "tasks") && <button className={styles.primary} onClick={() => openAction({ kind: "add" })} disabled={busy}>{admin ? "Assign task" : "Add task"}</button>}
       </div>
-    </header>
-    {admin && <div className={styles.workspaceTools} aria-label="Workspace navigation"><button className={styles.secondary} disabled={rosterDirty} aria-pressed={view === "dashboard"} onClick={() => chooseOfficer("all")}>Officer directory</button><button className={styles.secondary} aria-pressed={view === "roster"} onClick={()=>{setView("roster");setNotice("");setError(null);}}>Team roster</button>{isSuperAdmin && <details className={styles.adminTools}><summary>Administration</summary><div><button disabled={rosterDirty} onClick={event => {setView("accounts"); event.currentTarget.closest("details")?.removeAttribute("open");}}>Manage GEA One accounts</button>{!embedded && <button disabled={rosterDirty} onClick={event => {setView("site"); event.currentTarget.closest("details")?.removeAttribute("open");}}>Website admin</button>}</div></details>}</div>}
+    </header>}
+    {admin && !workspace && <div className={styles.workspaceTools} aria-label="Workspace navigation"><button className={styles.secondary} disabled={rosterDirty} aria-pressed={view === "dashboard"} onClick={() => chooseOfficer("all")}>Officer directory</button><button className={styles.secondary} aria-pressed={view === "roster"} onClick={()=>{setView("roster");setNotice("");setError(null);}}>Team roster</button>{isSuperAdmin && <details className={styles.adminTools}><summary>Administration</summary><div><button disabled={rosterDirty} onClick={event => {setView("accounts"); event.currentTarget.closest("details")?.removeAttribute("open");}}>Manage GEA One accounts</button>{!embedded && <button disabled={rosterDirty} onClick={event => {setView("site"); event.currentTarget.closest("details")?.removeAttribute("open");}}>Website admin</button>}</div></details>}</div>}
 
     <p role="status" className={styles.notice}>{notice || (refreshing ? "Updating your board…" : "")}</p>
     {error && !action && <ActionError message={error} className={styles.error} />}
-    {tracking.strikes.some(strike => strike.officer_id === profile.id && strike.status === "notified") && <p className={styles.warning} role="status">You have an accountability concern awaiting a response. <button className={styles.link} disabled={rosterDirty} onClick={() => { chooseOfficer(profile.id); setTopic("accountability"); }}>Review and explain your circumstances →</button></p>}
-    <div className={`${styles.studentWorkspace} ${view === "dashboard" && !overview && admin ? styles.withStudent : ""}`}>
-    {admin && view === "dashboard" && <aside className={styles.roster} aria-label="Officer roster">
+    {tracking.strikes.some(strike => strike.officer_id === profile.id && strike.status === "notified") && <p className={styles.warning} role="status">You have an accountability concern awaiting a response. <button className={styles.link} disabled={rosterDirty} onClick={() => { workspace?.navigate("people"); chooseOfficer(profile.id); setTopic("accountability"); }}>Review and explain your circumstances →</button></p>}
+    <div className={`${styles.studentWorkspace} ${!workspace && view === "dashboard" && !overview && admin ? styles.withStudent : ""}`}>
+    {admin && view === "dashboard" && section !== "tasks" && (!workspace || overview) && <aside className={styles.roster} aria-label="Officer roster">
       <div className={styles.sectionHeading}><div><h2>Officers</h2><p>{overview ? "Choose a name, then choose a topic." : "Choose another officer."}</p></div><span className={styles.badge}>{isSuperAdmin ? "Super admin" : "PEET reviewer"}</span></div>
       <label className={styles.search}>Search officers<input type="search" value={rosterSearch} onChange={event => setRosterSearch(event.target.value)} placeholder="Name, email, or position" /></label>
       <div className={styles.rosterGrid}>
@@ -217,10 +229,11 @@ export default function OfficerBoard({ profile, profiles, tasks, evaluations, tr
       {matchingOfficers(rosterSearch).length === 0 && <p className={styles.empty}>No officers match your search.</p>}
     </aside>}
     <div className={styles.studentContent}>
-    {view === "dashboard" && !overview && <>
+    {section === "tasks" && admin && <label className={styles.workspaceOfficerFilter}>Officer<select aria-label="Filter tasks by officer" value={selectedOfficer} onChange={event => chooseOfficer(event.target.value)}><option value="all">All officers</option>{officers.map(person => <option key={person.id} value={person.id}>{person.name} · {person.position || "Officer"}</option>)}</select></label>}
+    {view === "dashboard" && !overview && section !== "tasks" && <>
       <header className={styles.studentContext}>
-        {admin && <label className={styles.mobileOfficerPicker}>Officer<select value={selectedOfficer} onChange={event => chooseOfficer(event.target.value)}>{officers.map(person => <option key={person.id} value={person.id}>{person.name} · {person.position || "Officer"}</option>)}</select></label>}
-        <div className={styles.profileBar}><div className={styles.studentIdentity}><h2 ref={studentHeading} tabIndex={-1}>{selectedPerson?.name ?? profile.name}</h2><p>{selectedPerson?.position || "Officer"}{selectedPerson?.email ? ` · ${selectedPerson.email}` : ""}</p></div><OfficerTopicNavigation topic={topic} onSelect={chooseTopic} pending={{tasks:reviewQueue.length + selectedRequests.filter(request => request.status === "pending").length,volunteer:tracking.volunteerLogs.filter(log => log.officer_id === selectedOfficer && log.status === "pending" && tracking.events.some(event => event.id === log.event_id && event.academic_year === academicYear)).length,accountability:tracking.strikes.filter(strike => strike.officer_id === selectedOfficer && strike.status === "notified" && strike.academic_year === academicYear).length}} />{admin && <button className={`${styles.secondary} ${styles.changeOfficer}`} onClick={() => chooseOfficer("all")}>Change officer</button>}</div>
+        {admin && <label className={workspace ? styles.workspaceOfficerFilter : styles.mobileOfficerPicker}>Officer<select value={selectedOfficer} onChange={event => chooseOfficer(event.target.value)}>{officers.map(person => <option key={person.id} value={person.id}>{person.name} · {person.position || "Officer"}</option>)}</select></label>}
+        <div className={styles.profileBar}><div className={styles.studentIdentity}><h2 ref={studentHeading} tabIndex={-1}>{selectedPerson?.name ?? profile.name}</h2><p>{selectedPerson?.position || "Officer"}{selectedPerson?.email ? ` · ${selectedPerson.email}` : ""}</p></div>{workspace ? <label className={styles.workspaceOfficerFilter}>Record details<select aria-label="Officer record details" value={topic} onChange={event => chooseTopic(event.target.value as OfficerTopic)}><option value="overview">Summary</option><option value="tasks">Tasks & PEET</option><option value="attendance">Attendance</option><option value="volunteer">Volunteer service</option><option value="accountability">Concerns & notes</option></select></label> : <OfficerTopicNavigation topic={topic} onSelect={chooseTopic} pending={{tasks:reviewQueue.length + selectedRequests.filter(request => request.status === "pending").length,volunteer:tracking.volunteerLogs.filter(log => log.officer_id === selectedOfficer && log.status === "pending" && tracking.events.some(event => event.id === log.event_id && event.academic_year === academicYear)).length,accountability:tracking.strikes.filter(strike => strike.officer_id === selectedOfficer && strike.status === "notified" && strike.academic_year === academicYear).length}} />}{admin && <button className={`${styles.secondary} ${styles.changeOfficer}`} onClick={() => chooseOfficer("all")}>Change officer</button>}</div>
         <div className={styles.contextScope}>{topic === "tasks" ? <p>Cumulative PEET and task history · all school years</p> : <label className={styles.yearPicker}>Academic year<select aria-label="Academic year" value={academicYear} onChange={event => setAcademicYear(event.target.value)}>{years.map(year => <option key={year}>{year}</option>)}</select></label>}</div>
       </header>
       {topic === "overview" && <div className={styles.metrics}>
@@ -242,12 +255,12 @@ export default function OfficerBoard({ profile, profiles, tasks, evaluations, tr
     </div>}
 
     </>}
-    {admin && view === "roster" && <OfficerRoster profiles={profiles} data={tracking} year={academicYear} years={years} onYearChange={setAcademicYear} onOpenOfficer={chooseOfficer} onDirtyChange={setRosterDirty} />}
+    {admin && view === "roster" && <OfficerRoster profiles={profiles} data={tracking} year={academicYear} years={years} onYearChange={setAcademicYear} onOpenOfficer={chooseOfficer} onDirtyChange={setRosterDirty} initialEventId={workspace?.eventId} rosterMode={section === "attendance" || section === "volunteer" ? section : undefined} />}
     {isSuperAdmin && view === "accounts" && <AccountsPanel actorId={profile.id} />}
     {!embedded && isSuperAdmin && view === "site" && <div className="mt-8"><AdminTabs section={siteSection} onSectionChange={setSiteSection} /></div>}
-    {view === "dashboard" && !overview && topic === "tasks" && <>
+    {view === "dashboard" && (!overview || section === "tasks") && topic === "tasks" && <>
     <div className={styles.taskSummary} aria-label="Task summary"><article><h3>PEET /100</h3><strong>{summary.score === null ? "—" : summary.score.toFixed(1)}</strong></article><article><h3>Active</h3><strong>{summary.active}</strong></article><article><h3>Completed</h3><strong>{summary.completed}</strong></article></div>
-    <div className={styles.topicHeading}><h2>Tasks & PEET</h2><button className={styles.primary} onClick={() => openAction({kind:"add"})} disabled={busy}>+ Add task</button></div>
+    {section !== "tasks" && <div className={styles.topicHeading}><h2>Tasks & PEET</h2><button className={styles.primary} onClick={() => openAction({kind:"add"})} disabled={busy}>+ Add task</button></div>}
     <label className={styles.taskSearch}><span className="sr-only">Search this officer’s tasks and requests</span><input type="search" value={taskSearch} onChange={event => setTaskSearch(event.target.value)} placeholder="Find a task, submission, or note…" /></label>
     {taskQuery && <p className={styles.searchResultCount} role="status">{matchingTasks.length} matching {matchingTasks.length === 1 ? "task" : "tasks"} · {matchingRequests.length} matching {matchingRequests.length === 1 ? "request" : "requests"}</p>}
     {admin && matchingReviewQueue.length > 0 && <TaskSection key={`reviews-${disclosureScope}`} title="Ready for review" count={matchingReviewQueue.length} collapsible={false}>
@@ -262,7 +275,7 @@ export default function OfficerBoard({ profile, profiles, tasks, evaluations, tr
     {pendingRequests.length > 0 && <TaskSection key={`pending-${disclosureScope}`} title="Cancellation requests" count={pendingRequests.length} hint="Pending" defaultOpen>{pendingRequests.map(requestRow)}</TaskSection>}
     <TaskSection key={`active-${disclosureScope}`} title="Active tasks" count={activeTasks.length} collapsible={false}>
       {activeTasks.length === 0 ? <p className={styles.compactEmpty}>{taskQuery ? "No active tasks match your search." : "No active tasks. Add a task to get started."}</p> : activeTasks.map(task => <details className={styles.taskDisclosure} key={task.id}>
-        <summary className={styles.taskRowSummary}><span className={styles.disclosureChevron} aria-hidden="true" /><span className={styles.taskRowTitle}>{task.title}</span><span className={styles.badge}>{statusLabels[task.status]}{officerTaskPeople(task).length > 1 ? ` · ${officerTaskPeople(task).length} people` : ""}</span><span className={styles.rowMeta}>Due {dateLabel(task.due_date)}</span></summary>
+        <summary className={styles.taskRowSummary}><span className={styles.disclosureChevron} aria-hidden="true" /><span className={styles.taskRowTitle}>{task.title}</span><span className={styles.badge}>{statusLabels[task.status]}{officerTaskPeople(task).length > 1 ? ` · ${officerTaskPeople(task).length} people` : ""}</span><span className={styles.rowMeta}>Due {dateLabel(task.due_date)}{overview ? ` · ${ownerName(task)}` : ""}</span></summary>
         <div className={styles.taskDetails}>
           {task.description && <p>{task.description}</p>}{workLink(task)}
           <div className={styles.actions}>

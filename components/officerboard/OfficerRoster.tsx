@@ -1,5 +1,7 @@
 "use client";
 
+import WorkspaceActivity from "@/components/WorkspaceActivity";
+
 import ActionError from "@/components/ActionError";
 
 import { useEffect, useState, useTransition, type FormEvent } from "react";
@@ -8,9 +10,9 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { peetError, taskOfficers, type OfficerProfile } from "@/lib/peet";
 import { durationLabel, localDateInput, schoolDate, trackingSummary, eventParticipationLabel, type OfficerAttendance, type OfficerEvent, type TrackingData, type VolunteerLog } from "@/lib/officer-tracking";
+import VolunteerServiceRoster from "./VolunteerServiceRoster";
 import OfficerAttendanceCards from "./OfficerAttendanceCards";
 import OfficerEventFields from "./OfficerEventFields";
-import EventParticipation from "./EventParticipation";
 import Modal from "./Modal";
 import styles from "./officerboard.module.css";
 
@@ -19,12 +21,16 @@ type Action = {kind:"event"; event?: OfficerEvent} | {kind:"notes"; person: Offi
 const statuses = [["present","Present"],["late","Late"],["excused","Excused"],["unexcused","Unexcused"]] as const;
 const keyFor = (eventId: string, officerId: string) => `${eventId}:${officerId}`;
 
-export default function OfficerRoster({profiles,data,year,years,onYearChange,onOpenOfficer,onDirtyChange}: {
+export default function OfficerRoster({profiles,data,year,years,onYearChange,onOpenOfficer,onDirtyChange,rosterMode,initialEventId}: {
+  initialEventId?: string;
+  rosterMode?: "attendance" | "volunteer";
   profiles: OfficerProfile[]; data: TrackingData; year: string; years: string[]; onYearChange: (year: string)=>void; onOpenOfficer: (id: string)=>void; onDirtyChange: (dirty: boolean)=>void;
 }) {
   const router = useRouter();
-  const [mode,setMode] = useState<"attendance"|"volunteer">("attendance");
-  const [eventId,setEventId] = useState("");
+  const [localMode,setMode] = useState<"attendance"|"volunteer">("attendance");
+  const mode = rosterMode ?? localMode;
+  const [eventId,setEventId] = useState(initialEventId ?? "");
+  useEffect(() => { if (initialEventId) setEventId(initialEventId); }, [initialEventId]);
   const [search,setSearch] = useState("");
   const [drafts,setDrafts] = useState<Record<string,AttendanceDraft>>({});
   const [action,setAction] = useState<Action|null>(null);
@@ -32,6 +38,8 @@ export default function OfficerRoster({profiles,data,year,years,onYearChange,onO
   const [refreshing,startTransition] = useTransition();
   const [error,setError] = useState<string|null>(null);
   const [notice,setNotice] = useState("");
+  const [serviceDirty,setServiceDirty] = useState(false);
+  const [bulkStatus,setBulkStatus] = useState<typeof statuses[number][0]>("present");
   const busy = saving || refreshing;
   const officers = taskOfficers(profiles);
   const shown = officers.filter(person=>`${person.name} ${person.email ?? ""} ${person.position ?? ""}`.toLowerCase().includes(search.toLowerCase()));
@@ -50,14 +58,14 @@ export default function OfficerRoster({profiles,data,year,years,onYearChange,onO
 
   // Acknowledged server records replace the local draft; failed rows stay available to retry.
   useEffect(()=>{setDrafts(current=>Object.fromEntries(Object.entries(current).filter(([key,draft])=>{const [eventId,personId]=key.split(":");const row=data.attendance.find(row=>row.event_id===eventId&&row.officer_id===personId);return draft.status !== (row?.status ?? "unmarked") || draft.notes !== (row?.reviewer_notes ?? "");})));},[data.attendance]);
-  useUnsavedChanges(outstanding > 0, "You have unsaved attendance changes. Leave the roster and discard them?");
-  useEffect(()=>{onDirtyChange(outstanding>0);return()=>onDirtyChange(false);},[outstanding,onDirtyChange]);
+  useUnsavedChanges(outstanding > 0 || serviceDirty, "You have unsaved roster changes. Leave the roster and discard them?");
+  useEffect(()=>{onDirtyChange(outstanding>0 || serviceDirty);return()=>onDirtyChange(false);},[outstanding,serviceDirty,onDirtyChange]);
   function open(next:Action) {setError(null);setNotice("");setAction(next);}
   function setStatus(personId:string,status:OfficerAttendance["status"]) {if(!event)return;setError(null);setNotice("");setDrafts(current=>({...current,[keyFor(event.id,personId)]:{...draftFor(event.id,personId),status}}));}
   function changeMode(next: typeof mode) {setMode(next);setEventId("");setError(null);setNotice("");}
-  function markUnrecordedPresent() {
+  function markUnrecordedAttendance() {
     if (!event) return;
-    setDrafts(current => ({...current, ...Object.fromEntries(shown.filter(person => draftFor(event.id, person.id).status === "unmarked").map(person => [keyFor(event.id, person.id), {...draftFor(event.id, person.id), status: "present" as const}]))}));
+    setDrafts(current => ({...current, ...Object.fromEntries(shown.filter(person => draftFor(event.id, person.id).status === "unmarked").map(person => [keyFor(event.id, person.id), {...draftFor(event.id, person.id), status: bulkStatus}]))}));
   }
   function discardMeetingChanges() {
     if (!event) return;
@@ -88,23 +96,25 @@ export default function OfficerRoster({profiles,data,year,years,onYearChange,onO
     }catch{setError("Check the dates and your connection, then try again.");}finally{setSaving(false);}
   }
 
-  return <section aria-labelledby="team-roster-heading">
-    <div className={styles.topicHeading}><div><h2 id="team-roster-heading">Attendance & volunteer roster</h2><p>Everyone together. Choose a meeting or event to record and review participation.</p></div><button className={styles.primary} disabled={busy} onClick={()=>open({kind:"event"})}>{mode === "attendance"?"Add meeting":"Add event"}</button></div>
+  return <section aria-labelledby="team-roster-heading" data-workspace-busy={busy ? "true" : undefined}>
+    <WorkspaceActivity saving={saving} refreshing={refreshing} />
+    <div className={styles.topicHeading}><div><h2 id="team-roster-heading">{rosterMode === "attendance" ? "Attendance" : rosterMode === "volunteer" ? "Volunteer service" : "Attendance & volunteer roster"}</h2><p>Everyone together. Choose a meeting or event to record and review participation.</p></div><button className={styles.primary} disabled={busy || serviceDirty} onClick={()=>open({kind:"event"})}>{mode === "attendance"?"Add meeting":"Add event"}</button></div>
     <div className={styles.rosterControls}>
-      <nav className={styles.topicNavigation} aria-label="Roster topics"><button aria-current={mode === "attendance"?"page":undefined} disabled={busy} onClick={()=>changeMode("attendance")}>Attendance</button><button aria-current={mode === "volunteer"?"page":undefined} disabled={busy} onClick={()=>changeMode("volunteer")}>Volunteer</button></nav>
-      <label>Academic year<select aria-label="Roster academic year" disabled={busy} value={year} onChange={e=>onYearChange(e.target.value)}>{years.map(year=><option key={year}>{year}</option>)}</select></label>
-      <label>{mode === "attendance"?"Meeting":"Volunteer event"}<select aria-label={mode === "attendance"?"Roster meeting":"Roster volunteer event"} disabled={busy || !events.length} value={allEvents?"all":event?.id??""} onChange={e=>{setEventId(e.target.value);setError(null);setNotice("");}}>{!events.length&&<option value="">No events recorded</option>}{mode === "volunteer"&&<option value="all">All events · year overview</option>}{events.map(event=><option value={event.id} key={event.id}>{event.title} · {schoolDate(event.starts_at,false)}{event.cancelled?" (cancelled)":""}</option>)}</select></label>
+      {!rosterMode && <nav className={styles.topicNavigation} aria-label="Roster topics"><button aria-current={mode === "attendance"?"page":undefined} disabled={busy || serviceDirty} onClick={()=>changeMode("attendance")}>Attendance</button><button aria-current={mode === "volunteer"?"page":undefined} disabled={busy || serviceDirty} onClick={()=>changeMode("volunteer")}>Volunteer</button></nav>}
+      <label>Academic year<select aria-label="Roster academic year" disabled={busy || serviceDirty} value={year} onChange={e=>onYearChange(e.target.value)}>{years.map(year=><option key={year}>{year}</option>)}</select></label>
+      <label>{mode === "attendance"?"Meeting":"Volunteer event"}<select aria-label={mode === "attendance"?"Roster meeting":"Roster volunteer event"} disabled={busy || serviceDirty || !events.length} value={allEvents?"all":event?.id??""} onChange={e=>{setEventId(e.target.value);setError(null);setNotice("");}}>{!events.length&&<option value="">No events recorded</option>}{mode === "volunteer"&&<option value="all">All events · year overview</option>}{events.map(event=><option value={event.id} key={event.id}>{event.title} · {schoolDate(event.starts_at,false)}{event.cancelled?" (cancelled)":""}</option>)}</select></label>
     </div>
-    <div className={styles.rosterToolbar}><label className={styles.search}>Search roster<input type="search" value={search} onChange={e=>setSearch(e.target.value)} placeholder="Name, email, or position" /></label><span>{shown.length} of {officers.length} officers</span>{event&&!allEvents&&<button className={styles.secondary} disabled={busy} onClick={()=>open({kind:"event",event})}>Edit {mode === "attendance"?"meeting":"event"}</button>}</div>
+    <div className={styles.rosterToolbar}><label className={styles.search}>Search roster<input type="search" value={search} onChange={e=>setSearch(e.target.value)} placeholder="Name, email, or position" /></label><span>{shown.length} of {officers.length} officers</span>{event&&!allEvents&&<button className={styles.secondary} disabled={busy || serviceDirty} onClick={()=>open({kind:"event",event})}>Edit {mode === "attendance"?"meeting":"event"}</button>}</div>
     <p role="status" className={styles.notice}>{notice || (refreshing?"Updating roster…":"")}</p>{error&&!action&&<ActionError message={error} className={styles.error} />}
-    {outstanding>0&&<p className={styles.warning}>{outstanding} unsaved attendance {outstanding===1?"change":"changes"}. Changes stay here when you switch meetings or roster topics; save each meeting before leaving the roster. <button className={styles.link} disabled={busy} onClick={()=>setDrafts({})}>Discard all attendance changes</button></p>}
+    {outstanding>0&&<p className={styles.warning}>{outstanding} unsaved attendance {outstanding===1?"change":"changes"}. Changes stay here when you switch events or roster topics; save each event before leaving the roster. <button className={styles.link} disabled={busy} onClick={()=>setDrafts({})}>Discard all attendance changes</button></p>}
     {!events.length?<p className={styles.empty}>Add a {mode === "attendance"?"meeting":"volunteer event"} to start tracking the roster.</p>:<>
       {event&&!allEvents&&<p className={styles.rosterEvent}>{schoolDate(event.starts_at)} – {schoolDate(event.ends_at)} · {event.location||"No location specified"}{event.cancelled&&" · Cancelled"}{mode === "volunteer"&&` · ${event.gea_approved?"GEA-approved":"Not yet GEA-approved"}`}</p>}
-      {mode === "attendance"&&event&&<>
+      {event&&!allEvents&&<>
         <div className={styles.rosterSaveBar}>
-          <p>Mark each officer, then save. Absences do not automatically issue strikes.</p>
+          <p>Mark each officer, then save. Attendance does not automatically issue strikes or award service hours.</p>
           <div className={styles.actions}>
-            <button type="button" className={styles.secondary} disabled={busy || event.cancelled || !shown.some(person => draftFor(event.id, person.id).status === "unmarked")} onClick={markUnrecordedPresent}>Mark unrecorded present</button>
+            <label className={styles.bulkStatus}>Bulk status<select aria-label="Bulk attendance status" value={bulkStatus} disabled={busy || event.cancelled} onChange={e=>setBulkStatus(e.target.value as typeof bulkStatus)}>{statuses.map(([status,label])=><option value={status} key={status}>{label}</option>)}</select></label>
+            <button type="button" className={styles.secondary} disabled={busy || event.cancelled || (bulkStatus !== "excused" && Date.parse(event.starts_at) > Date.now()) || !shown.some(person => draftFor(event.id, person.id).status === "unmarked")} onClick={markUnrecordedAttendance}>{`Mark unrecorded ${bulkStatus}`}</button>
             <span className={styles.desktopAttendanceActions}>
               <button type="button" className={styles.secondary} disabled={busy || !dirty.length} onClick={discardMeetingChanges}>Discard changes</button>
               <button type="button" className={styles.primary} disabled={busy || event.cancelled || !dirty.length} onClick={saveAttendance}>{saving ? "Saving…" : `Save attendance${dirty.length ? ` (${dirty.length})` : ""}`}</button>
@@ -118,19 +128,29 @@ export default function OfficerRoster({profiles,data,year,years,onYearChange,onO
             const record = attendance(event.id, person.id);
             return { person, status: draft.status, changed: draft.status !== (record?.status ?? "unmarked") || draft.notes !== (record?.reviewer_notes ?? ""), hasNotes: Boolean(draft.notes), hasAbsenceNotice: Boolean(record?.absence_notice) };
           })}
-          busy={busy} cancelled={event.cancelled} hasUnsavedChanges={outstanding > 0}
+          busy={busy} cancelled={event.cancelled} hasUnsavedChanges={outstanding > 0 || serviceDirty}
           onStatusChange={setStatus} onOpenOfficer={onOpenOfficer}
           onNotes={person => open({kind: "notes", person, event})}
         />
-        {(shown.length > 0 || dirty.length > 0) && <div className={styles.mobileAttendanceSave} aria-label="Save meeting attendance">
+        {(shown.length > 0 || dirty.length > 0) && <div className={styles.mobileAttendanceSave} aria-label={mode === "attendance" ? "Save meeting attendance" : "Save event attendance"}>
           <div><strong>{dirty.length ? `${dirty.length} unsaved ${dirty.length === 1 ? "change" : "changes"}` : "No unsaved changes"}</strong>
             <button type="button" className={styles.link} disabled={busy || !dirty.length} onClick={discardMeetingChanges}>Discard changes</button>
           </div>
           <button type="button" className={styles.primary} disabled={busy || event.cancelled || !dirty.length} onClick={saveAttendance}>{saving ? "Saving…" : "Save attendance"}</button>
         </div>}
-        <div className={`${styles.tableScroll} ${styles.desktopAttendanceTable}`} role="region" tabIndex={0} aria-label="Attendance roster; scroll horizontally for all statuses"><table className={styles.rosterTable}><caption className="sr-only">Attendance for {event.title}; changes are saved with Save attendance</caption><thead><tr><th scope="col">Officer</th>{statuses.map(([status,label])=><th scope="col" key={status}>{label}</th>)}<th scope="col">Notes / reset</th></tr></thead><tbody>{shown.map(person=>{const draft=draftFor(event.id,person.id);const record=attendance(event.id,person.id);const changed=draft.status !== (record?.status??"unmarked") || draft.notes !== (record?.reviewer_notes??"");return <tr key={person.id} data-pending={changed||undefined}><th scope="row"><button className={styles.rosterPerson} disabled={busy||outstanding>0} onClick={()=>onOpenOfficer(person.id)}>{person.name}</button><span>{person.email||person.position}</span>{draft.status==="unmarked"&&<small>Not recorded</small>}{record?.absence_notice&&<small>Absence notice received</small>}{changed&&<small>Unsaved changes</small>}</th>{statuses.map(([status,label])=><td key={status}><label className={styles.attendanceChoice}><input type="radio" name={`attendance-${event.id}-${person.id}`} aria-label={`${identity(person)} — ${label}`} checked={draft.status===status} disabled={busy||event.cancelled} onChange={()=>setStatus(person.id,status)} /><span aria-hidden="true">{label}</span></label></td>)}<td><div className={styles.actions}><button className={styles.secondary} disabled={busy||event.cancelled} onClick={()=>open({kind:"notes",person,event})}>{draft.notes||record?.absence_notice?"View / edit notes":"Notes"}<span className="sr-only"> for {identity(person)}</span></button><button className={styles.secondary} disabled={busy||event.cancelled||draft.status==="unmarked"} onClick={()=>setStatus(person.id,"unmarked")}>Clear<span className="sr-only"> attendance for {identity(person)}</span></button></div></td></tr>;})}</tbody></table></div>
+        <div className={`${styles.tableScroll} ${styles.desktopAttendanceTable}`} role="region" tabIndex={0} aria-label="Attendance roster; scroll horizontally for all statuses"><table className={styles.rosterTable}><caption className="sr-only">Attendance for {event.title}; changes are saved with Save attendance</caption><thead><tr><th scope="col">Officer</th>{statuses.map(([status,label])=><th scope="col" key={status}>{label}</th>)}<th scope="col">Notes / reset</th></tr></thead><tbody>{shown.map(person=>{const draft=draftFor(event.id,person.id);const record=attendance(event.id,person.id);const changed=draft.status !== (record?.status??"unmarked") || draft.notes !== (record?.reviewer_notes??"");return <tr key={person.id} data-pending={changed||undefined}><th scope="row"><button className={styles.rosterPerson} disabled={busy||outstanding>0||serviceDirty} onClick={()=>onOpenOfficer(person.id)}>{person.name}</button><span>{person.email||person.position}</span>{draft.status==="unmarked"&&<small>Not recorded</small>}{record?.absence_notice&&<small>Absence notice received</small>}{changed&&<small>Unsaved changes</small>}</th>{statuses.map(([status,label])=><td key={status}><label className={styles.attendanceChoice}><input type="radio" name={`attendance-${event.id}-${person.id}`} aria-label={`${identity(person)} — ${label}`} checked={draft.status===status} disabled={busy||event.cancelled} onChange={()=>setStatus(person.id,status)} /><span aria-hidden="true">{label}</span></label></td>)}<td><div className={styles.actions}><button className={styles.secondary} disabled={busy||event.cancelled} onClick={()=>open({kind:"notes",person,event})}>{draft.notes||record?.absence_notice?"View / edit notes":"Notes"}<span className="sr-only"> for {identity(person)}</span></button><button className={styles.secondary} disabled={busy||event.cancelled||draft.status==="unmarked"} onClick={()=>setStatus(person.id,"unmarked")}>Clear<span className="sr-only"> attendance for {identity(person)}</span></button></div></td></tr>;})}</tbody></table></div>
       </>}
-      {mode === "volunteer"&&<div className={styles.tableScroll} role="region" tabIndex={0} aria-label="Volunteer roster; scroll horizontally for all events and service records"><table className={`${styles.rosterTable} ${styles.volunteerTable}`}><caption className="sr-only">Volunteer participation and verified hours for {allEvents?year:event?.title}</caption><thead><tr><th scope="col">Officer</th>{allEvents?events.map(event=><th scope="col" key={event.id}>{event.title}<span>{schoolDate(event.starts_at,false)}{event.cancelled?" · Cancelled":!event.gea_approved?" · Not GEA-approved":""}</span></th>):<><th scope="col">Request / assignment</th><th scope="col">Check-in / out</th><th scope="col">Service / verification</th><th scope="col">Actions</th></>}<th scope="col">Approved events / year</th><th scope="col">Verified time / year</th></tr></thead><tbody>{shown.map(person=>{const summary=trackingSummary(data,person.id,year);const log=event?logFor(event.id,person.id):undefined;return <tr key={person.id}><th scope="row"><button className={styles.rosterPerson} disabled={busy||outstanding>0} onClick={()=>onOpenOfficer(person.id)}>{person.name}</button><span>{person.email||person.position}</span></th>{allEvents?events.map(event=>{const log=logFor(event.id,person.id);const signup=data.signups.find(row=>row.event_id===event.id&&row.officer_id===person.id);return <td key={event.id}>{event.cancelled?"Cancelled":log?`${logStatus(log)} · ${durationLabel(log.minutes)}`:eventParticipationLabel(signup)}</td>;}):<><td>{event&&<EventParticipation key={`${event.id}-${person.id}`} event={event} officerId={person.id} name={person.name} signup={data.signups.find(row=>row.event_id===event.id&&row.officer_id===person.id)} canManage disabled={busy||outstanding>0} />}</td><td>{log?<>{schoolDate(log.check_in)}<br/>{schoolDate(log.check_out)}</>:"—"}</td><td>{log&&<strong>{durationLabel(log.minutes)}<br/></strong>}{logStatus(log)}{log?.review_notes&&<p>{log.review_notes}</p>}</td><td><div className={styles.actions}>{event&&!event.cancelled&&<>{log?.status!=="approved"&&<button className={styles.secondary} disabled={busy} onClick={()=>open({kind:"service",person,event,log})}>{log?"Edit log":"Log service"}<span className="sr-only"> for {identity(person)}</span></button>}{log&&<button className={styles.primary} disabled={busy} onClick={()=>open({kind:"verify",person,event,log})}>{log.status==="approved"?"Review log":"Verify"}<span className="sr-only"> service for {identity(person)}</span></button>}</>}</div></td></>}<td>{summary.volunteerEvents}/2</td><td>{durationLabel(summary.volunteerMinutes)}</td></tr>;})}</tbody></table></div>}
+      {mode === "volunteer"&&event&&!allEvents&&<VolunteerServiceRoster key={event.id} event={event} people={shown} logs={data.volunteerLogs} signups={data.signups} locked={busy} onDirtyChange={setServiceDirty} onReview={(person,log)=>open({kind:"verify",person,event,log})} />}
+      {mode === "volunteer"&&allEvents&&<div className={styles.tableScroll} role="region" tabIndex={0} aria-label="Volunteer year overview; scroll horizontally for all events"><table className={`${styles.rosterTable} ${styles.volunteerTable}`}>
+        <caption className="sr-only">Volunteer participation and verified hours for {year}</caption>
+        <thead><tr><th scope="col">Officer</th>{events.map(event=><th scope="col" key={event.id}>{event.title}<span>{schoolDate(event.starts_at,false)}{event.cancelled?" · Cancelled":!event.gea_approved?" · Not GEA-approved":""}</span></th>)}<th scope="col">Approved events / year</th><th scope="col">Verified time / year</th></tr></thead>
+        <tbody>{shown.map(person=>{const summary=trackingSummary(data,person.id,year);return <tr key={person.id}>
+          <th scope="row"><button className={styles.rosterPerson} disabled={busy||outstanding>0||serviceDirty} onClick={()=>onOpenOfficer(person.id)}>{person.name}</button><span>{person.email||person.position}</span></th>
+          {events.map(event=>{const log=logFor(event.id,person.id);const signup=data.signups.find(row=>row.event_id===event.id&&row.officer_id===person.id);return <td key={event.id}>{event.cancelled?"Cancelled":log?`${logStatus(log)} · ${durationLabel(log.minutes)}`:eventParticipationLabel(signup)}</td>;})}
+          <td>{summary.volunteerEvents}/2</td><td>{durationLabel(summary.volunteerMinutes)}</td>
+        </tr>;})}</tbody>
+      </table></div>}
+
       {mode === "volunteer"&&<p className={styles.rosterEvent}>Year totals include verified time at GEA-approved events that have not been cancelled. Requests and assignments alone do not count toward the two-event minimum.</p>}
       {!shown.length&&<p className={styles.empty}>No officers match your search.</p>}
     </>}

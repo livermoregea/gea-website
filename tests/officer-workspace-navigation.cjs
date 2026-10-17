@@ -10,7 +10,7 @@ test('Old inbox and task links land in the matching section of the unified works
 });
 test('Task and private-response deep links open officer records; unknown views return to Overview',()=>{
  assert.equal(api.workspaceView(undefined,'task-123'),'tasks');
- assert.equal(api.workspaceView(undefined,undefined,'accountability'),'tasks');
+ assert.equal(api.workspaceView(undefined,undefined,'accountability'),'people');
  assert.equal(api.workspaceView('unknown'),'overview');
  assert.equal(api.workspaceView('reports'),'reports');
  assert.equal(api.workspaceView('today'),'overview');
@@ -25,6 +25,14 @@ test('Dashboard record links choose the requested officer and section only for r
  assert.equal(api.officerRecordTarget(new URLSearchParams('topic=unknown'),'me',true,['me']),null);
  assert.equal(api.officerRecordTarget(new URLSearchParams('topic=volunteer'),'me',true,['me']).officerId,'all');
  assert.equal(api.officerRecordTarget(new URLSearchParams('topic=accountability'),'me',true,['me']).officerId,'me');
- assert.equal(api.workspaceView(undefined,undefined,'attendance'),'tasks');
- assert.equal(api.legacyPlanningHref(true,{view:'tasks',officer:'other',topic:'attendance'}),'/admin-portal-x7k9/officers?view=tasks&topic=attendance&officer=other');
+ assert.equal(api.workspaceView(undefined,undefined,'attendance'),'attendance');
+ assert.equal(api.legacyPlanningHref(true,{view:'tasks',officer:'other',topic:'attendance'}),'/admin-portal-x7k9/officers?view=people&topic=attendance&officer=other');
+});
+
+test('Direct workspace destinations and old per-officer links preserve their intended scope',()=>{
+ for(const view of ['tasks','people','attendance','volunteer','accounts'])assert.equal(api.workspaceView(view),view);
+ assert.equal(api.workspaceView('tasks',undefined,'attendance'),'attendance');
+ assert.equal(api.workspaceView('tasks',undefined,'attendance','officer-a'),'people');
+ assert.equal(api.workspaceView(undefined,undefined,'volunteer'),'volunteer');
+ assert.equal(api.workspaceView(undefined,undefined,'overview','officer-a'),'people');
 });

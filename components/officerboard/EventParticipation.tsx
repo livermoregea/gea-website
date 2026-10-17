@@ -1,5 +1,7 @@
 "use client";
 
+import WorkspaceActivity from "@/components/WorkspaceActivity";
+
 import { useState, useTransition, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
@@ -50,7 +52,8 @@ export default function EventParticipation({ event, officerId, name, signup, can
     await saveAssignment(Boolean(snapshot?.assigned), String(fields.get("role") ?? ""), String(fields.get("notes") ?? ""), snapshot?.version ?? 0, "Participation details saved.");
   }
 
-  return <div>
+  return <div data-workspace-busy={busy ? "true" : undefined}>
+    <WorkspaceActivity saving={saving} refreshing={refreshing} />
     <p><strong>{eventParticipationLabel(signup)}</strong></p>
     {signup?.participation_role && <p>Role: {signup.participation_role}</p>}
     {signup?.participation_notes && <p className="whitespace-pre-wrap">{signup.participation_notes}</p>}

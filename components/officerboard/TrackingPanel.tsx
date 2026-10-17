@@ -1,5 +1,7 @@
 "use client";
 
+import WorkspaceActivity from "@/components/WorkspaceActivity";
+
 import ActionError from "@/components/ActionError";
 
 import { useState, useTransition, type FormEvent } from "react";
@@ -91,7 +93,8 @@ export default function TrackingPanel({ mode, profile, profiles, officerId, data
     return <p>{schoolDate(log.check_in)} → {schoolDate(log.check_out)}<br />{durationLabel(log.minutes)} · {log.notes || "No notes"}</p>;
   }
 
-  return <div>
+  return <div data-workspace-busy={busy ? "true" : undefined}>
+    <WorkspaceActivity saving={saving} refreshing={refreshing} />
     {!embedded && <div className={styles.filter}><label htmlFor="officer-school-year">Academic year</label><select id="officer-school-year" value={year} onChange={event => setYear(event.target.value)}>{years.map(value => <option key={value}>{value}</option>)}</select></div>}
     <p role="status" className={styles.notice}>{notice || (refreshing ? "Updating records…" : "")}</p>
     {!action && modalError}

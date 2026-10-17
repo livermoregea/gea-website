@@ -15,7 +15,7 @@ export default function OfficerDashboard({ profile, profiles, tasks, evaluations
   return <div className={s.dashboard}>
     <div className={s.panelHeading}>
       <div><h2 className={s.dashboardTitle}>{data.reviewer ? 'Team at a glance' : 'My progress'}</h2><p className={s.muted}>Participation · {CONTRACT_YEAR}. PEET and task totals include all school years.</p></div>
-      <a className={s.detailLink} href={`${data.workspaceHref}?view=tasks`}>{data.reviewer ? 'Open officer records' : 'Open my work'} →</a>
+      <a className={s.detailLink} href={`${data.workspaceHref}?view=${data.reviewer ? "people" : "tasks"}`}>{data.reviewer ? 'Open officer records' : 'Open my tasks'} →</a>
     </div>
     <div className={s.dashboardMetrics} aria-label={data.reviewer ? 'Team progress summary' : 'My progress summary'}>
       <a href={record('tasks')}><h3>{data.reviewer ? 'Team PEET average' : 'PEET score'}</h3><strong>{summary.score === null ? '—' : summary.score.toFixed(1)}<small> /100</small></strong><p>{data.reviewer ? `${summary.scoredOfficers} evaluated ${summary.scoredOfficers === 1 ? 'officer' : 'officers'}` : summary.score === null ? 'No evaluated tasks yet' : `${summary.work.evaluated} evaluated tasks`}</p></a>

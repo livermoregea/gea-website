@@ -216,10 +216,10 @@ create or replace function public.record_officer_attendance(p_event_id uuid,p_of
 returns void language plpgsql security definer set search_path='' as $$ declare v_event public.officer_events; begin
   if not public.is_peet_admin() then raise exception 'Reviewer access is required.'; end if;
   select * into v_event from public.officer_events where id=p_event_id for update;
-  if not found or v_event.kind<>'meeting' or v_event.cancelled then raise exception 'Select a scheduled leadership meeting.'; end if;
+  if not found or v_event.cancelled then raise exception 'Select a scheduled meeting or service event.'; end if;
   if p_status is null or p_status not in ('unmarked','present','late','excused','unexcused') or p_notes is null or length(p_notes)>10000 then raise exception 'Check the attendance status and notes.'; end if;
   if not exists(select 1 from public.officer_profiles where id=p_officer_id) then raise exception 'Officer not available.'; end if;
-  if p_status in ('present','late','unexcused') and v_event.starts_at>now() then raise exception 'Record actual attendance after the meeting begins.'; end if;
+  if p_status in ('present','late','unexcused') and v_event.starts_at>now() then raise exception 'Record actual attendance after the event begins.'; end if;
   if p_status<>'unexcused' and exists(select 1 from public.officer_strikes s join public.officer_attendance a on a.id=s.attendance_id
     where a.event_id=p_event_id and a.officer_id=p_officer_id and s.status='confirmed') then raise exception 'Revoke the linked attendance strike before correcting this absence.'; end if;
   insert into public.officer_attendance(event_id,officer_id,status,reviewer_notes,recorded_by)

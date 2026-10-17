@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, type ReactNode } from "react";
+import WorkspaceActivity from "@/components/WorkspaceActivity";
 import styles from "./officerboard.module.css";
 
 export default function Modal({ title, children, onClose, busy = false }: {
@@ -21,6 +22,7 @@ export default function Modal({ title, children, onClose, busy = false }: {
       <span className={styles.eyebrow}>Officer workspace</span>
       <button type="button" className={styles.secondary} onClick={onClose} disabled={busy}>Close</button>
     </div>
+    <WorkspaceActivity saving={busy} inline />
     {children}
   </dialog>;
 }

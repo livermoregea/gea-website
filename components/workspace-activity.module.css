@@ -1,0 +1,9 @@
+.banner, .inline { display: flex; align-items: center; gap: 14px; padding: 16px 20px; border: 1px solid #c1d3c8; border-radius: 14px; background: #f5faf6; color: #123524; font-family: var(--font-body), sans-serif; line-height: 1.45; }
+.banner { position: fixed; top: max(18px, env(safe-area-inset-top)); left: 50%; transform: translateX(-50%); z-index: 1000; width: min(480px, calc(100vw - 32px)); box-shadow: 0 8px 32px #12352430; pointer-events: none; }
+.inline { margin-bottom: 16px; }
+.banner strong, .inline strong { display: block; font-size: 1rem; font-weight: 700; }
+.banner p, .inline p { margin: 3px 0 0; font-size: .875rem; }
+.spinner { width: 24px; height: 24px; flex: 0 0 24px; border: 3px solid #c1d3c8; border-top-color: #20583d; border-radius: 50%; animation: workspace-spin .85s linear infinite; }
+@keyframes workspace-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .spinner { animation: none; } }
+@media print { .banner, .inline { display: none; } }

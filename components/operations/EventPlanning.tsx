@@ -28,7 +28,7 @@ export default function EventPlanning({ data, eventId, save, busy, markDirty, di
             <h2>{event.title}</h2>
             <p>{schoolDate(event.starts_at)} · {event.location}{event.cancelled ? ' · Cancelled' : ''}</p>
             <p>{event.notes}</p>
-            <a className={s.button} href={`${data.taskHref}?view=tasks`}>Open participation &amp; hours</a>
+            <a className={s.button} href={`${data.taskHref}?view=volunteer&event=${event.id}`}>Open participation &amp; hours</a>
         </section>
         <section className={`${s.panel} ${s.readingColumn}`}>
             <h2>Planning sheet</h2>
