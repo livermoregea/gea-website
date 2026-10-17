@@ -14,7 +14,9 @@ function setup(options={}){
  deleteUser:async id=>{calls.push({name:'deleteUser',id});return {error:options.cleanupError?{}:null};},
  }},
  };
+ session.rpc=admin.rpc;
  const exports={};const modules={
+ '@/lib/officer-preregistration':{reservedOfficerId:async()=>options.reservedId},
  'next/server':{NextResponse:{json:(data,init)=>Response.json(data,init)}},
  '@/lib/supabase/server':{createClient:async()=>session},'@/lib/supabase/admin':{createAdminClient:()=>{calls.push({name:'serviceClient'});return admin;}},
  '@/lib/supabase/config':{hasSupabaseConfig:()=>!options.unconfigured},'@/lib/account-management':accountExports,
@@ -66,4 +68,28 @@ test('Removal requires confirmation, a valid target, a reason, and cannot remove
 });
 test('Directory responses are never cached and contain no passwords or student ID numbers',async()=>{
  const api=setup({existing:true});const response=await api.GET();assert.equal(response.status,200);assert.match(response.headers.get('Cache-Control'),/no-store/);assert.doesNotMatch(JSON.stringify(await response.json()),/password|student_id_number/);
+});
+
+test('Adding an officer without an account reserves their roster identity without creating a login or password',async()=>{
+ const api=setup();const response=await api.POST(request({kind:'officer',password:''}));
+ assert.equal(response.status,200);assert.match((await response.json()).message,/sign up/);
+ assert.ok(!api.calls.some(call=>call.name==='createUser'));
+ const rpc=api.calls.find(call=>call.name==='save_preregistered_officer');
+ assert.equal(rpc.args.p_email,'person@lvjusd.org');assert.equal(rpc.args.p_name,'Person Name');
+});
+test('Editing a pending officer keeps their reserved identity',async()=>{
+ const api=setup();assert.equal((await api.POST(request({kind:'officer',userId:target,password:''}))).status,200);
+ assert.equal(api.calls.find(call=>call.name==='save_preregistered_officer').args.p_id,target);
+});
+test('Creating student access for a preregistered officer uses their reserved Auth ID',async()=>{
+ const api=setup({reservedId:target});
+ assert.equal((await api.POST(request({kind:'student',username:'officer',classYear:'2028',studentId:'123456'}))).status,200);
+ assert.equal(api.calls.find(call=>call.name==='createUser').args.id,target);
+});
+
+test('A failed student profile grant preserves the login and existing preregistered officer history',async()=>{
+ const api=setup({reservedId:target,rpcError:true});
+ const response=await api.POST(request({kind:'student',username:'officer',classYear:'2028',studentId:'123456'}));
+ assert.equal(response.status,400);assert.match((await response.json()).error,/officer history were preserved/);
+ assert.ok(!api.calls.some(call=>call.name==='deleteUser'));
 });

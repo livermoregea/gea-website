@@ -3492,3 +3492,408 @@ end $$;
 revoke all on function public.set_officer_event_signup(uuid,boolean),public.save_officer_event_assignment(uuid,uuid,boolean,text,text,integer) from public,anon,authenticated;
 grant execute on function public.set_officer_event_signup(uuid,boolean),public.save_officer_event_assignment(uuid,uuid,boolean,text,text,integer) to authenticated;
 commit;
+
+-- Run after officer-shared-tasks.sql and teacher-super-admin.sql.
+-- Reserve the future Auth ID so every officer record keeps its identity at signup.
+begin;
+alter table public.officer_profiles add column if not exists auth_user_id uuid unique references auth.users(id) on delete cascade;
+alter table public.officer_profiles add column if not exists pending_email text;
+update public.officer_profiles p set auth_user_id=p.id where auth_user_id is null and exists(select 1 from auth.users u where u.id=p.id);
+alter table public.officer_profiles drop constraint if exists officer_profiles_id_fkey;
+create unique index if not exists officer_profiles_pending_email on public.officer_profiles(lower(pending_email)) where pending_email is not null;
+alter table public.officer_profiles drop constraint if exists officer_profiles_account_identity;
+alter table public.officer_profiles add constraint officer_profiles_account_identity check(
+ (auth_user_id is not null and auth_user_id=id and pending_email is null) or
+ (auth_user_id is null and pending_email is not null and pending_email=lower(btrim(pending_email))
+  and length(pending_email)<=254 and pending_email ~ '^[^[:space:]@]+@lvjusd\.org$')
+);
+
+-- Existing account-management and teacher-provisioning inserts keep working.
+create or replace function public.link_officer_identity()
+returns trigger language plpgsql security definer set search_path='' as $$ begin
+ if new.auth_user_id is null and new.pending_email is null and exists(select 1 from auth.users where id=new.id) then
+  new.auth_user_id:=new.id;
+ end if;
+ return new;
+end $$;
+drop trigger if exists officer_identity_link on public.officer_profiles;
+create trigger officer_identity_link before insert or update on public.officer_profiles for each row execute function public.link_officer_identity();
+
+-- All server signup paths use the reserved ID, never an email supplied as user metadata.
+create or replace function public.activate_preregistered_officer()
+returns trigger language plpgsql security definer set search_path='' as $$ begin
+ perform pg_advisory_xact_lock(hashtextextended(lower(new.email),0));
+ if exists(select 1 from public.officer_profiles where auth_user_id is null and
+   ((id=new.id and pending_email is distinct from lower(new.email)) or (pending_email=lower(new.email) and id<>new.id))) then
+  raise exception 'Officer signup reservation changed. Please retry signup.';
+ end if;
+ update public.officer_profiles set auth_user_id=new.id,pending_email=null
+ where id=new.id and auth_user_id is null and pending_email=lower(new.email);
+ return new;
+end $$;
+drop trigger if exists officer_signup_link on auth.users;
+create trigger officer_signup_link after insert on auth.users for each row execute function public.activate_preregistered_officer();
+
+create or replace function public.save_preregistered_officer(
+ p_name text,p_email text,p_position text default '',p_id uuid default null,
+ p_role text default 'officer',p_reviewer_kind text default null
+) returns uuid language plpgsql security definer set search_path='' as $$
+declare v_id uuid; v_existing public.officer_profiles; v_email text:=lower(btrim(p_email)); begin
+ if not public.is_peet_admin() then raise exception 'Reviewer access is required.'; end if;
+ if p_name is null or length(btrim(p_name)) not between 1 and 160 or v_email is null
+  or length(v_email)>254 or v_email !~ '^[^[:space:]@]+@lvjusd\.org$'
+  or p_position is null or length(p_position)>160 then raise exception 'Enter a name and a valid @lvjusd.org email.'; end if;
+ if p_role is null or p_role not in ('officer','admin') or (p_role='officer' and p_reviewer_kind is not null)
+  or (p_role='admin' and (p_reviewer_kind is null or p_reviewer_kind not in ('president','advisor'))) then raise exception 'Choose a valid officer role.'; end if;
+ if p_role<>'officer' and not public.is_super_admin() then raise exception 'Super-admin access is required to grant reviewer permissions.'; end if;
+ -- Serialize edits with signup lookup by email, and reject duplicate roster entries.
+ perform pg_advisory_xact_lock(hashtextextended(v_email,0));
+ if p_id is not null then
+  select * into v_existing from public.officer_profiles where id=p_id for update;
+  if not found or v_existing.auth_user_id is not null then raise exception 'Choose an officer who has not signed up yet.'; end if;
+  if v_existing.role='admin' and not public.is_super_admin() then raise exception 'Super-admin access is required to edit reviewer permissions.'; end if;
+ end if;
+ select id into v_id from auth.users where lower(email)=v_email;
+ if v_id is not null then
+  if p_id is not null then raise exception 'That email already has an account. Choose their original signup email.'; end if;
+  if exists(select 1 from public.officer_profiles where id=v_id) then raise exception 'This account already has officer access.'; end if;
+  insert into public.officer_profiles(id,name,role,position,reviewer_kind) values(v_id,btrim(p_name),p_role,btrim(p_position),p_reviewer_kind);
+ else
+  v_id:=coalesce(p_id,gen_random_uuid());
+  if p_id is null then
+   insert into public.officer_profiles(id,name,role,position,reviewer_kind,pending_email) values(v_id,btrim(p_name),p_role,btrim(p_position),p_reviewer_kind,v_email);
+  else
+   update public.officer_profiles set name=btrim(p_name),role=p_role,position=btrim(p_position),reviewer_kind=p_reviewer_kind,pending_email=v_email where id=v_id;
+  end if;
+ end if;
+ return v_id;
+end $$;
+
+create or replace function public.officer_directory()
+returns table(id uuid,name text,role text,"position" text,reviewer_kind text,peet_onboarding_seen_at timestamptz,access_enabled boolean,is_teacher boolean,email text)
+language sql stable security definer set search_path='' as $$
+ select p.id,p.name,p.role,p.position,p.reviewer_kind,p.peet_onboarding_seen_at,p.access_enabled,
+  exists(select 1 from public.teacher_profiles t where t.auth_user_id=p.id),coalesce(u.email::text,p.pending_email)
+ from public.officer_profiles p left join auth.users u on u.id=p.id
+ where p.access_enabled and (public.is_peet_admin() or (p.id=auth.uid() and public.has_officer_access()));
+$$;
+revoke all on function public.link_officer_identity(),public.activate_preregistered_officer(),public.save_preregistered_officer(text,text,text,uuid,text,text) from public,anon,authenticated;
+grant execute on function public.save_preregistered_officer(text,text,text,uuid,text,text) to authenticated;
+commit;
+
+-- Apply after super-admin.sql / teacher-super-admin.sql.
+-- Public volunteer events and records are separate from leadership officer tracking.
+begin;
+create table if not exists public.public_volunteer_events (
+ id uuid primary key default gen_random_uuid(),
+ title text not null check(length(btrim(title)) between 1 and 200),
+ description text not null default '' check(length(description)<=10000),
+ location text not null default '' check(length(location)<=500),
+ starts_at timestamptz not null, ends_at timestamptz not null check(ends_at>starts_at),
+ status text not null default 'draft' check(status in ('draft','published','cancelled')),
+ signup_open boolean not null default true,
+ capacity integer check(capacity between 1 and 10000),
+ version integer not null default 1,
+ created_by uuid not null references auth.users(id),
+ updated_by uuid not null references auth.users(id),
+ updated_at timestamptz not null default now()
+);
+create table if not exists public.public_volunteer_signups (
+ id uuid primary key default gen_random_uuid(),
+ event_id uuid not null references public.public_volunteer_events(id),
+ user_id uuid not null references auth.users(id) on delete cascade,
+ name text not null check(length(btrim(name)) between 1 and 160),
+ email text not null check(length(email)<=254),
+ status text not null default 'registered' check(status in ('registered','withdrawn')),
+ attendance text not null default 'unmarked' check(attendance in ('unmarked','present','absent')),
+ verified_minutes integer not null default 0 check(verified_minutes between 0 and 1440),
+ attendance_note text not null default '' check(length(attendance_note)<=2000),
+ version integer not null default 1,
+ created_at timestamptz not null default now(), updated_at timestamptz not null default now(),
+ reviewed_by uuid references auth.users(id),
+ unique(event_id,user_id),
+ check(verified_minutes=0 or (status='registered' and attendance='present'))
+);
+create index if not exists public_volunteer_signups_event on public.public_volunteer_signups(event_id,status);
+alter table public.public_volunteer_events enable row level security;
+alter table public.public_volunteer_signups enable row level security;
+drop policy if exists public_volunteer_events_read on public.public_volunteer_events;
+create policy public_volunteer_events_read on public.public_volunteer_events for select to anon,authenticated using(status='published');
+drop policy if exists public_volunteer_events_member_read on public.public_volunteer_events;
+create policy public_volunteer_events_member_read on public.public_volunteer_events for select to authenticated using(
+ public.is_staff() or exists(select 1 from public.public_volunteer_signups s where s.event_id=public_volunteer_events.id and s.user_id=auth.uid())
+);
+drop policy if exists public_volunteer_signups_read on public.public_volunteer_signups;
+create policy public_volunteer_signups_read on public.public_volunteer_signups for select to authenticated using(user_id=auth.uid() or public.is_staff());
+revoke all on public.public_volunteer_events,public.public_volunteer_signups from public,anon,authenticated;
+grant select on public.public_volunteer_events to anon,authenticated;
+grant select on public.public_volunteer_signups to authenticated;
+grant all on public.public_volunteer_events,public.public_volunteer_signups to service_role;
+
+create or replace function public.save_public_volunteer_event(
+ p_title text,p_description text,p_location text,p_starts_at timestamptz,p_ends_at timestamptz,
+ p_status text default 'draft',p_signup_open boolean default true,p_capacity integer default null,
+ p_id uuid default null,p_version integer default 0
+) returns uuid language plpgsql security definer set search_path='' as $$
+declare v_event public.public_volunteer_events; v_id uuid; begin
+ if auth.uid() is null or not public.is_staff() then raise exception 'Staff access is required.'; end if;
+ if p_title is null or length(btrim(p_title)) not between 1 and 200 or p_description is null or length(p_description)>10000
+  or p_location is null or length(p_location)>500 or p_starts_at is null or p_ends_at is null or p_ends_at<=p_starts_at
+  or p_status is null or p_status not in ('draft','published','cancelled') or p_signup_open is null
+  or (p_capacity is not null and p_capacity not between 1 and 10000) then raise exception 'Enter valid event details, dates, and capacity.'; end if;
+ if p_id is null then
+  insert into public.public_volunteer_events(title,description,location,starts_at,ends_at,status,signup_open,capacity,created_by,updated_by)
+  values(btrim(p_title),p_description,btrim(p_location),p_starts_at,p_ends_at,p_status,p_signup_open,p_capacity,auth.uid(),auth.uid()) returning id into v_id;
+ else
+  select * into v_event from public.public_volunteer_events where id=p_id for update;
+  if not found or p_version is distinct from v_event.version then raise exception 'This event changed. Refresh before saving.'; end if;
+  if p_capacity is not null and p_capacity<(select count(*) from public.public_volunteer_signups where event_id=p_id and status='registered') then
+   raise exception 'Capacity cannot be lower than the number already signed up.';
+  end if;
+  update public.public_volunteer_events set title=btrim(p_title),description=p_description,location=btrim(p_location),starts_at=p_starts_at,ends_at=p_ends_at,
+   status=p_status,signup_open=p_signup_open,capacity=p_capacity,version=version+1,updated_by=auth.uid(),updated_at=now() where id=p_id;
+  v_id:=p_id;
+ end if;
+ return v_id;
+end $$;
+
+create or replace function public.set_public_volunteer_signup(p_event_id uuid,p_registered boolean,p_name text default null)
+returns void language plpgsql security definer set search_path='' as $$
+declare v_event public.public_volunteer_events; v_signup public.public_volunteer_signups; v_email text; v_name text:=btrim(p_name); begin
+ if auth.uid() is null then raise exception 'Sign in to GEA One to volunteer.'; end if;
+ if p_registered is null then raise exception 'Choose whether to sign up or withdraw.'; end if;
+ select * into v_event from public.public_volunteer_events where id=p_event_id for update;
+ if not found then raise exception 'Public volunteer event not available.'; end if;
+ select * into v_signup from public.public_volunteer_signups where event_id=p_event_id and user_id=auth.uid() for update;
+ if p_registered then
+  if v_event.status<>'published' or not v_event.signup_open or v_event.starts_at<=now() then raise exception 'Signups for this public event are closed.'; end if;
+  if v_signup.status='registered' then return; end if;
+  if v_event.capacity is not null and (select count(*) from public.public_volunteer_signups where event_id=p_event_id and status='registered')>=v_event.capacity then
+   raise exception 'This public event is full.';
+  end if;
+  select lower(email) into v_email from auth.users where id=auth.uid();
+  if v_name is null or length(v_name) not between 1 and 160 or v_email is null then raise exception 'Enter your full name to sign up.'; end if;
+  insert into public.public_volunteer_signups(event_id,user_id,name,email) values(p_event_id,auth.uid(),v_name,v_email)
+   on conflict(event_id,user_id) do update set name=excluded.name,email=excluded.email,status='registered',version=public.public_volunteer_signups.version+1,updated_at=now();
+ else
+  if v_signup.id is null or v_signup.status='withdrawn' then return; end if;
+  if v_signup.attendance<>'unmarked' or v_signup.verified_minutes>0 or (v_event.starts_at<=now() and v_event.status<>'cancelled') then
+   raise exception 'Contact a coordinator to change a past attendance record.';
+  end if;
+  update public.public_volunteer_signups set status='withdrawn',version=version+1,updated_at=now() where id=v_signup.id;
+ end if;
+end $$;
+
+create or replace function public.record_public_volunteer_attendance(
+ p_signup_id uuid,p_attendance text,p_minutes integer default 0,p_note text default '',p_version integer default null
+) returns void language plpgsql security definer set search_path='' as $$
+declare v_signup public.public_volunteer_signups; v_event public.public_volunteer_events; v_event_id uuid; begin
+ if auth.uid() is null or not public.is_staff() then raise exception 'Staff access is required.'; end if;
+ select event_id into v_event_id from public.public_volunteer_signups where id=p_signup_id;
+ -- Match the event-first lock order used by signup and event editing.
+ select * into v_event from public.public_volunteer_events where id=v_event_id for update;
+ select * into v_signup from public.public_volunteer_signups where id=p_signup_id for update;
+ if not found or v_signup.status<>'registered' or p_version is distinct from v_signup.version then raise exception 'This signup changed. Refresh before recording attendance.'; end if;
+ if v_event.status<>'published' then raise exception 'Attendance is only available for published public events.'; end if;
+ if p_attendance is null or p_attendance not in ('unmarked','present','absent') or p_minutes is null or p_minutes not between 0 and 1440
+  or (p_minutes>0 and p_attendance<>'present') or p_note is null or length(p_note)>2000 then raise exception 'Enter valid attendance and verified minutes.'; end if;
+ if (p_attendance<>'unmarked' and v_event.starts_at>now()) or (p_minutes>0 and v_event.ends_at>now()) then raise exception 'Record attendance after the event starts and verify hours after it ends.'; end if;
+ update public.public_volunteer_signups set attendance=p_attendance,verified_minutes=p_minutes,attendance_note=p_note,
+  reviewed_by=auth.uid(),version=version+1,updated_at=now() where id=p_signup_id;
+end $$;
+revoke all on function public.save_public_volunteer_event(text,text,text,timestamptz,timestamptz,text,boolean,integer,uuid,integer),
+ public.set_public_volunteer_signup(uuid,boolean,text),public.record_public_volunteer_attendance(uuid,text,integer,text,integer) from public,anon,authenticated;
+grant execute on function public.save_public_volunteer_event(text,text,text,timestamptz,timestamptz,text,boolean,integer,uuid,integer),
+ public.set_public_volunteer_signup(uuid,boolean,text),public.record_public_volunteer_attendance(uuid,text,integer,text,integer) to authenticated;
+commit;
+
+-- Apply after public-volunteering.sql and officer-preregistration.sql.
+-- One event record, with a safe public view and separate public/officer rosters.
+begin;
+alter table public.officer_events add column if not exists public_volunteering boolean not null default false;
+alter table public.officer_events add column if not exists public_listing boolean not null default false;
+alter table public.officer_events add column if not exists public_description text not null default '' check(length(public_description)<=10000);
+alter table public.officer_events add column if not exists public_signup_open boolean not null default true;
+alter table public.officer_events add column if not exists public_capacity integer check(public_capacity between 1 and 10000);
+alter table public.officer_events add column if not exists public_version integer not null default 1;
+alter table public.officer_events drop constraint if exists officer_events_public_kind;
+alter table public.officer_events add constraint officer_events_public_kind check(not public_volunteering or kind<>'meeting');
+-- Event creators are authenticated people, including staff without officer membership.
+alter table public.officer_events drop constraint if exists officer_events_created_by_fkey;
+alter table public.officer_events add constraint officer_events_created_by_fkey foreign key(created_by) references auth.users(id);
+
+-- Preserve existing public IDs, signups, attendance and minutes during the transition.
+do $$ begin
+ if exists(select 1 from pg_class c join pg_namespace n on n.oid=c.relnamespace where n.nspname='public' and c.relname='public_volunteer_events' and c.relkind='r') then
+  insert into public.officer_events(id,title,kind,academic_year,starts_at,ends_at,location,cancelled,created_by,public_volunteering,public_listing,public_description,public_signup_open,public_capacity,public_version)
+   select id,title,'volunteer',
+    (extract(year from starts_at at time zone 'America/Los_Angeles')::int-case when extract(month from starts_at at time zone 'America/Los_Angeles')<7 then 1 else 0 end)::text||'-'||
+    (extract(year from starts_at at time zone 'America/Los_Angeles')::int+case when extract(month from starts_at at time zone 'America/Los_Angeles')>=7 then 1 else 0 end)::text,
+    starts_at,ends_at,location,status='cancelled',created_by,status<>'draft',true,description,signup_open,capacity,version
+   from public.public_volunteer_events;
+  alter table public.public_volunteer_signups drop constraint public_volunteer_signups_event_id_fkey;
+  alter table public.public_volunteer_events rename to public_volunteer_events_legacy;
+  revoke all on public.public_volunteer_events_legacy from public,anon,authenticated;
+ end if;
+end $$;
+alter table public.public_volunteer_signups drop constraint if exists public_volunteer_signups_event_id_fkey;
+alter table public.public_volunteer_signups add constraint public_volunteer_signups_event_id_fkey foreign key(event_id) references public.officer_events(id);
+
+-- This view intentionally exposes only the public description, never officer notes.
+create or replace view public.public_volunteer_events with (security_barrier=true) as
+ select e.id,e.title,e.public_description as description,e.location,e.starts_at,e.ends_at,
+  case when e.cancelled then 'cancelled' when e.public_volunteering then 'published' else 'draft' end as status,
+  e.public_signup_open as signup_open,e.public_capacity as capacity,e.public_version as version
+ from public.officer_events e
+ where e.kind<>'meeting' and e.public_listing and
+  ((e.public_volunteering and not e.cancelled) or public.is_staff() or exists(
+    select 1 from public.public_volunteer_signups s where s.event_id=e.id and s.user_id=auth.uid()));
+revoke all on public.public_volunteer_events from public,anon,authenticated;
+grant select on public.public_volunteer_events to anon,authenticated,service_role;
+
+create or replace function public.guard_officer_membership()
+returns trigger language plpgsql security definer set search_path='' as $$ begin
+ if auth.uid() is not null and not public.has_officer_access() and not public.is_super_admin()
+  and not (tg_table_name='officer_events' and public.is_staff()) then raise exception 'Active officer access is required.'; end if;
+ if tg_op='DELETE' then return old; end if;
+ return new;
+end $$;
+create or replace function public.version_public_event()
+returns trigger language plpgsql set search_path='' as $$ begin
+ new.public_listing:=new.public_listing or new.public_volunteering;
+ if tg_op='UPDATE' then new.public_version:=old.public_version+1; end if;
+ return new;
+end $$;
+drop trigger if exists public_event_version on public.officer_events;
+create trigger public_event_version before insert or update on public.officer_events for each row execute function public.version_public_event();
+
+-- Replace the old signature so PostgREST has one unambiguous event save function.
+drop function if exists public.save_officer_event(text,text,text,timestamptz,timestamptz,text,boolean,boolean,text,uuid,boolean);
+create or replace function public.save_officer_event(p_title text,p_kind text,p_year text,p_starts_at timestamptz,p_ends_at timestamptz,
+  p_location text default '',p_mandatory boolean default false,p_approved boolean default false,p_notes text default '',p_event_id uuid default null,p_cancelled boolean default false,
+  p_public_volunteering boolean default null,p_public_description text default null,
+  p_public_signup_open boolean default null,p_public_capacity integer default null)
+returns uuid language plpgsql security definer set search_path='' as $$ declare v_id uuid; begin
+  if not public.is_peet_admin() then raise exception 'Reviewer access is required.'; end if;
+  if p_title is null or length(btrim(p_title)) not between 1 and 200 or p_kind is null or p_kind not in ('meeting','volunteer','outreach')
+    or p_year is null or p_year !~ '^[0-9]{4}-[0-9]{4}$' or right(p_year,4)::int<>left(p_year,4)::int+1
+    or p_starts_at is null or p_ends_at is null or p_ends_at<=p_starts_at
+    or p_location is null or length(p_location)>500 or p_notes is null or length(p_notes)>10000
+    or p_mandatory is null or p_approved is null or p_cancelled is null then raise exception 'Check the event title, school year, dates, and details.'; end if;
+  if (p_public_volunteering and p_kind='meeting') or (p_public_description is not null and length(p_public_description)>10000)
+    or (p_public_capacity is not null and p_public_capacity not between 1 and 10000) then
+    raise exception 'Only volunteer or outreach events can be public. Check the public details and capacity.';
+  end if;
+  if p_event_id is null then
+    insert into public.officer_events(title,kind,academic_year,starts_at,ends_at,location,mandatory,gea_approved,notes,created_by,cancelled,public_volunteering,public_listing,public_description,public_signup_open,public_capacity)
+      values(btrim(p_title),p_kind,p_year,p_starts_at,p_ends_at,p_location,p_mandatory,p_approved,p_notes,auth.uid(),p_cancelled,coalesce(p_public_volunteering,false),coalesce(p_public_volunteering,false),coalesce(p_public_description,''),coalesce(p_public_signup_open,true),p_public_capacity) returning id into v_id;
+  else
+    perform 1 from public.officer_events where id=p_event_id for update;
+    if not found then raise exception 'Event not available.'; end if;
+    if p_kind='meeting' and exists(select 1 from public.officer_events where id=p_event_id and public_volunteering)
+      and p_public_volunteering is distinct from false then raise exception 'Leadership meetings cannot be public volunteer events.'; end if;
+    if p_public_volunteering is not null and p_public_capacity is not null
+      and p_public_capacity<(select count(*) from public.public_volunteer_signups where event_id=p_event_id and status='registered') then
+      raise exception 'Capacity cannot be lower than the number already signed up.';
+    end if;
+    if exists(select 1 from public.public_volunteer_signups where event_id=p_event_id)
+      or exists(select 1 from public.officer_attendance where event_id=p_event_id)
+      or exists(select 1 from public.officer_volunteer_logs where event_id=p_event_id)
+      or exists(select 1 from public.officer_event_signups where event_id=p_event_id) then
+      if exists(select 1 from public.officer_events where id=p_event_id and (kind<>p_kind or academic_year<>p_year)) then
+        raise exception 'An event with records must keep its category and school year.';
+      end if;
+    end if;
+    update public.officer_events set title=btrim(p_title),kind=p_kind,academic_year=p_year,starts_at=p_starts_at,ends_at=p_ends_at,
+      location=p_location,mandatory=p_mandatory,gea_approved=p_approved,notes=p_notes,cancelled=p_cancelled,updated_at=now(),
+      public_volunteering=coalesce(p_public_volunteering,public_volunteering),
+      public_listing=public_listing or coalesce(p_public_volunteering,false),
+      public_description=coalesce(p_public_description,public_description),
+      public_signup_open=coalesce(p_public_signup_open,public_signup_open),
+      public_capacity=case when p_public_volunteering is distinct from true then public_capacity else p_public_capacity end where id=p_event_id;
+    v_id:=p_event_id;
+  end if;
+  return v_id;
+end $$;
+
+
+-- The public admin editor updates the very same event and preserves officer-only data.
+create or replace function public.save_public_volunteer_event(
+ p_title text,p_description text,p_location text,p_starts_at timestamptz,p_ends_at timestamptz,
+ p_status text default 'draft',p_signup_open boolean default true,p_capacity integer default null,
+ p_id uuid default null,p_version integer default 0
+) returns uuid language plpgsql security definer set search_path='' as $$
+declare v_event public.officer_events; v_id uuid; v_year integer; begin
+ if auth.uid() is null or not public.is_staff() then raise exception 'Staff access is required.'; end if;
+ if p_title is null or length(btrim(p_title)) not between 1 and 200 or p_description is null or length(p_description)>10000
+  or p_location is null or length(p_location)>500 or p_starts_at is null or p_ends_at is null or p_ends_at<=p_starts_at
+  or p_status is null or p_status not in ('draft','published','cancelled') or p_signup_open is null
+  or (p_capacity is not null and p_capacity not between 1 and 10000) then raise exception 'Enter valid event details, dates, and capacity.'; end if;
+ if p_id is null then
+  v_year:=extract(year from p_starts_at at time zone 'America/Los_Angeles')::int-case when extract(month from p_starts_at at time zone 'America/Los_Angeles')<7 then 1 else 0 end;
+  insert into public.officer_events(title,kind,academic_year,starts_at,ends_at,location,cancelled,created_by,public_volunteering,public_listing,public_description,public_signup_open,public_capacity)
+  values(btrim(p_title),'volunteer',v_year::text||'-'||(v_year+1)::text,p_starts_at,p_ends_at,btrim(p_location),p_status='cancelled',auth.uid(),p_status<>'draft',true,p_description,p_signup_open,p_capacity) returning id into v_id;
+ else
+  select * into v_event from public.officer_events where id=p_id for update;
+  if not found or not v_event.public_listing or p_version is distinct from v_event.public_version then raise exception 'This event changed. Refresh before saving.'; end if;
+  if p_capacity is not null and p_capacity<(select count(*) from public.public_volunteer_signups where event_id=p_id and status='registered') then
+   raise exception 'Capacity cannot be lower than the number already signed up.';
+  end if;
+  update public.officer_events set title=btrim(p_title),public_description=p_description,location=btrim(p_location),starts_at=p_starts_at,ends_at=p_ends_at,
+   cancelled=p_status='cancelled',public_volunteering=p_status<>'draft',public_signup_open=p_signup_open,public_capacity=p_capacity,updated_at=now() where id=p_id;
+  v_id:=p_id;
+ end if;
+ return v_id;
+end $$;
+create or replace function public.set_public_volunteer_signup(p_event_id uuid,p_registered boolean,p_name text default null)
+returns void language plpgsql security definer set search_path='' as $$
+declare v_event public.officer_events; v_signup public.public_volunteer_signups; v_email text; v_name text:=btrim(p_name); begin
+ if auth.uid() is null then raise exception 'Sign in to GEA One to volunteer.'; end if;
+ if p_registered is null then raise exception 'Choose whether to sign up or withdraw.'; end if;
+ select * into v_event from public.officer_events where id=p_event_id for update;
+ if not found or not v_event.public_listing or (not v_event.public_volunteering and not exists(select 1 from public.public_volunteer_signups where event_id=p_event_id and user_id=auth.uid())) then raise exception 'Public volunteer event not available.'; end if;
+ select * into v_signup from public.public_volunteer_signups where event_id=p_event_id and user_id=auth.uid() for update;
+ if p_registered then
+  if not v_event.public_volunteering or v_event.cancelled or not v_event.public_signup_open or v_event.starts_at<=now() then raise exception 'Signups for this public event are closed.'; end if;
+  if v_signup.status='registered' then return; end if;
+  if v_event.public_capacity is not null and (select count(*) from public.public_volunteer_signups where event_id=p_event_id and status='registered')>=v_event.public_capacity then
+   raise exception 'This public event is full.';
+  end if;
+  select lower(email) into v_email from auth.users where id=auth.uid();
+  if v_name is null or length(v_name) not between 1 and 160 or v_email is null then raise exception 'Enter your full name to sign up.'; end if;
+  insert into public.public_volunteer_signups(event_id,user_id,name,email) values(p_event_id,auth.uid(),v_name,v_email)
+   on conflict(event_id,user_id) do update set name=excluded.name,email=excluded.email,status='registered',version=public.public_volunteer_signups.version+1,updated_at=now();
+ else
+  if v_signup.id is null or v_signup.status='withdrawn' then return; end if;
+  if v_signup.attendance<>'unmarked' or v_signup.verified_minutes>0 or (v_event.starts_at<=now() and not v_event.cancelled) then
+   raise exception 'Contact a coordinator to change a past attendance record.';
+  end if;
+  update public.public_volunteer_signups set status='withdrawn',version=version+1,updated_at=now() where id=v_signup.id;
+ end if;
+end $$;
+
+create or replace function public.record_public_volunteer_attendance(
+ p_signup_id uuid,p_attendance text,p_minutes integer default 0,p_note text default '',p_version integer default null
+) returns void language plpgsql security definer set search_path='' as $$
+declare v_signup public.public_volunteer_signups; v_event public.officer_events; v_event_id uuid; begin
+ if auth.uid() is null or not public.is_staff() then raise exception 'Staff access is required.'; end if;
+ select event_id into v_event_id from public.public_volunteer_signups where id=p_signup_id;
+ -- Match the event-first lock order used by signup and event editing.
+ select * into v_event from public.officer_events where id=v_event_id for update;
+ select * into v_signup from public.public_volunteer_signups where id=p_signup_id for update;
+ if not found or v_signup.status<>'registered' or p_version is distinct from v_signup.version then raise exception 'This signup changed. Refresh before recording attendance.'; end if;
+ if not v_event.public_volunteering or v_event.cancelled then raise exception 'Attendance is only available for published public events.'; end if;
+ if p_attendance is null or p_attendance not in ('unmarked','present','absent') or p_minutes is null or p_minutes not between 0 and 1440
+  or (p_minutes>0 and p_attendance<>'present') or p_note is null or length(p_note)>2000 then raise exception 'Enter valid attendance and verified minutes.'; end if;
+ if (p_attendance<>'unmarked' and v_event.starts_at>now()) or (p_minutes>0 and v_event.ends_at>now()) then raise exception 'Record attendance after the event starts and verify hours after it ends.'; end if;
+ update public.public_volunteer_signups set attendance=p_attendance,verified_minutes=p_minutes,attendance_note=p_note,
+  reviewed_by=auth.uid(),version=version+1,updated_at=now() where id=p_signup_id;
+end $$;
+revoke all on function public.version_public_event(),public.guard_officer_membership(),
+ public.save_officer_event(text,text,text,timestamptz,timestamptz,text,boolean,boolean,text,uuid,boolean,boolean,text,boolean,integer),
+ public.save_public_volunteer_event(text,text,text,timestamptz,timestamptz,text,boolean,integer,uuid,integer),
+ public.set_public_volunteer_signup(uuid,boolean,text),public.record_public_volunteer_attendance(uuid,text,integer,text,integer) from public,anon,authenticated;
+grant execute on function public.save_officer_event(text,text,text,timestamptz,timestamptz,text,boolean,boolean,text,uuid,boolean,boolean,text,boolean,integer),
+ public.save_public_volunteer_event(text,text,text,timestamptz,timestamptz,text,boolean,integer,uuid,integer),
+ public.set_public_volunteer_signup(uuid,boolean,text),public.record_public_volunteer_attendance(uuid,text,integer,text,integer) to authenticated;
+commit;

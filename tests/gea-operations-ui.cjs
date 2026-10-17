@@ -77,7 +77,9 @@ test('Event and volunteer plans use a Google Doc in place of planning fields and
   assert.ok(html.includes('target="_blank"'));
   assert.ok(html.includes('Save planning sheet link'));
   assert.ok(html.includes('Open participation &amp; hours'));
-  for(const removed of ['<textarea','name="staffing"','name="supplies"','name="recap"','Preparation checklist','Old staffing','Old supplies','Old recap','Old prep item']) assert.ok(!html.includes(removed),removed);
+  assert.ok(html.includes('name="public_volunteering"'));
+  assert.ok(html.includes('name="public_description"'));
+  for(const removed of ['name="staffing"','name="supplies"','name="recap"','Preparation checklist','Old staffing','Old supplies','Old recap','Old prep item']) assert.ok(!html.includes(removed),removed);
  }
 });
 test('Planning sheet edit access belongs to the assigned organizer and reviewers, with cancelled events read-only',()=>{

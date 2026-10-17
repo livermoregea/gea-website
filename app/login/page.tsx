@@ -9,8 +9,9 @@ import { accountLanding } from "@/lib/account-landing";
 
 export const metadata: Metadata = { title: "GEA One · Sign in", description: "One account for your GEA community, profile, and school tools." };
 
-export default async function LoginPage({ searchParams }: { searchParams: Promise<{ mode?: string }> }) {
-  const { mode } = await searchParams;
+export default async function LoginPage({ searchParams }: { searchParams: Promise<{ mode?: string; next?: string }> }) {
+  const { mode, next } = await searchParams;
+  const destination = next === "/volunteer" ? "/volunteer" : null;
   const initialMode = mode === "signup" ? "signup" : "signin";
   const demoMode = !hasSupabaseConfig();
 
@@ -21,7 +22,7 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
     } = await supabase.auth.getUser();
 
     if (user) {
-      redirect(await accountLanding(supabase, user.id));
+      redirect(destination ?? await accountLanding(supabase, user.id));
     }
   }
 
@@ -35,7 +36,7 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
         <div id="student-account" className="mt-6 scroll-mt-28">
           {demoMode
             ? <p className="text-center text-sm text-graphite/80">Sign-in is unavailable in this preview.</p>
-            : <StudentAuthForm key={initialMode} redirectTo="/account/redirect" initialMode={initialMode} />}
+            : <StudentAuthForm key={initialMode} redirectTo={destination ?? "/account/redirect"} initialMode={initialMode} />}
         </div>
         <div className="mt-5 text-center"><Link href="/contact" className="inline-flex min-h-11 items-center text-sm text-forest underline underline-offset-4">Need help signing in?</Link></div>
       </section>

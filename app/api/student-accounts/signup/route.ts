@@ -1,3 +1,4 @@
+import { reservedOfficerId } from "@/lib/officer-preregistration";
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { isLvjusdStudentEmail } from "@/lib/student-email";
@@ -101,6 +102,7 @@ export async function POST(request: Request) {
     );
   } else {
     const { data: createdUser, error: createUserError } = await supabase.auth.admin.createUser({
+      id: await reservedOfficerId(supabase, schoolEmail),
       email: schoolEmail,
       password: studentIdNumber,
       email_confirm: true,

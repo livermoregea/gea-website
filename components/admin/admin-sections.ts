@@ -2,6 +2,7 @@ export const ADMIN_SECTIONS = [
   { key: "dashboard", label: "Dashboard", group: "Workspace" },
   { key: "applications", label: "Applications", group: "Workspace" },
   { key: "builders", label: "GEA Builders", group: "Workspace" },
+  { key: "volunteers", label: "Public Volunteering", group: "Workspace" },
   { key: "students", label: "Students", group: "Workspace" },
   { key: "website", label: "Website", group: "Website" },
   { key: "leadership", label: "Leadership Board", group: "Website" },

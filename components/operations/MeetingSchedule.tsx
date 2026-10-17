@@ -1,4 +1,5 @@
 'use client';
+import VolunteerAudienceFields from '@/components/officerboard/VolunteerAudienceFields';
 import { useState } from 'react';
 import { CONTRACT_YEAR, localDateInput, type OfficerEvent } from '@/lib/officer-tracking';
 import type { SaveAction } from './MeetingWorkspace';
@@ -23,6 +24,10 @@ export default function MeetingSchedule({ event, kind, save, busy, dirtyScope, m
         p_title: f.get('title'), p_kind: f.get('kind') || 'meeting', p_year: f.get('year'),
         p_starts_at: start.toISOString(), p_ends_at: end.toISOString(), p_location: f.get('location'),
         p_mandatory: kind === 'meeting' ? f.get('mandatory') === 'on' : event?.mandatory ?? false, p_approved: kind !== 'meeting' ? f.get('approved') === 'on' : event?.gea_approved ?? false,
+        p_public_volunteering: kind !== 'meeting' && f.get('public_volunteering') === 'on',
+        p_public_description: f.has('public_description') ? f.get('public_description') : null,
+        p_public_signup_open: f.has('public_description') ? f.get('public_signup_open') === 'on' : null,
+        p_public_capacity: f.get('public_capacity') ? Number(f.get('public_capacity')) : null,
         p_notes: event?.notes ?? '', p_event_id: event?.id ?? null, p_cancelled: f.get('cancelled') === 'on',
       }, event ? 'Schedule updated.' : kind === 'meeting' ? 'Meeting scheduled. Choose it above to add documents or take attendance.' : 'Event scheduled. Choose it above to plan it.');
       if (saved) { setEditing(false); if (!event) form.reset(); }
@@ -40,6 +45,7 @@ export default function MeetingSchedule({ event, kind, save, busy, dirtyScope, m
           <label>Ends<input type="datetime-local" name="ends_at" defaultValue={event && localDateInput(event.ends_at)} required /></label>
         </div>
         {kind === 'meeting' ? <label className={s.check}><input type="checkbox" name="mandatory" defaultChecked={event?.mandatory ?? true} />Required leadership meeting</label> : <label className={s.check}><input type="checkbox" name="approved" defaultChecked={event?.gea_approved ?? true} />GEA-approved volunteer or outreach event</label>}
+        {kind !== 'meeting' && <VolunteerAudienceFields event={event} checkboxClass={s.check}/>}
         {event && <label className={s.check}><input type="checkbox" name="cancelled" defaultChecked={event.cancelled} />Cancel this event and keep its records</label>}
         {error && <p role="alert" className={s.error}>{error}</p>}
         <button className={s.primary} disabled={busy}>{event ? 'Save schedule' : kind === 'meeting' ? 'Schedule meeting' : 'Schedule event'}</button>

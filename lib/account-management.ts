@@ -2,7 +2,7 @@ export type ManagedAccount = {
   userId: string; email: string; name: string; kind: 'student' | 'teacher' | 'officer';
   username?: string; classYear?: number; portalRole?: 'officer' | 'admin';
   reviewerKind?: 'president' | 'advisor' | null; position?: string;
-  portalEnabled?: boolean;
+  portalEnabled?: boolean; pending?: boolean;
 };
 export type AccountDirectory = {
   accounts: ManagedAccount[];

@@ -16,6 +16,7 @@ import AdminProfileChanges from "@/components/admin/AdminProfileChanges";
 import AdminTeacherInvites from "@/components/admin/AdminTeacherInvites";
 import AdminWebsite from "@/components/admin/AdminWebsite";
 import AdminBuilders from "@/components/admin/AdminBuilders";
+import AdminVolunteers from "@/components/admin/AdminVolunteers";
 import AdminDashboard from "@/components/admin/AdminDashboard";
 import { BUILDERS_ENABLED } from "@/lib/site-features";
 import { ADMIN_SECTIONS, type AdminSectionKey } from "@/components/admin/admin-sections";
@@ -33,6 +34,7 @@ type TabAlertCounts = Record<AdminSectionKey, number>;
 
 const EMPTY_ALERTS: TabAlertCounts = {
   dashboard: 0,
+  volunteers: 0,
   applications: 0,
   students: 0,
   builders: 0,
@@ -94,6 +96,7 @@ export default function AdminTabs({ section = "dashboard", onSectionChange }: { 
 
   function renderSection() {
     switch (section) {
+      case "volunteers": return <AdminVolunteers />;
       case "applications": return <AdminApplications />;
       case "builders": return <AdminBuilders />;
       case "students": return <AdminStudents />;

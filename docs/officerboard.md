@@ -396,3 +396,48 @@ In the admin Attendance & volunteer roster, choose **Volunteer** and an event. C
 ### Shared workspace navigation
 
 Tasks, Attendance, Volunteer, and Officer records are direct destinations in the main workspace navigation. Tasks opens the team task list for reviewers, with an officer filter; Attendance and Volunteer open the appropriate bulk roster. Officer records holds individual summaries and private record details. Super admins also have a direct Accounts destination. The former inner Officer directory / Team roster / Administration menu is omitted inside the shared workspace. On phones, one Workspace section picker replaces the desktop navigation. Ordinary officers see their own tasks and records. Old task and record links continue to select the appropriate section and officer. Save or discard roster edits before changing main sections.
+
+
+## Officers before signup
+
+Apply `supabase/officer-preregistration.sql` after `officer-shared-tasks.sql` and
+`teacher-super-admin.sql`, then deploy the signup changes together. Super admins
+choose **Accounts → Grant officer access** and enter a name, school email, and
+optional position. Accounts also supports editing pending officers and granting
+designated reviewer permissions. No password is needed.
+An existing login can receive officer access immediately; duplicate officer emails
+are rejected. Pending officers can receive tasks, attendance, event assignments,
+service logs, cuts, and accountability notes immediately.
+
+The roster reserves a UUID without creating an Auth account. All three server
+account-creation paths (student signup, teacher invitation, and account management)
+use that UUID when creating a login with the matching normalized email. An Auth
+insert trigger links the membership atomically without changing any record IDs or
+re-enabling disabled memberships. Names are display information; only the signup
+email determines the link. Pending emails remain limited to reviewers. Normal
+signup validation, student email blocks, and existing-password protection remain
+in place. External Auth provisioning must also use the reserved UUID; the trigger
+rejects a conflicting identity so a retry cannot silently lose the officer history.
+
+Run `tests/officer-preregistration.sql` after the earlier officer SQL fixtures.
+
+
+## Public volunteer events
+
+Volunteer and outreach events have an **Open to public volunteers AND leadership**
+checkbox in both officer event forms. Unchecked events remain leadership-only;
+leadership meetings cannot be public. The same event appears on `/volunteer` when
+public. Schedule edits and cancellations stay synchronized, while officer notes
+stay private. Public attendance remains under **Academy admin → Public Volunteering**
+and officer attendance remains in the Officer workspace. See the
+[shared event setup and workflow](public-volunteering.md).
+
+
+## Officer access for existing accounts
+
+Super admins open **Officer workspace → Accounts**, find the person, and choose
+**Grant officer access** on their account card. Enter their **Position**, choose
+**Portal permission**, and save. Existing passwords are preserved. The top
+**Grant officer access** action also lets you attach an existing GEA One login.
+For someone already on the officer roster, use **Edit officer access & position**.
+Officer creation, access, and position management are available in **Accounts**.

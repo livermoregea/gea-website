@@ -16,6 +16,7 @@ const links = [
   { href: "/curriculum", label: "Curriculum" },
   { href: "/leadership", label: "Leadership" },
   ...(BUILDERS_ENABLED ? [{ href: "/builders", label: "Builders" }] : []),
+  { href: "/volunteer", label: "Volunteer" },
   { href: "/qa", label: "Q&A" },
   { href: "/contact", label: "Contact" },
 ];
@@ -135,7 +136,7 @@ export default function Nav() {
               </span>
             </span>
           </Link>
-          <nav className="hidden shrink-0 items-center gap-6 lg:flex xl:gap-8" aria-label="Primary">
+          <nav className="hidden shrink-0 items-center gap-6 xl:flex" aria-label="Primary">
             {links.map((l) => (
               <Link
                 key={l.href}
@@ -196,7 +197,7 @@ export default function Nav() {
           <button
             ref={mobileButtonRef}
             type="button"
-            className="inline-flex min-h-11 items-center rounded-sm border border-forest/15 px-4 font-mono text-xs uppercase tracking-[0.15em] text-forestdeep lg:hidden"
+            className="inline-flex min-h-11 items-center rounded-sm border border-forest/15 px-4 font-mono text-xs uppercase tracking-[0.15em] text-forestdeep xl:hidden"
             aria-expanded={open}
             aria-controls="mobile-nav"
             onClick={() => setOpen((v) => !v)}
@@ -208,7 +209,7 @@ export default function Nav() {
         {open && (
           <nav
             id="mobile-nav"
-            className="mt-3 grid gap-2 rounded-sm border border-forest/10 bg-paper p-3 lg:hidden"
+            className="mt-3 grid gap-2 rounded-sm border border-forest/10 bg-paper p-3 xl:hidden"
             aria-label="Mobile primary"
           >
             {links.map((l) => (

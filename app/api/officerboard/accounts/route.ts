@@ -1,3 +1,4 @@
+import { reservedOfficerId } from '@/lib/officer-preregistration';
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
@@ -41,13 +42,13 @@ export async function GET(){
     const [users,students,teachers,officers]=await Promise.all([
       authUsers(admin),rows(admin,'student_profiles','id,auth_user_id,full_name,auth_email,school_email,display_username,graduating_class_year'),
       rows(admin,'teacher_profiles','id,auth_user_id,full_name,auth_email,school_email'),
-      rows(admin,'officer_profiles','id,name,role,position,reviewer_kind,access_enabled'),
+      rows(admin,'officer_profiles','id,name,role,position,reviewer_kind,access_enabled,pending_email,auth_user_id'),
     ]);
     const emailFor=(id:string)=>users.find(user=>user.id===id)?.email??'';
     const accounts:ManagedAccount[]=[
       ...students.map(row=>({userId:row.auth_user_id,email:emailFor(row.auth_user_id)||row.auth_email,name:row.full_name,kind:'student' as const,username:row.display_username,classYear:row.graduating_class_year})),
       ...teachers.map(row=>({userId:row.auth_user_id,email:emailFor(row.auth_user_id)||row.auth_email,name:row.full_name,kind:'teacher' as const})),
-      ...officers.map(row=>({userId:row.id,email:emailFor(row.id),name:row.name,kind:'officer' as const,portalRole:row.role,reviewerKind:row.reviewer_kind,position:row.position,portalEnabled:row.access_enabled})),
+      ...officers.map(row=>({userId:row.id,email:emailFor(row.id)||row.pending_email||'',pending:!row.auth_user_id,name:row.name,kind:'officer' as const,portalRole:row.role,reviewerKind:row.reviewer_kind,position:row.position,portalEnabled:row.access_enabled})),
     ];
     return json({accounts,authAccounts:users.map(user=>({id:user.id,email:user.email??'',name:typeof user.user_metadata?.full_name==='string'?user.user_metadata.full_name:''}))});
   }catch{return json({error:'Could not load accounts. Try again.'},500);}
@@ -88,6 +89,13 @@ export async function POST(request:Request){
     if(kind==='officer'&&(!['officer','admin'].includes(portalRole)||(portalRole==='admin'&&!['president','advisor'].includes(reviewerKind??''))||(portalRole==='officer'&&reviewerKind)))return json({error:'Choose a valid officer or reviewer role.'},400);
     const users=await authUsers(admin);
     let target=userId?users.find(user=>user.id===userId):users.find(user=>user.email?.toLowerCase()===email);
+    if(kind==='officer'&&!target){
+      const session=await createClient();
+      const {error}=await session.rpc('save_preregistered_officer',{
+        p_name:name,p_email:email,p_position:position,p_id:userId||null,p_role:portalRole,p_reviewer_kind:reviewerKind,
+      });
+      return error?json({error:accountError(error)},400):json({ok:true,message:'Officer saved. You can assign records now; their officer access and history will link when they sign up with this email.'});
+    }
     if(userId&&!target)return json({error:'Existing account not found.'},404);
     if(users.some(user=>user.email?.toLowerCase()===email&&user.id!==target?.id))return json({error:'That email belongs to another account.'},409);
     // A student ID is mandatory when attaching a new student profile.
@@ -97,9 +105,10 @@ export async function POST(request:Request){
       if(error||!existing)return json({error:'Enter a student ID when adding student access.'},400);
     }
     if(!target&&(password.length<12||password.length>128))return json({error:'Enter an initial password of 12–128 characters for a new GEA One account.'},400);
-    let created=false,changedEmail=false;const oldEmail=target?.email;
+    let created=false,changedEmail=false;let reservationId:string|undefined;const oldEmail=target?.email;
     if(!target){
-      const {data,error}=await admin.auth.admin.createUser({email,password,email_confirm:true,user_metadata:{full_name:name}});
+      reservationId=await reservedOfficerId(admin,email);
+      const {data,error}=await admin.auth.admin.createUser({id:reservationId,email,password,email_confirm:true,user_metadata:{full_name:name}});
       if(error||!data.user)return json({error:'Could not create the GEA One account. Check the email and password.'},400);
       target=data.user;created=true;
     }else if(oldEmail?.toLowerCase()!==email){
@@ -115,6 +124,7 @@ export async function POST(request:Request){
     }); error=result.error; } catch { error={message:'Could not save profile access.'}; }
     if(error){
       let recoveryError=false;
+      if(created&&reservationId)return json({error:accountError(error)+" The login and existing officer history were preserved. Retry adding profile access to this account."},400);
       if(created){const cleanup=await admin.auth.admin.deleteUser(target!.id);recoveryError=Boolean(cleanup.error);}
       else if(changedEmail&&oldEmail){const restore=await admin.auth.admin.updateUserById(target!.id,{email:oldEmail,email_confirm:true});recoveryError=Boolean(restore.error);}
       return json({error:accountError(error)+(recoveryError?' The login change could not be rolled back; review this account in Supabase Authentication before retrying.':'')},400);

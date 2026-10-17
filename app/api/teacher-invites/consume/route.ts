@@ -1,3 +1,4 @@
+import { reservedOfficerId } from "@/lib/officer-preregistration";
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { hasSupabaseConfig } from "@/lib/supabase/config";
@@ -57,6 +58,7 @@ export async function POST(request: Request) {
 
   if (!authUser) {
     const { data: createdUser, error: createUserError } = await supabase.auth.admin.createUser({
+      id: await reservedOfficerId(supabase, email),
       email,
       password,
       email_confirm: true,

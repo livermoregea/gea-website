@@ -3,6 +3,7 @@ export type OfficerEvent = {
   id: string; title: string; kind: "meeting" | "volunteer" | "outreach"; academic_year: string;
   starts_at: string; ends_at: string; location: string; mandatory: boolean; gea_approved: boolean;
   cancelled: boolean; notes: string;
+  public_volunteering?: boolean; public_description?: string; public_signup_open?: boolean; public_capacity?: number | null;
 };
 export type OfficerAttendance = {
   id: string; event_id: string; officer_id: string;

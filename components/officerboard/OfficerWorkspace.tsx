@@ -33,7 +33,7 @@ export default async function OfficerWorkspace({ embedded = false, search = {} }
     readAll<OfficerTask>((from, to) => supabase.from("tasks").select("id,title,description,assigned_to,created_by,due_date,original_due_date,status,final_product_url,submission_description,created_at,submitted_at,completed_at,ended_by,end_notes,cancelled_at,cancellation_reason,officer_task_members(officer_id)").order("created_at", { ascending: false }).order("id").range(from, to)),
     readAll<PeetEvaluation>((from, to) => supabase.from("peet_evaluations").select("id,task_id,evaluated_by,efficiency,effectiveness,time,feedback_notes,evaluated_at").order("id").range(from, to)),
     readAll<OfficerProfile>((from,to) => supabase.rpc("officer_directory").order("name").order("id").range(from,to)),
-    readAll<OfficerEvent>((from,to) => supabase.from("officer_events").select("id,title,kind,academic_year,starts_at,ends_at,location,mandatory,gea_approved,cancelled,notes").order("starts_at").order("id").range(from,to)),
+    readAll<OfficerEvent>((from,to) => supabase.from("officer_events").select("id,title,kind,academic_year,starts_at,ends_at,location,mandatory,gea_approved,cancelled,notes,public_volunteering,public_description,public_signup_open,public_capacity").order("starts_at").order("id").range(from,to)),
     readAll<OfficerAttendance>((from,to) => supabase.from("officer_attendance").select("id,event_id,officer_id,status,absence_notice,notice_at,reviewer_notes").order("id").range(from,to)),
     readAll<EventSignup>((from,to) => supabase.from("officer_event_signups").select("id,event_id,officer_id,committed,assigned,participation_role,participation_notes,version").order("id").range(from,to)),
     readAll<VolunteerLog>((from,to) => supabase.from("officer_volunteer_logs").select("id,event_id,officer_id,check_in,check_out,minutes,notes,status,review_notes,reviewed_at").order("created_at",{ascending:false}).order("id").range(from,to)),
@@ -57,7 +57,7 @@ export default async function OfficerWorkspace({ embedded = false, search = {} }
       }
     }
     const overview = <OfficerDashboard data={operations} profile={profile} profiles={profiles.data ?? []} tasks={tasks.data ?? []} evaluations={evaluations.data ?? []} tracking={tracking} />;
-    return <OperationsHub data={operations} officerOverview={overview} officerTools={board} embedded={embedded} initialView={workspaceView(search.view, search.task, search.topic, search.officer)} initialEvent={search.event} initialTask={search.task} />;
+    return <OperationsHub data={operations} canManageAccounts={Boolean(superAdmin)} officerOverview={overview} officerTools={board} embedded={embedded} initialView={workspaceView(search.view, search.task, search.topic, search.officer)} initialEvent={search.event} initialTask={search.task} />;
   } catch (error) {
     console.error("[GEA officer workspace] Could not load updates", { message: (error as Error).message });
     return <><p role="status" className="mb-4 rounded border border-forest/20 p-4">Updates and meeting planning could not load. Your officer records are still available below.</p>{board}</>;

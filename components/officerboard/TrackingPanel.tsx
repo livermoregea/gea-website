@@ -64,7 +64,7 @@ export default function TrackingPanel({ mode, profile, profiles, officerId, data
     if (!action) return;
     try {
       if (action.kind === "event") await mutate("save_officer_event", {
-        p_title: fields.get("title"), p_kind: fields.get("kind"), p_year: fields.get("year"),
+        p_public_volunteering:fields.get("kind")!=="meeting"&&fields.get("public_volunteering")==="on",p_public_description:fields.has("public_description")?fields.get("public_description"):null,p_public_signup_open:fields.has("public_description")?fields.get("public_signup_open")==="on":null,p_public_capacity:fields.get("public_capacity")?Number(fields.get("public_capacity")):null,p_title: fields.get("title"), p_kind: fields.get("kind"), p_year: fields.get("year"),
         p_starts_at: iso(fields.get("starts_at")), p_ends_at: iso(fields.get("ends_at")), p_location: fields.get("location"),
         p_mandatory: fields.get("mandatory") === "on", p_approved: fields.get("approved") === "on",
         p_cancelled: fields.get("cancelled") === "on", p_notes: fields.get("notes"), p_event_id: action.event?.id ?? null,
