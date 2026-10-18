@@ -78,3 +78,31 @@ test('Ordinary overview provides personal score and participation with no team r
   assert.ok(!html.includes('Bob'));
   assert.ok(!html.includes('Team PEET'));
 });
+test('Personal work queue prioritizes deadlines, shared assignments and clarification without mixing in submitted or closed work',()=>{
+ const {officerWorkQueue}=load('lib/officer-dashboard.ts');
+ const rows=[
+  {id:'undated',assigned_to:'a',status:'in_progress',due_date:null},
+  {id:'later',assigned_to:'a',status:'in_progress',due_date:'2026-11-01'},
+  {id:'overdue',assigned_to:'a',status:'in_progress',due_date:'2026-10-01'},
+  {id:'shared',assigned_to:'b',officer_task_members:[{officer_id:'a'}],status:'in_progress',due_date:'2026-10-18'},
+  {id:'waiting',assigned_to:'a',status:'submitted',due_date:'2026-10-02'},
+  {id:'answers',assigned_to:'a',status:'submitted',due_date:'2026-10-03'},
+  {id:'cancelled',assigned_to:'a',status:'in_progress',due_date:'2026-09-01',cancelled_at:'2026-10-01'},
+  {id:'done',assigned_to:'a',status:'completed',due_date:'2026-09-01'},
+  {id:'other',assigned_to:'b',status:'in_progress',due_date:'2026-09-01'},
+ ];
+ const result=officerWorkQueue(rows,'a',['answers']);
+ assert.deepEqual(Array.from(result.toComplete,row=>row.id),['overdue','answers','shared','later','undated']);
+ assert.deepEqual(Array.from(result.awaitingReview,row=>row.id),['waiting']);
+ assert.equal(rows[0].id,'undated');
+});
+test('Officer overview puts assignments before progress and opens the existing task submission dialog directly',()=>{
+ const assigned=[{id:'due',title:'Prepare workshop slides',assigned_to:'a',status:'in_progress',due_date:'2026-10-18'},
+  {id:'clarify',title:'Confirm completed outreach',assigned_to:'a',status:'submitted',due_date:'2026-10-17'},
+  {id:'other',title:'Other officer private task',assigned_to:'b',status:'in_progress'}];
+ const html=renderToStaticMarkup(React.createElement(Dashboard,{profile:profiles[0],profiles,tasks:assigned,evaluations:[],tracking,clarificationTaskIds:['clarify'],data:{reviewer:false,workspaceHref:'/officerboard',calendar:[]}}));
+ assert.ok(html.includes('Prepare workshop slides'));assert.ok(html.includes('Your clarification answers are needed'));
+ assert.ok(html.includes('task=due&amp;action=submit'));assert.ok(html.includes('Answer questions'));
+ assert.ok(html.indexOf('Your assigned tasks')<html.indexOf('My progress'));
+ assert.ok(!html.includes('Other officer private task'));assert.ok(!html.includes('<details class="progressDetails" open'));
+});

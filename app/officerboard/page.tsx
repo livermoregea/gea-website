@@ -17,5 +17,5 @@ export default async function OfficerBoardPage(props: { searchParams?: Promise<{
       if (membership.isAdmin || membership.isTeacher) redirect(`/admin-portal-x7k9/officers${Object.keys(search).length ? `?${new URLSearchParams(Object.entries(search).filter((entry): entry is [string, string] => typeof entry[1] === "string"))}` : ""}`);
     }
   }
-  return <div className="mx-auto max-w-7xl px-4 py-8 sm:px-8"><OfficerWorkspace search={search} /></div>;
+  return <div className="mx-auto max-w-7xl px-4 py-5 sm:px-8 sm:py-8"><OfficerWorkspace search={search} /></div>;
 }

@@ -746,11 +746,78 @@
 }
 @media print { .dashboardMetrics > a { color: #000; } .dashboardColumns { display: block; } }
 
-/* Workspace destinations share one navigation layer. */
-.nav { flex-wrap: wrap; gap: 0 1.15rem; }
-.mobileSectionPicker { display: none; }
-@media (max-width: 760px) {
-  .hub > .nav { display: none; }
-  .mobileSectionPicker { display: grid; gap: 6px; margin-bottom: 16px; color: var(--workspace-muted); font-size: .875rem; font-weight: 600; }
-  .mobileSectionPicker select { width: 100%; min-height: 48px; padding: 10px 12px; border: 1px solid var(--workspace-line); border-radius: 8px; color: var(--workspace-ink); background: var(--workspace-paper); font-size: 1rem; }
+/* Keep everyday work visible and secondary destinations together. */
+.nav { flex-wrap: wrap; gap: 0 1.25rem; margin-bottom: 1.25rem; }
+.nav > button { display: inline-flex; align-items: center; gap: .4rem; }
+.moreSections { position: relative; margin-left: auto; }
+.hub .moreSections > summary { display: flex; align-items: center; justify-content: center; gap: .5rem; min-height: 48px; padding: .7rem .25rem; border-bottom: 3px solid transparent; color: var(--workspace-muted); font-size: .9rem; font-weight: 600; cursor: pointer; list-style: none; }
+.hub .moreSections > summary::-webkit-details-marker { display: none; }
+.moreSections > .moreActive { color: var(--workspace-accent); border-bottom-color: var(--workspace-accent); }
+.moreSections > div { position: absolute; z-index: 20; right: 0; top: 100%; min-width: 200px; max-width: calc(100vw - 32px); padding: .4rem; border: 1px solid var(--workspace-line); border-radius: 10px; background: #fff; box-shadow: 0 8px 24px #12352412; }
+.moreSections button { display: block; width: 100%; min-height: 44px; padding: .65rem .8rem; border: 0; border-radius: 6px; background: transparent; color: var(--workspace-ink); text-align: left; font-size: .9rem; }
+.moreSections button:hover, .moreSections button[aria-pressed=true] { background: var(--workspace-tint); color: var(--workspace-accent); }
+.workOverview { display: grid; gap: 1.25rem; align-items: start; }
+.workMain { display: grid; gap: 1rem; min-width: 0; }
+.workCard { background: #fff; border: 1px solid var(--workspace-line); border-radius: 12px; padding: 1rem 1.25rem; min-width: 0; }
+.workHeading { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: .5rem 1rem; margin-bottom: .25rem; }
+.workHeading h2 { display: flex; align-items: center; gap: .5rem; font-size: 1.15rem; font-weight: 650; letter-spacing: -.02em; }
+.workHeading p { color: var(--workspace-muted); font-size: .85rem; margin-top: .15rem; }
+.workCount { display: inline-flex; align-items: center; justify-content: center; min-width: 1.6rem; padding: .1rem .45rem; border-radius: 1rem; background: var(--workspace-tint); color: var(--workspace-accent); font-size: .8rem; font-variant-numeric: tabular-nums; }
+.workRow { display: flex; align-items: center; justify-content: space-between; gap: .75rem 1rem; padding: .9rem 0; border-top: 1px solid #e6ebe7; }
+.workRow:first-of-type { margin-top: .75rem; }
+.workRow > div { min-width: 0; }
+.workRow h3 { font-size: .95rem; font-weight: 600; overflow-wrap: anywhere; line-height: 1.45; }
+.workRow p { font-size: .8rem; margin-top: .2rem; }
+.workUrgent { color: #8a3b20; font-weight: 600; }
+.workAction { display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; min-height: 44px; padding: .55rem .8rem; border-radius: 7px; border: 1px solid #b4c6ba; color: var(--workspace-accent); background: #f4f8f5; font-weight: 600; font-size: .85rem; text-decoration: none; }
+.workAction:hover { background: #e6f0e9; border-color: #829f8e; }
+.scheduleCard { min-width: 0; padding: .5rem 0; }
+.scheduleRow { display: block; padding: .8rem 0; border-bottom: 1px solid var(--workspace-line); color: var(--workspace-ink); text-decoration: none; }
+.scheduleRow > span, .scheduleRow p { font-size: .8rem; color: var(--workspace-muted); }
+.scheduleRow h3 { font-size: .9rem; font-weight: 600; margin-top: .2rem; overflow-wrap: anywhere; }
+.scheduleRow:hover h3 { color: var(--workspace-accent); text-decoration: underline; }
+.quietDisclosure { margin-top: .65rem; border-top: 1px solid var(--workspace-line); }
+.quietDisclosure > summary { min-height: 44px; padding: .7rem 0; color: var(--workspace-muted); font-size: .85rem; font-weight: 550; cursor: pointer; }
+.waitingRow { display: flex; flex-wrap: wrap; justify-content: space-between; gap: .5rem; min-height: 44px; padding: .55rem 0; border-top: 1px solid #e6ebe7; font-size: .85rem; color: var(--workspace-accent); }
+.progressDetails { margin-top: 1rem; border-block: 1px solid var(--workspace-line); }
+.progressDetails > summary { display: flex; align-items: center; flex-wrap: wrap; gap: .5rem 1rem; min-height: 48px; padding: .6rem 0; font-size: .9rem; font-weight: 600; cursor: pointer; }
+.progressDetails > summary::after { content: '+'; margin-left: auto; font-size: 1.1rem; }
+.progressDetails[open] > summary::after { content: '−'; }
+.progressDetails > summary span { font-size: .8rem; font-weight: 400; color: var(--workspace-muted); }
+.progressDetails .dashboardMetrics { margin-top: .25rem; border-top: 0; }
+.progressDetails > section { padding: 1rem 0; }
+@media(min-width:1000px) { .workOverview { grid-template-columns: minmax(0,1fr) minmax(230px,280px); gap: 2rem; } }
+@media(max-width:760px) {
+  .nav { display: flex; gap: 0 .5rem; }
+  .nav > button { width: auto; font-size: .8rem; min-height: 44px; }
+  .moreSections { margin-left: auto; }
+  .hub .moreSections > summary { font-size: .8rem; min-height: 44px; }
+  .moreSections > div { right: 0; }
+  .workCard { padding: .8rem 1rem; }
+  .workRow { flex-wrap: wrap; gap: .4rem; }
+  .workRow > div { flex: 1 1 180px; }
+  .workAction { font-size: .8rem; }
+  .progressDetails > summary span { display: none; }
+}
+@media(forced-colors:active) { .workCard, .workAction, .moreSections > div { border: 1px solid CanvasText; } .workUrgent { color: CanvasText; } }
+
+/* Phones keep three clear destinations instead of squeezing desktop tabs. */
+.mobileDestination { display: none; }
+.moreSections .mobileDestination { display: none; }
+@media(max-width:760px) {
+  .nav { position: relative; display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 0; }
+  .nav > button { justify-content: center; min-height: 48px; padding: .65rem .35rem; font-size: .875rem; }
+  .nav > .desktopDestination { display: none; }
+  .moreSections { position: static; margin: 0; min-width: 0; }
+  .hub .moreSections > summary { min-height: 48px; padding: .65rem .35rem; font-size: .875rem; overflow-wrap: anywhere; }
+  .hub .moreSections[data-schedule-active] > summary { color: var(--workspace-accent); border-bottom-color: var(--workspace-accent); }
+  .moreSections > div { left: 0; right: 0; top: 100%; min-width: 0; max-width: 100%; max-height: min(65dvh,420px); overflow-y: auto; overscroll-behavior: contain; }
+  .moreSections .mobileDestination { display: block; }
+  .moreSections button { min-height: 48px; font-size: .95rem; }
+  .workRow { display: grid; grid-template-columns: minmax(0,1fr); gap: .6rem; }
+  .workRow > div { min-width: 0; }
+  .workAction { width: 100%; min-height: 48px; font-size: .875rem; }
+  .workRow h3 { font-size: 1rem; }
+  .workRow p { font-size: .875rem; }
+  .workHeading { align-items: flex-start; }
 }

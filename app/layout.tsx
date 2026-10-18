@@ -5,6 +5,7 @@ import { SpeedInsights } from "@vercel/speed-insights/next";
 import "katex/dist/katex.min.css";
 import "./globals.css";
 import Nav from "@/components/Nav";
+import { WorkspaceActivityProvider } from "@/components/WorkspaceActivityProvider";
 import Footer from "@/components/Footer";
 import RouteFooter from "@/components/RouteFooter";
 import SiteAnnouncements from "@/components/SiteAnnouncements";
@@ -59,12 +60,14 @@ export default async function RootLayout({
         >
           Skip to content
         </a>
+        <WorkspaceActivityProvider>
         <Nav />
         <SiteAnnouncements initialAnnouncements={initialAnnouncements} />
         <main id="content" tabIndex={-1} className="min-w-0 flex-1">
           {children}
         </main>
         <RouteFooter><Footer /></RouteFooter>
+        </WorkspaceActivityProvider>
         <Analytics />
         <SpeedInsights />
       </body>

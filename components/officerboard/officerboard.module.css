@@ -497,3 +497,27 @@
 }
 .workspaceOfficerFilter { display: grid; gap: 6px; margin-block: 12px; font-size: .875rem; font-weight: 600; color: #53665d; }
 .workspaceOfficerFilter select { min-height: 44px; width: 100%; max-width: 440px; padding: 10px 12px; border: 1px solid #b8c8c0; border-radius: 8px; background: white; color: #172d25; font-size: 1rem; }
+
+/* One visible next action per task; details hold management controls. */
+.taskWorkRow { display: flex; align-items: flex-start; justify-content: space-between; gap: .75rem; border-top: 1px solid #e1e7e2; padding: .65rem 0; }
+.taskWorkRow > details, .taskWorkRow > div { flex: 1; min-width: 0; }
+.taskWorkRow > button { flex-shrink: 0; min-height: 44px; margin-top: 2px; }
+.unified .taskWorkRow > .taskDisclosure { border: 0; }
+.unified .taskWorkRow .taskRowSummary { padding: .6rem 0; min-height: 44px; }
+.taskUrgent { color: #8a3b20; font-weight: 600; }
+.unified .taskSummary { background: transparent; border: 0; padding: 8px 0; margin: 12px 0 0; }
+.unified .taskSummary article { padding: 4px 16px 4px 0; }
+.unified .taskSummary strong { font-size: 1rem; margin: 0; }
+@media(max-width:520px) {
+  .taskWorkRow { flex-wrap: wrap; gap: .4rem .75rem; }
+  .taskWorkRow > details { flex-basis: calc(100% - 140px); }
+  .taskWorkRow > button { padding: .55rem .65rem; font-size: .8rem; }
+  .taskWorkRow .taskRowSummary > .rowMeta { padding-left: 22px; }
+}
+
+@media(max-width:520px) {
+  .taskWorkRow { display: grid; grid-template-columns: minmax(0,1fr); gap: .4rem; padding-block: .8rem; }
+  .taskWorkRow > button { width: 100%; min-height: 48px; font-size: .875rem; margin: 0; }
+  .unified .taskWorkRow .taskRowSummary { padding-block: .4rem; }
+  .modal { padding-bottom: max(16px,env(safe-area-inset-bottom)); scroll-padding-block: 16px; }
+}

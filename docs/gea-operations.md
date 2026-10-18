@@ -74,3 +74,15 @@ Apply `supabase/event-participant-assignments.sql` after `officer-shared-tasks.s
 In Events, reviewers can find officers, assign or unassign them, and edit their role and participation notes. The volunteer roster and individual officer records offer the same controls. Officers can request participation or withdraw their request. Requests and assignments are independent: withdrawing a request leaves the reviewer assignment in place, and unassigning leaves an officer's request in place. Participation details are visible only to the officer and reviewers under existing row permissions. Cancelled events are read-only. Assignment edits reject stale versions and enter the audit log. Requests and assignments never award service hours; actual service still requires verification.
 
 Run `tests/event-participant-assignments.sql` in the disposable fixture database after `tests/officer-shared-tasks.sql`.
+
+## Compact officer workspace
+
+The officer and reviewer workspace starts with work that needs an action. Ordinary officers see their assigned and shared tasks first, ordered by deadline, with **Submit work** directly beside each task. Saved clarification requests appear as **Answer questions**, including when the original task is already submitted. Work waiting for a reviewer is grouped separately. Overview links open the existing task dialog in place.
+
+The main navigation contains Overview, Tasks (My tasks for officers), Meetings, and Events. Calendar, attendance, volunteer service, officer records, reports, and authorized account tools are grouped under **More**. The task badge counts work requiring an action rather than unread notices. Phones show Overview, My tasks (Tasks for reviewers), and More as three touch-sized destinations; Meetings and Events move into the full-width More menu alongside the other sections. Desktop keeps its direct Meetings and Events tabs. Both retain the existing unsaved-change guards.
+
+Progress statistics, team officer snapshots, and waiting submissions use disclosures. The overview shows the next three meetings/events; Calendar keeps the full schedule. Task reminders and calendar entries are not repeated in the other-actions list. Additional updates remain expandable, and marking updates seen does not complete their underlying work.
+
+This layout update requires no new migration. Clarification labels use a read of the existing AI review table; installations awaiting AI setup can still open the officer workspace. Existing evaluation, submission, and membership permissions remain authoritative. Verification includes rendered officer/reviewer views, deadline ordering, shared-task isolation, visible task actions, direct dialog links, and guarded navigation. Live browser and device rendering were not available for this pass.
+
+On phones, task actions sit beneath the title and due date with a 48px minimum touch height. Task dialogs use single-column score inputs, 16px form text, and safe-area padding. The More menu stays within the workspace width and scrolls on short screens. Automated responsive-style and interaction checks cover these rules; live phone/browser rendering remains to be verified.

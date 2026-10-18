@@ -3,7 +3,7 @@
 import GEAOneBadge from "@/components/GEAOneBadge";
 
 import { BUILDERS_ENABLED } from "@/lib/site-features";
-import Image from "next/image";
+import WorkspaceLogo from "@/components/WorkspaceLogo";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
@@ -117,16 +117,7 @@ export default function Nav() {
       <div className="mx-auto max-w-6xl px-4 py-3 sm:px-6">
         <div className="flex items-center justify-between gap-3">
           <Link href="/" className="flex min-w-0 items-center gap-3" onClick={() => setOpen(false)}>
-            <span className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full bg-paper">
-              <Image
-                src="/images/logo.png"
-                alt="Green Engineering Academy logo"
-                width={40}
-                height={40}
-                priority
-                className="h-full w-full object-cover"
-              />
-            </span>
+            <WorkspaceLogo />
             <span className="flex min-w-0 flex-col leading-tight">
               <span className="truncate font-display text-sm font-medium tracking-wide text-forestdeep sm:text-base">
                 Green Engineering Academy

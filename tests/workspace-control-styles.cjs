@@ -104,3 +104,28 @@ test('Save buttons retain prominence and planning styles do not leak into office
   assert.equal(recordStyles.background, undefined);
   assert.equal(recordStyles.border, undefined);
 });
+for (const width of [320, 390, 760]) {
+  test(`Phone workspace uses three destinations, a contained More menu, and stacked task actions at ${width}px`, () => {
+    const hub = element('div', ['hub']);
+    const nav = element('nav', ['nav'], hub);
+    const more = element('details', ['moreSections'], nav);
+    const menu = element('div', [], more);
+    assert.equal(styles(nav, width).display, 'grid');
+    assert.equal(styles(nav, width)['grid-template-columns'], 'repeat(3,minmax(0,1fr))');
+    assert.equal(styles(element('button', ['desktopDestination'], nav), width).display, 'none');
+    assert.equal(styles(element('button', ['mobileDestination'], menu), width).display, 'block');
+    assert.equal(styles(menu, width).left, '0');
+    assert.equal(styles(menu, width).right, '0');
+    assert.equal(styles(element('summary', [], more), width)['min-height'], '48px');
+    const row = element('div', ['workRow'], hub);
+    assert.equal(styles(row, width).display, 'grid');
+    const action = styles(element('a', ['workAction'], row), width);
+    assert.equal(action.width, '100%');assert.equal(action['min-height'], '48px');
+  });
+}
+test('Desktop keeps meeting and event tabs visible and hides their mobile duplicates', () => {
+  const hub = element('div', ['hub']);const nav = element('nav', ['nav'], hub);
+  assert.notEqual(styles(element('button', ['desktopDestination'], nav), 1440).display, 'none');
+  const more = element('details', ['moreSections'], nav);
+  assert.equal(styles(element('button', ['mobileDestination'], element('div', [], more)), 1440).display, 'none');
+});

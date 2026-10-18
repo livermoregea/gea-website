@@ -168,3 +168,6 @@ production migrations in version control; fixture SQL belongs only in disposable
 test databases.
 
 GEA One's planning dashboard, calendar, meeting minutes, secretary roll call, event planning, shared notification read state, weekly inbox digests, task help requests, and accomplishment reports are documented in [GEA operations](docs/gea-operations.md). Apply `supabase/gea-operations.sql` after the shared-task migration before deploying these features.
+
+
+AI-assisted PEET clarification and Efficiency, Effectiveness, and Time scoring are built into the existing task submission and evaluation dialogs: see [setup and API documentation](docs/peet-ai.md). Apply `supabase/gea-peet-ai.sql` before enabling the feature.

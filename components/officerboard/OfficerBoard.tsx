@@ -2,7 +2,6 @@
 
 import WorkspaceActivity from "@/components/WorkspaceActivity";
 import ActionError from "@/components/ActionError";
-import Link from "next/link";
 
 import GEAOneBadge from "@/components/GEAOneBadge";
 
@@ -10,12 +9,14 @@ import { useContext, useEffect, useRef, useState, useTransition, type FormEvent 
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { peetError, officerTaskPeople, isOfficerTaskParticipant, canEditOfficerTask, selfTaskDeadlineBounds, peetSummary, productLink, taskAverage, type TaskTeammate, type OfficerProfile, type OfficerTask, type PeetEvaluation, type TaskCancellationRequest, taskOfficers } from "@/lib/peet";
+import { sortOfficerTasks } from "@/lib/officer-dashboard";
 import Modal from "./Modal";
 import PeetExplainer from "./PeetExplainer";
 import styles from "./officerboard.module.css";
 import TrackingPanel from "./TrackingPanel";
 import OfficerRoster from "./OfficerRoster";
 import OfficerTaskSubmission from "./OfficerTaskSubmission";
+import OfficerTaskPeet from "./OfficerTaskPeet";
 import OfficerTaskHistory from "./OfficerTaskHistory";
 import TaskSection from "./TaskSection";
 import TaskPeoplePicker from "./TaskPeoplePicker";
@@ -33,8 +34,8 @@ function dateLabel(value: string | null) {
   return new Date(value.length === 10 ? `${value}T12:00:00` : value).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
 }
 
-export default function OfficerBoard({ profile, profiles, tasks, evaluations, tracking, cancellationRequests = [], isSuperAdmin = false, embedded = false, unified = false, teammates = [] }: {
-  unified?: boolean; embedded?: boolean; teammates?: TaskTeammate[];
+export default function OfficerBoard({ profile, profiles, tasks, evaluations, tracking, cancellationRequests = [], isSuperAdmin = false, embedded = false, unified = false, teammates = [], clarificationTaskIds = [] }: {
+  unified?: boolean; embedded?: boolean; teammates?: TaskTeammate[]; clarificationTaskIds?: string[];
   profile: OfficerProfile; profiles: OfficerProfile[]; tasks: OfficerTask[]; evaluations: PeetEvaluation[]; tracking: TrackingData; isSuperAdmin?: boolean; cancellationRequests?: TaskCancellationRequest[];
 }) {
   const router = useRouter();
@@ -50,6 +51,7 @@ export default function OfficerBoard({ profile, profiles, tasks, evaluations, tr
   const [taskPeople, setTaskPeople] = useState<string[]>([]);
   const [createSharedTask, setCreateSharedTask] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [aiBusy, setAiBusy] = useState(false);
   const [endWithScore, setEndWithScore] = useState(false);
   const [refreshing, startTransition] = useTransition();
   const [backgroundRefreshing, startBackgroundRefresh] = useTransition();
@@ -63,7 +65,7 @@ export default function OfficerBoard({ profile, profiles, tasks, evaluations, tr
   const studentHeading = useRef<HTMLHeadingElement>(null);
   const [siteSection, setSiteSection] = useState<AdminSectionKey>("website");
   const admin = isSuperAdmin || profile.role === "admin";
-  const busy = saving || refreshing;
+  const busy = saving || refreshing || aiBusy;
   const view = admin && (section === "attendance" || section === "volunteer") ? "roster" : section === "accounts" ? "accounts" : section === "tasks" || section === "people" ? "dashboard" : localView;
   const topic = section === "tasks" ? "tasks" : !admin && (section === "attendance" || section === "volunteer") ? section : section === "people" && localTopic === "tasks" ? "overview" : localTopic;
   const editingSelfTask = action?.kind === "edit" && action.task.created_by === profile.id && action.task.assigned_to === profile.id;
@@ -86,15 +88,15 @@ export default function OfficerBoard({ profile, profiles, tasks, evaluations, tr
   const summary = peetSummary(visibleTasks, evaluations);
   const evaluationFor = (task: OfficerTask) => evaluations.find(evaluation => evaluation.task_id === task.id);
   const ownerName = (task: OfficerTask) => { const person = profiles.find(person => person.id === task.assigned_to) ?? teammates.find(person => person.id === task.assigned_to); return person ? `${person.name}${"email" in person && person.email ? ` (${person.email})` : ""}` : "Officer"; };
-  const reviewQueue = admin ? tasks.filter(task => (overview || isOfficerTaskParticipant(task, selectedOfficer)) && !task.cancelled_at && task.status === "submitted") : [];
-  const canEvaluate = (task: OfficerTask) => (officerTaskPeople(task).length === 1 || !isOfficerTaskParticipant(task, profile.id)) &&
+  const reviewQueue = admin ? tasks.filter(task => (overview || isOfficerTaskParticipant(task, selectedOfficer)) && !task.cancelled_at && task.status === "submitted" && !isOfficerTaskParticipant(task, profile.id)) : [];
+  const canEvaluate = (task: OfficerTask) => !isOfficerTaskParticipant(task, profile.id) &&
     (isSuperAdmin || profile.reviewer_kind === "advisor" || !officerTaskPeople(task).some(id => profiles.find(person => person.id === id)?.reviewer_kind === "president"));
   const peopleNames = Object.fromEntries([...teammates, ...profiles].map(person => [person.id, person.name]));
 
   useEffect(() => {
     const openTarget = (force = false) => {
     const params = new URLSearchParams(window.location.search);
-    const target = JSON.stringify([params.get("task"), params.get("topic"), params.get("officer")]);
+    const target = JSON.stringify([params.get("task"), params.get("topic"), params.get("officer"), params.get("action")]);
     if (!force && linkedTaskOpened.current === target) return;
     linkedTaskOpened.current = target;
     const record = officerRecordTarget(params, profile.id, admin, officers.map(person => person.id));
@@ -104,6 +106,15 @@ export default function OfficerBoard({ profile, profiles, tasks, evaluations, tr
     if (!linked) return;
     setSelectedOfficer(admin ? linked.assigned_to : profile.id);
     setView("dashboard"); setTopic("tasks"); setTaskSearch(linked.title);
+    const requestedAction = params.get("action");
+    if (!linked.cancelled_at && linked.status !== "completed") {
+      if (requestedAction === "submit" && isOfficerTaskParticipant(linked, profile.id)) openAction({ kind: "submit", task: linked });
+      if (requestedAction === "review" && admin && canEvaluate(linked) && linked.status === "submitted") openAction({ kind: "review", task: linked });
+    }
+    if (requestedAction) {
+      const url = new URL(window.location.href); url.searchParams.delete("action");
+      window.history.replaceState(window.history.state, "", url);
+    }
     };
     openTarget();
     const openWorkspaceTarget = () => openTarget(true);
@@ -185,7 +196,8 @@ export default function OfficerBoard({ profile, profiles, tasks, evaluations, tr
   }
   const taskQuery = taskSearch.trim().toLowerCase();
   const matchingTasks = visibleTasks.filter(task => [task.title, task.description, task.submission_description, task.cancellation_reason, task.end_notes, evaluationFor(task)?.feedback_notes].some(value => value?.toLowerCase().includes(taskQuery)));
-  const activeTasks = matchingTasks.filter(task => !task.cancelled_at && task.status !== "completed");
+  const activeTasks = sortOfficerTasks(matchingTasks.filter(task => !task.cancelled_at && task.status !== "completed" && (task.status === "in_progress" || clarificationTaskIds.includes(task.id))));
+  const waitingTasks = sortOfficerTasks(matchingTasks.filter(task => !task.cancelled_at && task.status === "submitted" && !clarificationTaskIds.includes(task.id) && (!admin || isOfficerTaskParticipant(task, profile.id))));
   const cancelledTasks = matchingTasks.filter(task => task.cancelled_at);
   const matchingRequests = selectedRequests.filter(request => !taskQuery || matchingTasks.some(task => task.id === request.task_id) || `${request.reason} ${request.review_notes}`.toLowerCase().includes(taskQuery));
   const pendingRequests = matchingRequests.filter(request => request.status === "pending");
@@ -203,6 +215,19 @@ export default function OfficerBoard({ profile, profiles, tasks, evaluations, tr
   }
   function workLink(task: OfficerTask) {
     return <>{officerTaskPeople(task).length > 1 && <p className={styles.sharedPeople}>Shared with {officerTaskPeople(task).map(id => peopleNames[id] || "Former officer").join(", ")} · One submission and evaluation</p>}<OfficerTaskSubmission task={task} /></>;
+  }
+
+  function manualEvaluationForm(task: OfficerTask) {
+    return <form onSubmit={saveEvaluation} className={styles.form}>
+        <h2 className={styles.modalTitle}>{task.title}</h2><p>{ownerName(task)} · Due {dateLabel(task.due_date)} · Submitted {dateLabel(task.submitted_at)}</p>
+        <p className={styles.description}>{task.description}</p>{workLink(task)}
+        <fieldset disabled={busy}><legend>PEET scores · 1.0–4.0 (3.0 = Meets Expectations)</legend>
+          <div className={styles.scoreInputs}>{(["efficiency", "effectiveness", "time"] as const).map(pillar => <label key={pillar}>{pillar[0].toUpperCase() + pillar.slice(1)}<input name={pillar} type="number" required min="1" max="4" step="0.1" defaultValue={evaluationFor(task)?.[pillar] ?? ""} /></label>)}</div>
+          <label>Feedback notes<textarea name="feedback" rows={4} maxLength={10000} defaultValue={evaluationFor(task)?.feedback_notes ?? ""} /></label>
+        </fieldset>
+        <p>Saving completes the task and updates this officer’s overall PEET score. Adjustments replace the previous scores for this task.</p>
+        <div className={styles.modalActions}><button type="button" className={styles.secondary} disabled={busy} onClick={() => setAction(null)}>Cancel</button><button className={styles.primary} disabled={busy}>{busy ? "Saving…" : "Save evaluation"}</button></div>
+      </form>;
   }
 
   return <div className={`${styles.board} ${embedded ? styles.embedded : ""} ${unified ? styles.unified : ""}`} data-workspace-dirty={rosterDirty ? "true" : undefined} data-workspace-busy={busy ? "true" : undefined}>
@@ -259,7 +284,6 @@ export default function OfficerBoard({ profile, profiles, tasks, evaluations, tr
     {isSuperAdmin && view === "accounts" && <AccountsPanel actorId={profile.id} />}
     {!embedded && isSuperAdmin && view === "site" && <div className="mt-8"><AdminTabs section={siteSection} onSectionChange={setSiteSection} /></div>}
     {view === "dashboard" && (!overview || section === "tasks") && topic === "tasks" && <>
-    <div className={styles.taskSummary} aria-label="Task summary"><article><h3>PEET /100</h3><strong>{summary.score === null ? "—" : summary.score.toFixed(1)}</strong></article><article><h3>Active</h3><strong>{summary.active}</strong></article><article><h3>Completed</h3><strong>{summary.completed}</strong></article></div>
     {section !== "tasks" && <div className={styles.topicHeading}><h2>Tasks & PEET</h2><button className={styles.primary} onClick={() => openAction({kind:"add"})} disabled={busy}>+ Add task</button></div>}
     <label className={styles.taskSearch}><span className="sr-only">Search this officer’s tasks and requests</span><input type="search" value={taskSearch} onChange={event => setTaskSearch(event.target.value)} placeholder="Find a task, submission, or note…" /></label>
     {taskQuery && <p className={styles.searchResultCount} role="status">{matchingTasks.length} matching {matchingTasks.length === 1 ? "task" : "tasks"} · {matchingRequests.length} matching {matchingRequests.length === 1 ? "request" : "requests"}</p>}
@@ -272,22 +296,27 @@ export default function OfficerBoard({ profile, profiles, tasks, evaluations, tr
         {canEvaluate(task) ? <button className={styles.primary} disabled={busy} onClick={() => openAction({ kind: "review", task })}>Evaluate<span className="sr-only"> {task.title}</span></button> : <span className={styles.badge}>{isOfficerTaskParticipant(task, profile.id) ? "Another reviewer required" : "Advisor review required"}</span>}
       </div>)}
     </TaskSection>}
-    {pendingRequests.length > 0 && <TaskSection key={`pending-${disclosureScope}`} title="Cancellation requests" count={pendingRequests.length} hint="Pending" defaultOpen>{pendingRequests.map(requestRow)}</TaskSection>}
-    <TaskSection key={`active-${disclosureScope}`} title="Active tasks" count={activeTasks.length} collapsible={false}>
-      {activeTasks.length === 0 ? <p className={styles.compactEmpty}>{taskQuery ? "No active tasks match your search." : "No active tasks. Add a task to get started."}</p> : activeTasks.map(task => <details className={styles.taskDisclosure} key={task.id}>
-        <summary className={styles.taskRowSummary}><span className={styles.disclosureChevron} aria-hidden="true" /><span className={styles.taskRowTitle}>{task.title}</span><span className={styles.badge}>{statusLabels[task.status]}{officerTaskPeople(task).length > 1 ? ` · ${officerTaskPeople(task).length} people` : ""}</span><span className={styles.rowMeta}>Due {dateLabel(task.due_date)}{overview ? ` · ${ownerName(task)}` : ""}</span></summary>
-        <div className={styles.taskDetails}>
-          {task.description && <p>{task.description}</p>}{workLink(task)}
-          <div className={styles.actions}>
-            {task.status === "in_progress" && isOfficerTaskParticipant(task, profile.id) && <button className={styles.primary} disabled={busy} onClick={() => openAction({ kind: "submit", task })}>Submit work<span className="sr-only"> for {task.title}</span></button>}
-            {task.status === "in_progress" && isOfficerTaskParticipant(task, profile.id) && <a className={styles.secondary} href={`/operations?view=blockers&task=${task.id}#task-help`}>Blocked / need help</a>}
-            {canEditOfficerTask(task, profile.id, admin) && <button className={styles.secondary} disabled={busy} onClick={() => openAction({ kind: "edit", task })}>Edit<span className="sr-only"> {task.title}</span></button>}
-            {admin && !isOfficerTaskParticipant(task, profile.id) && <button className={styles.secondary} disabled={busy} onClick={() => openAction({ kind: "end", task })}>End task<span className="sr-only"> {task.title}</span></button>}
-            <button className={styles.secondary} disabled={busy || (isOfficerTaskParticipant(task, profile.id) && cancellationRequests.some(request => request.task_id === task.id && request.status === "pending"))} onClick={() => openAction({ kind: "cancel", task })}>{isOfficerTaskParticipant(task, profile.id) ? "Request cancellation" : "Cancel task"}<span className="sr-only"> {task.title}</span></button>
+    <TaskSection key={`active-${disclosureScope}`} title={admin ? "Active tasks" : "To complete"} count={activeTasks.length} collapsible={false}>
+      {activeTasks.length === 0 ? <p className={styles.compactEmpty}>{taskQuery ? "No unfinished tasks match your search." : "You’re up to date. No tasks to complete."}</p> : activeTasks.map(task => <div className={styles.taskWorkRow} key={task.id}>
+        <details className={styles.taskDisclosure}>
+          <summary className={styles.taskRowSummary}><span className={styles.disclosureChevron} aria-hidden="true" /><span className={styles.taskRowTitle}>{task.title}</span><span className={`${styles.rowMeta} ${clarificationTaskIds.includes(task.id) || task.due_date && task.due_date < today ? styles.taskUrgent : ""}`}>{clarificationTaskIds.includes(task.id) ? "Your answers needed" : task.due_date ? `${task.due_date < today ? "Overdue · " : task.due_date === today ? "Due today · " : "Due "}${dateLabel(task.due_date)}` : "No deadline"}{overview ? ` · ${ownerName(task)}` : ""}</span></summary>
+          <div className={styles.taskDetails}>
+            {task.description && <p>{task.description}</p>}{workLink(task)}
+            {officerTaskPeople(task).length > 1 && <p className={styles.rowMeta}>{officerTaskPeople(task).length} people on this task</p>}
+            <div className={styles.actions}>
+              {task.status === "in_progress" && isOfficerTaskParticipant(task, profile.id) && <a className={styles.secondary} href={`/operations?view=blockers&task=${task.id}#task-help`}>Blocked / need help</a>}
+              {canEditOfficerTask(task, profile.id, admin) && <button className={styles.secondary} disabled={busy} onClick={() => openAction({ kind: "edit", task })}>Edit<span className="sr-only"> {task.title}</span></button>}
+              {admin && !isOfficerTaskParticipant(task, profile.id) && <button className={styles.secondary} disabled={busy} onClick={() => openAction({ kind: "end", task })}>End task<span className="sr-only"> {task.title}</span></button>}
+              <button className={styles.secondary} disabled={busy || (isOfficerTaskParticipant(task, profile.id) && cancellationRequests.some(request => request.task_id === task.id && request.status === "pending"))} onClick={() => openAction({ kind: "cancel", task })}>{isOfficerTaskParticipant(task, profile.id) ? "Request cancellation" : "Cancel task"}<span className="sr-only"> {task.title}</span></button>
+            </div>
           </div>
-        </div>
-      </details>)}
+        </details>
+        {isOfficerTaskParticipant(task, profile.id) && <button className={styles.primary} disabled={busy} onClick={() => openAction({ kind: "submit", task })}>{clarificationTaskIds.includes(task.id) ? "Answer questions" : "Submit work"}<span className="sr-only"> for {task.title}</span></button>}
+      </div>)}
     </TaskSection>
+    {waitingTasks.length > 0 && <TaskSection key={`waiting-${disclosureScope}`} title="Awaiting review" count={waitingTasks.length} defaultOpen={Boolean(taskQuery)}>{waitingTasks.map(task => <div className={styles.taskWorkRow} key={task.id}><div><strong>{task.title}</strong><p className={styles.rowMeta}>Submitted {dateLabel(task.submitted_at)}</p></div><button className={styles.secondary} disabled={busy} onClick={() => openAction({ kind: "submit", task })}>View submission<span className="sr-only"> for {task.title}</span></button></div>)}</TaskSection>}
+    {pendingRequests.length > 0 && <TaskSection key={`pending-${disclosureScope}`} title="Cancellation requests" count={pendingRequests.length} hint="Pending">{pendingRequests.map(requestRow)}</TaskSection>}
+    <div className={styles.taskSummary} aria-label="Task summary"><article><h3>PEET /100</h3><strong>{summary.score === null ? "—" : summary.score.toFixed(1)}</strong></article><article><h3>Active</h3><strong>{summary.active}</strong></article><article><h3>Completed</h3><strong>{summary.completed}</strong></article></div>
     <OfficerTaskHistory key={`history-${disclosureScope}`} tasks={matchingTasks} evaluations={evaluations} peopleNames={peopleNames} defaultOpen={!!taskQuery} admin={admin} actorId={profile.id} busy={busy} canEvaluate={canEvaluate} onReview={task => openAction({kind:"review",task})} onCancel={task => openAction({kind:"cancel",task})} />
     {pastRequests.length > 0 && <TaskSection key={`past-${disclosureScope}`} title="Past cancellation requests" count={pastRequests.length} defaultOpen={!!taskQuery}>{pastRequests.map(requestRow)}</TaskSection>}
     {cancelledTasks.length > 0 && <TaskSection key={`cancelled-${disclosureScope}`} title="Cancelled tasks" count={cancelledTasks.length} defaultOpen={!!taskQuery}>
@@ -324,13 +353,15 @@ export default function OfficerBoard({ profile, profiles, tasks, evaluations, tr
         </fieldset>
         <div className={styles.modalActions}><button type="button" className={styles.secondary} disabled={busy} onClick={() => setAction(null)}>Cancel</button><button className={styles.primary} disabled={busy}>{busy ? "Saving…" : "Save task"}</button></div>
       </form>}
-      {action.kind === "submit" && <form onSubmit={submitProduct} className={styles.form}>
+      {action.kind === "submit" && <OfficerTaskPeet key={`submit-${action.task.id}`} officerTask={action.task} actorId={profile.id} mode="submit" onBusyChange={setAiBusy}
+        onComplete={message => { setAction(null); setNotice(message); startTransition(() => router.refresh()); }}
+        manualFallback={<form onSubmit={submitProduct} className={styles.form}>
         <h2 className={styles.modalTitle}>Ready to share your work?</h2><p>{action.task.title}</p>
         <label>Work description<textarea name="submission_description" rows={5} maxLength={10000} placeholder="Describe what you did, what you accomplished, and any details your reviewer should know." disabled={busy} /></label>
         <label>Supporting link (optional)<input type="url" name="url" maxLength={2048} placeholder="https://…" disabled={busy} /></label>
         <p>Describe your completed work, add a supporting link, or both. {officerTaskPeople(action.task).length > 1 ? "This submission is shared by everyone on the task. After submission, its people and assignment details are locked." : "After submission, you can no longer edit this task."}</p>
         <div className={styles.modalActions}><button type="button" className={styles.secondary} disabled={busy} onClick={() => setAction(null)}>Cancel</button><button className={styles.primary} disabled={busy}>{busy ? "Submitting…" : "Submit for review"}</button></div>
-      </form>}
+      </form>} />}
       {action.kind === "end" && admin && <form className={styles.form} onSubmit={event => {
         event.preventDefault();
         const fields = new FormData(event.currentTarget);
@@ -362,16 +393,9 @@ export default function OfficerBoard({ profile, profiles, tasks, evaluations, tr
       {action.kind === "cancellationReview" && <form className={styles.form} onSubmit={event => { event.preventDefault(); const fields = new FormData(event.currentTarget); void mutate("review_officer_task_cancellation", {p_request_id: action.request.id, p_status: fields.get("decision"), p_notes: fields.get("notes")}, "Cancellation request reviewed."); }}>
         <h2 className={styles.modalTitle}>Review cancellation</h2><p>{ownerName(action.task)} · {action.task.title}</p><p>{action.request.reason}</p><label>Decision<select name="decision" disabled={busy}><option value="rejected">Keep task · decline request</option><option value="approved">Approve cancellation</option></select></label><label>Review notes<textarea name="notes" required minLength={10} maxLength={2000} rows={4} disabled={busy} /></label><button className={styles.primary} disabled={busy}>Save decision</button>
       </form>}
-      {action.kind === "review" && admin && <form onSubmit={saveEvaluation} className={styles.form}>
-        <h2 className={styles.modalTitle}>{action.task.title}</h2><p>{ownerName(action.task)} · Due {dateLabel(action.task.due_date)} · Submitted {dateLabel(action.task.submitted_at)}</p>
-        <p className={styles.description}>{action.task.description}</p>{workLink(action.task)}
-        <fieldset disabled={busy}><legend>PEET scores · 1.0–4.0 (3.0 = Meets Expectations)</legend>
-          <div className={styles.scoreInputs}>{(["efficiency", "effectiveness", "time"] as const).map(pillar => <label key={pillar}>{pillar[0].toUpperCase() + pillar.slice(1)}<input name={pillar} type="number" required min="1" max="4" step="0.1" defaultValue={evaluationFor(action.task)?.[pillar] ?? ""} /></label>)}</div>
-          <label>Feedback notes<textarea name="feedback" rows={4} maxLength={10000} defaultValue={evaluationFor(action.task)?.feedback_notes ?? ""} /></label>
-        </fieldset>
-        <p>Saving completes the task and updates this officer’s overall PEET score. Adjustments replace the previous scores for this task.</p>
-        <div className={styles.modalActions}><button type="button" className={styles.secondary} disabled={busy} onClick={() => setAction(null)}>Cancel</button><button className={styles.primary} disabled={busy}>{busy ? "Saving…" : "Save evaluation"}</button></div>
-      </form>}
+      {action.kind === "review" && admin && (action.task.status === "completed" ? manualEvaluationForm(action.task) : <OfficerTaskPeet key={`review-${action.task.id}`} officerTask={action.task} actorId={profile.id} mode="review" onBusyChange={setAiBusy}
+        onComplete={message => { setAction(null); setNotice(message); startTransition(() => router.refresh()); }}
+        manualFallback={manualEvaluationForm(action.task)} />)}
     </Modal>}
   </div>;
 }

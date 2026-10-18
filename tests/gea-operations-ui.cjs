@@ -14,7 +14,7 @@ test('One workspace embeds officer records and has no separate Inbox or Need hel
  const tools=React.createElement('div',null,'Embedded officer records');
  const overview=renderToStaticMarkup(React.createElement(Hub,{data,officerTools:tools,initialView:'overview'}));
  assert.ok(overview.includes('Needs your attention'));
- assert.ok(overview.includes('My work'));
+ assert.ok(overview.includes('My tasks'));
  assert.ok(!overview.includes('>Inbox<'));
  assert.ok(!overview.includes('>Need help<'));
  assert.ok(!overview.includes('Embedded officer records'));
@@ -55,7 +55,7 @@ test('Overview shows the progress dashboard while Officers keeps the detailed to
  const props={data:fixture(true),officerOverview:React.createElement('section',null,'Score and attendance dashboard'),officerTools:React.createElement('section',null,'Detailed officer editor')};
  const overview=renderToStaticMarkup(React.createElement(Hub,{...props,initialView:'overview'}));
  assert.ok(overview.includes('Score and attendance dashboard'));
- assert.ok(overview.includes('Needs your attention'));
+ assert.ok(overview.includes('Other next steps'));
  assert.ok(!overview.includes('Detailed officer editor'));
  const details=renderToStaticMarkup(React.createElement(Hub,{...props,initialView:'tasks'}));
  assert.ok(details.includes('Detailed officer editor'));

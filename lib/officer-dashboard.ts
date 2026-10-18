@@ -1,6 +1,20 @@
 import { isOfficerTaskParticipant, peetSummary, taskOfficers, type OfficerProfile, type OfficerTask, type PeetEvaluation } from './peet';
 import { trackingSummary, type TrackingData } from './officer-tracking';
 
+/** Dates are Pacific calendar dates, so a task stays due today until midnight. */
+export function sortOfficerTasks(tasks: OfficerTask[]) {
+  return [...tasks].sort((a, b) => (a.due_date || '9999-12-31').localeCompare(b.due_date || '9999-12-31')
+    || (a.created_at || '').localeCompare(b.created_at || '') || a.id.localeCompare(b.id));
+}
+
+export function officerWorkQueue(tasks: OfficerTask[], officerId: string, clarificationTaskIds: string[] = []) {
+  const own = tasks.filter(task => !task.cancelled_at && isOfficerTaskParticipant(task, officerId) && task.status !== 'completed');
+  return {
+    toComplete: sortOfficerTasks(own.filter(task => task.status === 'in_progress' || clarificationTaskIds.includes(task.id))),
+    awaitingReview: sortOfficerTasks(own.filter(task => task.status === 'submitted' && !clarificationTaskIds.includes(task.id))),
+  };
+}
+
 /** Uses the same PEET and participation rules as the detailed officer records. */
 export function officerDashboard(profile: OfficerProfile, profiles: OfficerProfile[], tasks: OfficerTask[], evaluations: PeetEvaluation[], tracking: TrackingData, reviewer: boolean, year: string) {
   const people = reviewer ? taskOfficers(profiles) : [profiles.find(person => person.id === profile.id) ?? profile];

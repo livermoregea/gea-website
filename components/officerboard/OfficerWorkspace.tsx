@@ -46,7 +46,12 @@ export default async function OfficerWorkspace({ embedded = false, search = {} }
   const loadError = tasks.error || evaluations.error || profiles.error || events.error || attendance.error || signups.error || volunteerLogs.error || strikes.error || reviews.error || generalNotes.error || cancellationRequests.error || teammates.error;
   if (loadError) return <AccessMessage message={peetError(loadError)} />;
   const tracking = { events: events.data ?? [], attendance: attendance.data ?? [], signups: signups.data ?? [], volunteerLogs: volunteerLogs.data ?? [], strikes: strikes.data ?? [], reviews: reviews.data ?? [], generalNotes: generalNotes.data ?? [] };
-  const board = <OfficerBoard unified teammates={teammates.data ?? []} embedded={embedded} cancellationRequests={cancellationRequests.data ?? []} profile={{...profile,...profiles.data?.find(person => person.id === profile.id)}} profiles={profiles.data ?? []} tasks={tasks.data ?? []} evaluations={evaluations.data ?? []} isSuperAdmin={Boolean(superAdmin)} tracking={tracking} />;
+  // Clarification is an action on an existing task; older database installs can
+  // still load the workspace before the optional AI migration is installed.
+  const clarification = await readAll<{ task_id: string }>((from, to) => supabase.from("gea_peet_tasks").select("task_id")
+    .eq("student_id", user.id).eq("status", "clarification").order("task_id").range(from, to));
+  const clarificationTaskIds = (clarification.data ?? []).map(item => item.task_id);
+  const board = <OfficerBoard clarificationTaskIds={clarificationTaskIds} unified teammates={teammates.data ?? []} embedded={embedded} cancellationRequests={cancellationRequests.data ?? []} profile={{...profile,...profiles.data?.find(person => person.id === profile.id)}} profiles={profiles.data ?? []} tasks={tasks.data ?? []} evaluations={evaluations.data ?? []} isSuperAdmin={Boolean(superAdmin)} tracking={tracking} />;
   try {
     let operations = await loadOperations(supabase, user.id, { tasks: tasks.data ?? [], events: events.data ?? [], attendance: attendance.data ?? [], logs: volunteerLogs.data ?? [], signups: signups.data ?? [], people: teammates.data ?? [] });
     if (operations.digestEnabled) {
@@ -56,8 +61,8 @@ export default async function OfficerWorkspace({ embedded = false, search = {} }
         if (digests) operations = { ...operations, digests };
       }
     }
-    const overview = <OfficerDashboard data={operations} profile={profile} profiles={profiles.data ?? []} tasks={tasks.data ?? []} evaluations={evaluations.data ?? []} tracking={tracking} />;
-    return <OperationsHub data={operations} canManageAccounts={Boolean(superAdmin)} officerOverview={overview} officerTools={board} embedded={embedded} initialView={workspaceView(search.view, search.task, search.topic, search.officer)} initialEvent={search.event} initialTask={search.task} />;
+    const overview = <OfficerDashboard clarificationTaskIds={clarificationTaskIds} data={operations} profile={profile} profiles={profiles.data ?? []} tasks={tasks.data ?? []} evaluations={evaluations.data ?? []} tracking={tracking} />;
+    return <OperationsHub data={operations} clarificationTaskIds={clarificationTaskIds} canManageAccounts={Boolean(superAdmin)} officerOverview={overview} officerTools={board} embedded={embedded} initialView={workspaceView(search.view, search.task, search.topic, search.officer)} initialEvent={search.event} initialTask={search.task} />;
   } catch (error) {
     console.error("[GEA officer workspace] Could not load updates", { message: (error as Error).message });
     return <><p role="status" className="mb-4 rounded border border-forest/20 p-4">Updates and meeting planning could not load. Your officer records are still available below.</p>{board}</>;

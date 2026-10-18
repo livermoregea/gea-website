@@ -9,7 +9,7 @@ function harness(){
  const tools=React.createElement('div',null,'Officer records');const data={membership:{isOfficer:true},attention:[],readKeys:[],calendar:[],events:[{id:'meeting',kind:'meeting',starts_at:'2026-10-16',title:'Meeting'}],tasks:[],blockers:[]};
  const render=()=>{cursor=0;transitionCursor=0;effects.length=0;return exports.default({data,officerTools:tools,initialView:'overview',initialEvent:'meeting'});};
  function elements(node,out=[]){if(!node||typeof node!=='object')return out;if(Array.isArray(node)){node.forEach(item=>elements(item,out));return out;}out.push(node);elements(node.props?.children,out);return out;}
- const button=(tree,label)=>elements(tree).find(node=>node.type==='button'&&node.props.children?.[0]===label);
+ const button=(tree,label)=>elements(tree).find(node=>node.type==='button'&&(typeof node.props.children==='string'?node.props.children:node.props.children?.[0])===label);
  return {render,elements,button,tools,Meeting,prompts,window,document,pending,get refreshes(){return refreshes;},installFocus(){effects.find(fn=>fn.toString().includes("addEventListener"))();},focus(){listeners.focus();},allow:()=>{allowDiscard=true;}};
 }
 test('Officer records stay mounted when switching workspace sections, preserving their local roster drafts',()=>{
@@ -46,9 +46,9 @@ test('Post-save refresh still locks its controls and shows a visible updating st
  const h=harness();h.pending[0]=true;const tree=h.render();assert.equal(h.button(tree,'Meetings').props.disabled,true);const status=h.elements(tree).find(n=>n.type==='workspace-activity');assert.equal(status.props.refreshing,true);assert.equal(status.props.background,false);
 });
 
-test('The main navigation and mobile picker open direct roster destinations through one shared context',()=>{
- const h=harness();let tree=h.render();const picker=h.elements(tree).find(n=>n.props?.['aria-label']==='Workspace section');assert.ok(picker);
- picker.props.onChange({target:{value:'volunteer'}});tree=h.render();const section=h.elements(tree).find(n=>n.props?.['aria-label']==='Tasks and officer progress');assert.equal(section.props.hidden,false);assert.equal(section.props.children.props.value.view,'volunteer');assert.equal(h.button(tree,'Volunteer').props['aria-pressed'],true);assert.match(h.window.location.href,/view=volunteer/);
+test('The compact navigation keeps roster destinations in More through the shared context',()=>{
+ const h=harness();let tree=h.render();const more=h.elements(tree).find(n=>n.props?.['aria-label']==='More workspace sections');assert.ok(more);
+ h.button(tree,'Volunteer').props.onClick();tree=h.render();const section=h.elements(tree).find(n=>n.props?.['aria-label']==='Tasks and officer progress');assert.equal(section.props.hidden,false);assert.equal(section.props.children.props.value.view,'volunteer');assert.equal(h.button(tree,'Volunteer').props['aria-pressed'],true);assert.match(h.window.location.href,/view=volunteer/);
  h.button(tree,'Attendance').props.onClick();tree=h.render();assert.equal(h.elements(tree).find(n=>n.props?.['aria-label']==='Tasks and officer progress').props.children.props.value.view,'attendance');
 });
 test('Unsaved nested roster edits block section changes until they are saved or discarded',()=>{
