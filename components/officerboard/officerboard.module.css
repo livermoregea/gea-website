@@ -461,7 +461,10 @@
 
 .serviceRows { list-style: none; padding: 0; margin: 12px 0; border-top: 1px solid #cbd7cf; }
 .serviceRow { display: flex; align-items: stretch; border-bottom: 1px solid #d6dfd8; min-width: 0; }
-.serviceRow[data-pending] { background: #f1f6f0; box-shadow: inset 3px 0 #527d63; }
+.serviceRow[data-verification-status="approved"] { background: #f0f7f1; box-shadow: inset 3px 0 #28734b; }
+.serviceRow[data-verification-status="pending"] { background: #fff9eb; box-shadow: inset 3px 0 #af7a10; }
+.serviceRow[data-verification-status="rejected"] { box-shadow: inset 3px 0 #a43c2b; }
+.serviceRow[data-pending] { background: #eff5fc; box-shadow: inset 3px 0 #365f94; }
 .serviceSelection { display: flex; align-items: center; justify-content: center; min-width: 44px; cursor: pointer; }
 .serviceSelection input { width: 20px; height: 20px; accent-color: #064e3b; }
 .serviceRowButton { flex: 1; min-width: 0; min-height: 64px; display: flex; align-items: center; gap: 16px; padding: 12px 8px; text-align: left; background: transparent; border: 0; color: #172d25; cursor: pointer; }
@@ -469,6 +472,15 @@
 .serviceRowIdentity { flex: 1; min-width: 0; display: grid; gap: 3px; }
 .serviceRowIdentity strong { font-size: .95rem; overflow-wrap: anywhere; }
 .serviceRowIdentity > span { font-size: .8rem; color: #53665d; overflow-wrap: anywhere; }
+.servicePersonHeading { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 12px; }
+.serviceBadge { display: inline-flex; align-items: center; gap: 6px; max-width: 100%; padding: 5px 10px; border: 1px solid #cbd2cf; border-radius: 8px; background: #eef1ef; color: #45554b; font-size: .9375rem; font-weight: 650; line-height: 1.4; text-align: left; vertical-align: middle; }
+.serviceBadge>span:first-child { flex-shrink: 0; }
+.serviceBadge>span:last-child { min-width: 0; }
+.serviceBadge[data-status="approved"] { background: #deefe3; border-color: #a7ceb3; color: #155b34; }
+.serviceBadge[data-status="pending"] { background: #fff0c4; border-color: #e1be65; color: #775108; }
+.serviceBadge[data-status="rejected"] { background: #fbe9e5; border-color: #dfb0a6; color: #8b3022; }
+.serviceBadge[data-status="draft"] { background: #e3edfc; border-color: #afc4e4; color: #284e80; }
+.serviceTableDuration { display: block; margin-top: 8px; font-variant-numeric: tabular-nums; }
 .serviceRowStatus { display: grid; gap: 3px; text-align: right; flex-shrink: 0; font-size: .8rem; color: #53665d; }
 .serviceRowStatus strong { color: #172d25; font-size: .95rem; font-variant-numeric: tabular-nums; }
 .serviceChevron { font-size: 1.5rem; color: #53665d; }
@@ -478,6 +490,7 @@
 .serviceParticipation summary { min-height: 44px; display: flex; align-items: center; cursor: pointer; font-weight: 600; }
 @media (max-width: 760px) {
   .serviceRowButton { gap: 8px; padding-block: 10px; }
+  .servicePersonHeading { align-items: flex-start; flex-direction: column; }
   .attendanceCards { gap: 0; }
   .attendanceCard { display: grid; grid-template-columns: minmax(0, 1fr) minmax(110px, 140px); column-gap: 12px; border: 0; border-bottom: 1px solid #d6dfd8; border-radius: 0; background: transparent; padding: 10px 0; }
   .attendanceCard[data-pending="true"] { border-color: #d6dfd8; box-shadow: inset 3px 0 #9b7b26; padding-left: 8px; }

@@ -12,7 +12,7 @@
   flex-wrap: wrap;
   margin-bottom: 1.25rem
 }
-.header h1,.workspaceTitle {
+.workspaceTitle {
   font-size: clamp(1.5rem,4vw,2rem);
   font-weight: 650;
   letter-spacing: -.035em;
@@ -590,6 +590,53 @@
 /* Wide screens gain useful columns; narrower screens keep the same reading order. */
 .readingColumn {
   max-width: 54rem
+}
+.eventDescription { margin-block: 20px; max-width: 76ch; }
+.eventDescription h3 { margin: 0 0 8px; font-size: .9375rem; font-weight: 600; color: #123524; }
+.eventDescription p { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; line-height: 1.65; }
+.panel.geai { position: relative; border-top: 3px solid var(--workspace-accent, #20583d); padding: 28px 0; margin: 0 0 24px; }
+.geaiPreparing::before { content: ''; position: absolute; top: -3px; left: 0; right: 0; height: 3px; background: linear-gradient(90deg, transparent 0%, #e4c766 45%, #c9a227 55%, transparent 100%); background-size: 200% 100%; animation: geai-scan 1.8s ease-in-out infinite; }
+.geaiHeading { display: flex; align-items: flex-start; justify-content: space-between; gap: 24px; margin-bottom: 28px; }
+.geaiHeading>div { display: grid; gap: 12px; min-width: 0; }
+.geaiHeading h2 { display: flex; align-items: baseline; margin: 0; }
+.geaiStatus { margin: 0; font-size: .8125rem; line-height: 1.5; color: #526358; }
+.geaiHeading button { min-height: 44px; flex-shrink: 0; padding: 10px 14px; border: 1px solid #12352426; border-radius: 8px; background: transparent; font-size: .8125rem; font-weight: 550; color: #123524; }
+.geaiHeading button:hover:not(:disabled) { background: #12352406; border-color: #12352450; }
+.geaiHeading button:disabled { opacity: .5; cursor: default; }
+.geaiContent { max-width: 76ch; }
+.geaiSummary { margin: 0 0 20px; line-height: 1.75; overflow-wrap: anywhere; }
+.geaiPriorities { list-style: none; margin: 0; padding: 0; }
+.geaiPriorities a { display: flex; align-items: baseline; justify-content: space-between; gap: 24px; padding: 18px 0; min-height: 44px; border-top: 1px solid #20583d20; color: #123524; line-height: 1.6; overflow-wrap: anywhere; text-decoration: none; }
+.geaiPriorities a>span:first-child { min-width: 0; }
+.geaiPriorities a>span:last-child { flex-shrink: 0; color: #715611; }
+.geaiPriorities a:hover .geaiPriorityTitle { text-decoration: underline; text-underline-offset: 4px; }
+.geaiPriorityCopy { display: grid; gap: 8px; }
+.geaiNextStep { color: #46594d; font-size: .9375rem; line-height: 1.65; }
+.geaiNextStep strong { color: #123524; font-weight: 600; }
+.geaiPriorities a:focus-visible,.geaiHeading button:focus-visible { outline: 3px solid #9a7114; outline-offset: 4px; }
+.geaiNotice { margin: 20px 0 0; color: #526358; font-size: .875rem; line-height: 1.65; }
+.geaiFooter { margin-top: 20px; }
+@media(max-width:760px) {
+  .panel.geai { padding: 24px 0; }
+  .geaiHeading { gap: 16px; margin-bottom: 24px; }
+  .geaiSummary { margin-bottom: 16px; }
+  .geaiPriorities a { gap: 16px; padding: 16px 0; }
+}
+.geaiSkeleton { display: grid; gap: 10px; padding: 20px 0 12px; min-height: 144px; }
+.geaiSkeleton>span,.geaiSkeleton>div>span { display: block; height: 12px; border-radius: 4px; background: linear-gradient(100deg, #12352408 25%, #c9a22724 50%, #12352408 75%); background-size: 200% 100%; animation: geai-scan 1.8s ease-in-out infinite; }
+.geaiSkeleton>span:nth-child(2) { width: 88%; }
+.geaiSkeleton>span:nth-child(3) { width: 62%; }
+.geaiSkeleton>div { display: grid; gap: 12px; padding-top: 12px; }
+.geaiSkeleton>div>span { width: 76%; }
+.geaiSkeleton>div>span:last-child { width: 58%; }
+.geaiWord { display: inline-block; animation: geai-word-in .35s ease-out both; }
+.geaiWord { max-width: 100%; overflow-wrap: anywhere; }
+.geaiPriority { animation: geai-priority-in .45s ease-out both; }
+@keyframes geai-scan { from { background-position: 200% 0; } to { background-position: -200% 0; } }
+@keyframes geai-word-in { from { opacity: 0; transform: translateY(3px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes geai-priority-in { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+@media(prefers-reduced-motion:reduce) {
+  .geaiPreparing::before,.geaiSkeleton>span,.geaiSkeleton>div>span,.geaiWord,.geaiPriority { animation: none; }
 }
 .meetingColumns,.overviewColumns {
   min-width: 0

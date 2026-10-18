@@ -96,9 +96,11 @@ export default function OfficerBoard({ profile, profiles, tasks, evaluations, tr
   useEffect(() => {
     const openTarget = (force = false) => {
     const params = new URLSearchParams(window.location.search);
-    const target = JSON.stringify([params.get("task"), params.get("topic"), params.get("officer"), params.get("action")]);
+    const target = JSON.stringify([params.get("task"), params.get("topic"), params.get("officer"), params.get("action"), params.get("view"), params.get("event")]);
     if (!force && linkedTaskOpened.current === target) return;
     linkedTaskOpened.current = target;
+    const rosterEvent = tracking.events.find(event => event.id === params.get("event"));
+    if (admin && rosterEvent && ["attendance", "volunteer"].includes(params.get("view") || "")) setAcademicYear(rosterEvent.academic_year);
     const record = officerRecordTarget(params, profile.id, admin, officers.map(person => person.id));
     if (!params.get("task") && record) { setSelectedOfficer(record.officerId); setView("dashboard"); setTopic(record.topic); setTaskSearch(""); return; }
     const id = params.get("task");
@@ -120,7 +122,7 @@ export default function OfficerBoard({ profile, profiles, tasks, evaluations, tr
     const openWorkspaceTarget = () => openTarget(true);
     window.addEventListener("gea:workspace-target", openWorkspaceTarget);
     return () => window.removeEventListener("gea:workspace-target", openWorkspaceTarget);
-  }, [tasks, profiles, admin, profile.id]);
+  }, [tasks, profiles, tracking.events, admin, profile.id]);
 
   useEffect(() => {
     if (!profile.peet_onboarding_seen_at) setExplainer(true);

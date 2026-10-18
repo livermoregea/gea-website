@@ -75,3 +75,10 @@ The remaining design improvements documented in `gea-one-design-review.md`
 (self-service password recovery, older admin feedback consistency, and a more
 compact bulk roster) are distinct from the automated checks above. Live browser
 and screen-reader verification have not been completed by this cleanup pass.
+
+## October 18 admin and AI scoring review
+
+See [the current admin and AI release review](admin-ai-release-review.md) for the
+249-test result, isolated production build, dependency security fixes, disposable
+PEET database fixture, live synthetic provider check, and remaining authenticated
+browser and deployment gates. The earlier results above are historical.

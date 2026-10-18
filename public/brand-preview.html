@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>GEA One animation preview</title>
+  <style>
+    * { box-sizing: border-box; }
+    body { margin: 0; background: #f6f3ec; color: #123524; font: 16px/1.6 system-ui, sans-serif; }
+    main { max-width: 720px; padding: 48px 24px; margin: auto; }
+    h1 { font-size: clamp(28px, 6vw, 40px); line-height: 1.2; }
+    .previews { display: flex; flex-wrap: wrap; gap: 40px; margin: 40px 0; }
+    figure { margin: 0; }
+    figcaption { margin-top: 16px; color: #526358; }
+    img { display: block; width: 220px; max-width: 100%; height: auto; }
+    button, a { color: #123524; }
+    button { cursor: pointer; background: transparent; border: 1px solid #526358; border-radius: 8px; padding: 12px 18px; font: inherit; }
+    :focus-visible { outline: 3px solid #9a7114; outline-offset: 4px; }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>GEA One, with a little motion.</h1>
+    <p>A soft diagonal reflection sweeps across the badge once on hover or tap.</p>
+    <div class="previews">
+      <figure><img src="/images/gea-one.svg" alt="GEA One, idle" width="182" height="64"><figcaption>Idle</figcaption></figure>
+      <figure><img tabindex="0" id="animated-logo" src="/images/gea-one-animated.svg" alt="GEA One, animated" width="182" height="64"><figcaption>Soft shine sweep</figcaption></figure>
+    </div>
+    <button id="replay" type="button">Replay animation</button>
+    <p><a href="/images/gea-one-animated.svg" download>Download animated SVG</a> · <a href="/images/gea-one.svg" download>Download static SVG</a></p>
+    <p>Reduced-motion preferences are respected. On the site, hover or tap the GEA One badge to try the interaction.</p>
+  </main>
+  <script>
+    function replay() {
+      document.getElementById('animated-logo').src = '/images/gea-one-animated.svg?replay=' + Date.now();
+    }
+    document.getElementById('replay').addEventListener('click', replay);
+    const logo = document.getElementById('animated-logo');
+    logo.addEventListener('pointerenter', replay);
+    logo.addEventListener('pointerdown', replay);
+    logo.addEventListener('focus', replay);
+  </script>
+</body>
+</html>

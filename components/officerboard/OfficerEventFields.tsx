@@ -9,6 +9,8 @@ export default function OfficerEventFields({ event, kind, year }: {event?: Offic
   const [eventKind,setEventKind] = useState(event?.kind ?? kind);
   return <>
     <label>Event title<input name="title" required maxLength={200} defaultValue={event?.title} /></label>
+    <label>{eventKind === "meeting" ? "Meeting description" : "Event description"}<textarea name="notes" maxLength={10000} rows={3} defaultValue={event?.notes} placeholder="Describe the purpose and what officers should prepare or do." /></label>
+    <p>Visible to officers. GEAI uses this description for its short summaries. Google Docs can hold the full agenda or plan.</p>
     <label>Event type<select name="kind" value={eventKind} onChange={change=>setEventKind(change.target.value as OfficerEvent["kind"])}><option value="meeting">Leadership meeting</option><option value="volunteer">Volunteer event</option><option value="outreach">Outreach event</option></select></label>
     {eventKind !== "meeting" && <VolunteerAudienceFields event={event} checkboxClass={styles.checkbox}/>}
     <label>Academic year<input name="year" required pattern="[0-9]{4}-[0-9]{4}" defaultValue={event?.academic_year ?? year} /></label>
@@ -19,6 +21,5 @@ export default function OfficerEventFields({ event, kind, year }: {event?: Offic
     <label className={styles.checkbox}><input name="mandatory" type="checkbox" defaultChecked={event?.mandatory ?? kind === "meeting"} />Mandatory leadership meeting</label>
     <label className={styles.checkbox}><input name="approved" type="checkbox" defaultChecked={event?.gea_approved ?? kind === "volunteer"} />GEA-approved volunteer / outreach event</label>
     <label className={styles.checkbox}><input name="cancelled" type="checkbox" defaultChecked={event?.cancelled} />Cancelled (retain historical records)</label>
-    <label>Event notes<textarea name="notes" maxLength={10000} rows={3} defaultValue={event?.notes} /></label>
   </>;
 }

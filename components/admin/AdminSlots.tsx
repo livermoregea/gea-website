@@ -1,7 +1,7 @@
 "use client";
 
 import controls from "@/components/workspace-controls.module.css";
-import { useEffect, useId, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { hasSupabaseConfig } from "@/lib/supabase/config";
 
@@ -18,6 +18,9 @@ export default function AdminSlots() {
   const [slotTime, setSlotTime] = useState("");
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [loadError, setLoadError] = useState("");
+  const locked = useRef(false);
   const labelId = useId();
   const slotTimeId = useId();
 
@@ -28,13 +31,14 @@ export default function AdminSlots() {
       setLoading(false);
       return;
     }
-    const supabase = createClient();
-    const { data } = await supabase
-      .from("interview_slots")
-      .select("*")
-      .order("slot_time", { ascending: true });
-    setSlots((data as Slot[]) ?? []);
-    setLoading(false);
+    setLoadError("");
+    try {
+      const { data, error } = await createClient().from("interview_slots").select("*").order("slot_time", { ascending: true });
+      if (error) throw error;
+      setSlots((data as Slot[]) ?? []);
+    } catch {
+      setLoadError("Couldn’t load interview slots. Check your connection and retry.");
+    } finally { setLoading(false); }
   }
 
   useEffect(() => {
@@ -43,32 +47,30 @@ export default function AdminSlots() {
 
   async function addSlot(e: React.FormEvent) {
     e.preventDefault();
-    if (!label.trim() || !slotTime) return;
-    if (!hasSupabaseConfig()) {
-      setLabel("");
-      setSlotTime("");
-      return;
-    }
-    const supabase = createClient();
-    const { error } = await supabase.from("interview_slots").insert({
-      label: label.trim(),
-      slot_time: new Date(slotTime).toISOString(),
-    });
-    if (error) { setMessage("Couldn’t add the interview slot. Check the details and try again."); return; }
-    setMessage("Interview slot added.");
-    setLabel("");
-    setSlotTime("");
-    load();
+    if (locked.current || !hasSupabaseConfig() || !label.trim() || !slotTime) return;
+    const date = new Date(slotTime);
+    if (!Number.isFinite(date.getTime())) { setMessage("Enter a valid interview date and time."); return; }
+    locked.current = true; setSaving(true); setMessage("");
+    try {
+      const { error } = await createClient().from("interview_slots").insert({ label: label.trim(), slot_time: date.toISOString() });
+      if (error) throw error;
+      setMessage("Interview slot added."); setLabel(""); setSlotTime("");
+      await load();
+    } catch { setMessage("Couldn’t add the interview slot. Check the details and try again."); }
+    finally { locked.current = false; setSaving(false); }
   }
 
   async function removeSlot(id: string) {
-    if (!hasSupabaseConfig()) return;
-    if (!window.confirm("Delete this interview slot? It will no longer be available for booking.")) return;
-    const supabase = createClient();
-    const { error } = await supabase.from("interview_slots").delete().eq("id", id);
-    if (error) { setMessage("Couldn’t delete the interview slot. Refresh and try again."); return; }
-    setMessage("Interview slot deleted.");
-    load();
+    if (locked.current || !hasSupabaseConfig()) return;
+    if (!window.confirm("Delete this interview slot? It will no longer be available for booking. Any existing booking will be removed.")) return;
+    locked.current = true; setSaving(true); setMessage("");
+    try {
+      const { error } = await createClient().from("interview_slots").delete().eq("id", id);
+      if (error) throw error;
+      setMessage("Interview slot deleted.");
+      await load();
+    } catch { setMessage("Couldn’t delete the interview slot. Refresh and try again."); }
+    finally { locked.current = false; setSaving(false); }
   }
 
   return (
@@ -86,6 +88,7 @@ export default function AdminSlots() {
             <label htmlFor={labelId} className="text-sm font-medium text-graphite/80">Label</label>
             <input
               id={labelId}
+              required disabled={saving} maxLength={200}
               value={label}
               onChange={(e) => setLabel(e.target.value)}
               placeholder="Tuesday Lunch — Nov 12"
@@ -93,9 +96,10 @@ export default function AdminSlots() {
             />
           </div>
           <div>
-            <label htmlFor={slotTimeId} className="text-sm font-medium text-graphite/80">Date & Time</label>
+            <label htmlFor={slotTimeId} className="text-sm font-medium text-graphite/80">Date & Time (your local time)</label>
             <input
               id={slotTimeId}
+              required disabled={saving}
               type="datetime-local"
               value={slotTime}
               onChange={(e) => setSlotTime(e.target.value)}
@@ -104,16 +108,18 @@ export default function AdminSlots() {
           </div>
           <button
             type="submit"
+            disabled={saving || !hasSupabaseConfig()}
             className={`${controls.control} rounded-[8px] bg-forest px-4 py-2.5 text-sm font-medium text-white transition hover:bg-forestdeep`}
           >
-            Add Slot
+            {saving ? "Saving…" : "Add Slot"}
           </button>
         </form>
       </section>
 
+      {loadError && <div role="alert"><p>{loadError}</p><button type="button" disabled={loading || saving} className={controls.control} onClick={() => void load()}>Retry loading slots</button></div>}
       <div className="space-y-3">
         {loading && <p className="text-sm text-graphite/80" role="status">Loading slots...</p>}
-        {!loading && slots.length === 0 && (
+        {!loading && !loadError && slots.length === 0 && (
           <p className="text-sm text-graphite/80" role="status">No interview slots added yet.</p>
         )}
         {slots.map((s) => (
@@ -130,6 +136,8 @@ export default function AdminSlots() {
                   {s.is_booked ? "Booked" : "Open"}
                 </span>
                 <button
+                  disabled={saving}
+                  aria-label={`Remove ${s.label}`}
                   onClick={() => removeSlot(s.id)}
                   className={`${controls.control} inline-flex min-h-11 items-center text-sm font-medium text-red-700 hover:underline`}
                 >

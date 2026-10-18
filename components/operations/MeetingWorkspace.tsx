@@ -52,7 +52,9 @@ export default function MeetingWorkspace({ data, eventId, save, busy, markDirty,
         markDirty('attendance');
     }
     return <>
-  <section className={s.panel}><h2>{event.title}</h2><p>{schoolDate(event.starts_at)} · {event.location || 'Location to be announced'}{event.cancelled ? ' · Cancelled' : ''}</p></section>
+  <section className={s.panel}><h2>{event.title}</h2><p>{schoolDate(event.starts_at)} · {event.location || 'Location to be announced'}{event.cancelled ? ' · Cancelled' : ''}</p>
+    <div className={s.eventDescription}><h3>Meeting description</h3>{event.notes?.trim() ? <p>{event.notes}</p> : <p className={s.muted}>{data.reviewer ? 'Add a short description using Edit schedule & description above.' : 'No meeting description has been added yet.'}</p>}</div>
+  </section>
   <div className={data.canMeetings ? s.meetingColumns : s.readingColumn}>
   <section className={s.panel}>
     <h2>Meeting documents</h2>

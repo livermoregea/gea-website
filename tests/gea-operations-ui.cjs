@@ -13,7 +13,7 @@ test('One workspace embeds officer records and has no separate Inbox or Need hel
  const data=fixture();
  const tools=React.createElement('div',null,'Embedded officer records');
  const overview=renderToStaticMarkup(React.createElement(Hub,{data,officerTools:tools,initialView:'overview'}));
- assert.ok(overview.includes('Needs your attention'));
+ assert.ok(overview.includes('GEAI'));
  assert.ok(overview.includes('My tasks'));
  assert.ok(!overview.includes('>Inbox<'));
  assert.ok(!overview.includes('>Need help<'));
@@ -21,7 +21,7 @@ test('One workspace embeds officer records and has no separate Inbox or Need hel
  const tasks=renderToStaticMarkup(React.createElement(Hub,{data,officerTools:tools,initialView:'tasks'}));
  assert.ok(tasks.includes('Embedded officer records'));
  assert.ok(tasks.includes('Blocked / need help'));
- assert.ok(!tasks.includes('Needs your attention'));
+ assert.ok(!tasks.includes('GEAI'));
 });
 
 
@@ -55,7 +55,9 @@ test('Overview shows the progress dashboard while Officers keeps the detailed to
  const props={data:fixture(true),officerOverview:React.createElement('section',null,'Score and attendance dashboard'),officerTools:React.createElement('section',null,'Detailed officer editor')};
  const overview=renderToStaticMarkup(React.createElement(Hub,{...props,initialView:'overview'}));
  assert.ok(overview.includes('Score and attendance dashboard'));
- assert.ok(overview.includes('Other next steps'));
+ assert.ok(overview.includes('GEAI'));
+ assert.ok(overview.includes('All workspace updates'));
+ assert.ok(overview.indexOf('GEAI') < overview.indexOf('Score and attendance dashboard'));
  assert.ok(!overview.includes('Detailed officer editor'));
  const details=renderToStaticMarkup(React.createElement(Hub,{...props,initialView:'tasks'}));
  assert.ok(details.includes('Detailed officer editor'));
@@ -118,4 +120,21 @@ test('Event planning exposes reviewer assignment controls and officers can manag
  assert.ok(!officer.includes('Edit details'));
  assert.ok(!officer.includes('>Assign<span'));
  assert.ok(!officer.includes('>Unassign<span'));
+});
+
+test('Meeting and event descriptions are visible beside document links without granting editing access to ordinary officers',()=>{
+ const meeting=fixture();meeting.events[0].notes='Bring poster drafts.\nWe will finalize the outreach plan.';
+ const meetingHtml=render(meeting,'meetings');
+ assert.ok(meetingHtml.includes('Meeting description'));
+ assert.ok(meetingHtml.includes('Bring poster drafts.'));
+ assert.ok(meetingHtml.indexOf('Bring poster drafts.')<meetingHtml.indexOf('Meeting documents'));
+ assert.ok(!meetingHtml.includes('name="notes"'));
+ const event=eventFixture();event.events[0].notes='Set up the demonstration tables and welcome guests.';
+ const eventHtml=render(event,'events','event');
+ assert.ok(eventHtml.includes('Event description'));
+ assert.ok(eventHtml.includes('Set up the demonstration tables'));
+ assert.ok(eventHtml.includes('Open planning sheet'));
+ assert.ok(!eventHtml.includes('name="notes"'));
+ const reviewer=eventFixture({reviewer:true});reviewer.events[0].notes='Brief instructions';
+ assert.ok(render(reviewer,'events','event').includes('name="notes"'));
 });

@@ -55,15 +55,20 @@ export default function AdminProfileChanges() {
       return;
     }
 
-    const supabase = createClient();
-    const { data } = await supabase
-      .from("profile_change_requests")
-      .select("*")
-      .eq("status", "pending")
-      .order("created_at", { ascending: true });
+    try {
+      const supabase = createClient();
+      const { data, error: dataError } = await supabase
+        .from("profile_change_requests")
+        .select("*")
+        .eq("status", "pending")
+        .order("created_at", { ascending: true });
 
-    setRequests((data as ProfileChangeRequest[]) ?? []);
-    setLoading(false);
+      if (dataError) throw new Error("Load failed");
+
+      setRequests((data as ProfileChangeRequest[]) ?? []);
+    } catch {
+      setMessage("Couldn’t load profile change requests. Check your connection and refresh to retry.");
+    } finally { setLoading(false); }
   }
 
   useEffect(() => {

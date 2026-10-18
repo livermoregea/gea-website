@@ -28,7 +28,7 @@ export default function EventPlanning({ data, eventId, save, busy, markDirty, di
             <h2>{event.title}</h2>
             <p>{schoolDate(event.starts_at)} · {event.location}{event.cancelled ? ' · Cancelled' : ''}</p>
             <p className={s.muted}>{event.public_volunteering ? "Public volunteers AND leadership" : "Leadership only"}</p>
-            <p>{event.notes}</p>
+            <div className={s.eventDescription}><h3>Event description</h3>{event.notes?.trim() ? <p>{event.notes}</p> : <p className={s.muted}>{data.reviewer ? 'Add a short description using Edit schedule & description above.' : 'No event description has been added yet.'}</p>}</div>
             <a className={s.button} href={`${data.taskHref}?view=volunteer&event=${event.id}`}>Open participation &amp; hours</a>
         </section>
         <section className={`${s.panel} ${s.readingColumn}`}>

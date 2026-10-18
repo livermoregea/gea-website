@@ -35,7 +35,7 @@ export default function VolunteerServiceRoster({ event, people, logs, signups, l
   const activePerson = people[activeIndex];
   const activeLog = activePerson ? logFor(activePerson.id) : undefined;
   const activeValues = activePerson ? drafts[activePerson.id] ?? (activeLog ? fromLog(activeLog) : { check_in: localDateInput(event.starts_at), check_out: localDateInput(event.ends_at), notes: "" }) : undefined;
-  const statusFor = (log?: VolunteerLog) => !log ? "Not recorded" : log.status === "approved" ? "Verified" : log.status === "pending" ? "Pending" : "Returned";
+  const statusFor = (log?: VolunteerLog) => !log ? "Not recorded" : log.status === "approved" ? "Verified" : log.status === "pending" ? "Pending verification" : "Needs correction";
   useEffect(() => { onDirtyChange(dirtyIds.length > 0 || saving || refreshing); return () => onDirtyChange(false); }, [dirtyIds.length, saving, refreshing, onDirtyChange]);
 
   function edit(id: string, patch: Partial<Draft>) {
@@ -88,13 +88,15 @@ export default function VolunteerServiceRoster({ event, people, logs, signups, l
       const log = logFor(person.id), draft = drafts[person.id];
       const minutes = draft ? Math.floor((Date.parse(draft.check_out) - Date.parse(draft.check_in)) / 60000) : log?.minutes;
       const signup = signups.find(row => row.event_id === event.id && row.officer_id === person.id);
-      return <li key={person.id} className={styles.serviceRow} data-pending={!!draft || undefined}>
+      const status = draft ? "draft" : log?.status || "unrecorded";
+      const statusIcon = status === "approved" ? "✓" : status === "pending" ? "◷" : status === "rejected" ? "↩" : status === "draft" ? "✎" : "—";
+      return <li key={person.id} className={styles.serviceRow} data-pending={!!draft || undefined} data-verification-status={status}>
         <label className={styles.serviceSelection}>
           <input type="checkbox" aria-label={`Include ${person.name} in verification`} checked={log?.status === "pending" && !excluded.includes(log.id)} disabled={busy || !!draft || log?.status !== "pending"} onChange={e => { if (log) setExcluded(current => e.target.checked ? current.filter(id => id !== log.id) : [...current, log.id]); }} />
         </label>
         <button type="button" className={styles.serviceRowButton} disabled={saving || refreshing || locked} aria-label={`Edit service details for ${person.name}`} aria-haspopup="dialog" onClick={() => setActiveId(person.id)}>
-          <span className={styles.serviceRowIdentity}><strong>{person.name}</strong><span>{person.position || person.email || (signup?.assigned ? "Assigned" : signup?.committed ? "Requested" : "No assignment")}</span></span>
-          <span className={styles.serviceRowStatus}><strong>{minutes !== undefined && Number.isFinite(minutes) && minutes > 0 ? durationLabel(minutes) : "—"}</strong><span>{draft ? "Unsaved" : statusFor(log)}</span></span>
+          <span className={styles.serviceRowIdentity}><span className={styles.servicePersonHeading}><strong>{person.name}</strong><span className={styles.serviceBadge} data-status={status}><span aria-hidden="true">{statusIcon}</span><span>{draft ? "Unsaved changes" : statusFor(log)}</span></span></span><span>{person.position || person.email || (signup?.assigned ? "Assigned" : signup?.committed ? "Requested" : "No assignment")}</span></span>
+          <span className={styles.serviceRowStatus}><strong>{minutes !== undefined && Number.isFinite(minutes) && minutes > 0 ? durationLabel(minutes) : "—"}</strong></span>
           <span aria-hidden="true" className={styles.serviceChevron}>›</span>
         </button>
       </li>;
@@ -102,7 +104,8 @@ export default function VolunteerServiceRoster({ event, people, logs, signups, l
     {activePerson && activeValues && <Modal title={`Service details: ${activePerson.name}`} busy={saving || refreshing} onClose={() => setActiveId(null)}>
       <h2 className={styles.modalTitle} aria-live="polite">{activePerson.name}</h2>
       <p>{activePerson.email || activePerson.position}</p>
-      <p>{event.title} · {statusFor(activeLog)}{drafts[activePerson.id] ? " · Unsaved edits" : ""}</p>
+      <p>{event.title}</p>
+      <span className={styles.serviceBadge} data-status={drafts[activePerson.id] ? "draft" : activeLog?.status || "unrecorded"}>{drafts[activePerson.id] ? "Unsaved changes" : statusFor(activeLog)}</span>
       <p className={styles.serviceEditorHint}>Edits stay in the roster until you save service logs. You can move to the next officer without losing your changes.</p>
       <div className={styles.form}>
         <fieldset disabled={busy || activeLog?.status === "approved"}>

@@ -23,6 +23,7 @@ export async function allRows<T>(query: (from: number, to: number) => PromiseLik
     }
 }
 export type OfficerOperationsSeed = {
+    clarificationTaskIds?: string[];
     tasks: OfficerTask[]; events: OfficerEvent[]; attendance: OfficerAttendance[];
     logs: VolunteerLog[]; signups?: EventSignup[]; people: TaskTeammate[];
 };
@@ -64,6 +65,14 @@ export async function loadOperations(supabase: Awaited<ReturnType<typeof createC
     ]);
     if (prefs.error)
         throw new Error(prefs.error.message);
+    let clarificationTaskIds = seed?.clarificationTaskIds ?? [];
+    if (membership.isOfficer && !seed?.clarificationTaskIds) {
+        try {
+            clarificationTaskIds = (await allRows<{ task_id: string }>((f, t) => supabase.from('gea_peet_tasks').select('task_id').eq('student_id', userId).eq('status', 'clarification').order('task_id').range(f, t))).map(row => row.task_id);
+        } catch (error) {
+            if (!['42P01', '42703', 'PGRST204', 'PGRST205'].includes((error as { code?: string }).code || '')) throw error;
+        }
+    }
     const attention: AttentionItem[] = taskAttention(tasks, reviewer, taskHref);
     const ownSubmitted = tasks.filter(t => !t.cancelled_at && t.status === 'submitted' && !reviewer);
     for (const t of ownSubmitted)
@@ -84,7 +93,7 @@ export async function loadOperations(supabase: Awaited<ReturnType<typeof createC
     for (const e of events.filter(e => !e.cancelled && e.ends_at >= new Date().toISOString() && schoolToday(new Date(e.starts_at)) <= last))
         attention.push({ key: `event:${e.id}:${e.starts_at}`, title: e.title, detail: e.location || 'Upcoming event', date: e.starts_at, href: `/operations?view=${e.kind === 'meeting' ? 'meetings' : 'events'}&event=${e.id}`, category: 'Calendar' });
     for (const log of logs.filter(l => l.status === 'pending' && reviewer))
-        attention.push({ key: `service:${log.id}`, title: events.find(e => e.id === log.event_id)?.title || 'Volunteer log', detail: 'Service hours awaiting verification', href: taskHref, category: 'Review' });
+        attention.push({ key: `service:${log.id}`, title: events.find(e => e.id === log.event_id)?.title || 'Volunteer log', detail: 'Service hours awaiting verification', href: `${taskHref}?view=volunteer&event=${encodeURIComponent(log.event_id)}`, category: 'Review' });
     for (const b of blockers.filter(b => !b.resolved_at)) {
         const t = tasks.find(t => t.id === b.task_id);
         if (t && (t.cancelled_at || t.status !== 'in_progress'))
@@ -134,6 +143,6 @@ export async function loadOperations(supabase: Awaited<ReturnType<typeof createC
             }
         }
     }
-    return { workspaceHref, userId, membership, reviewer, canMeetings, taskHref, tasks, events, attendance, logs, signups, people, notes, agenda, plans, blockers, readKeys: reads.map(r => r.notification_key), digestEnabled: Boolean(prefs.data?.enabled), digests, attention, calendar: calendar.sort((a, b) => a.start.localeCompare(b.start)) };
+    return { workspaceHref, userId, membership, reviewer, canMeetings, taskHref, tasks, events, attendance, logs, signups, people, notes, agenda, plans, blockers, clarificationTaskIds, readKeys: reads.map(r => r.notification_key), digestEnabled: Boolean(prefs.data?.enabled), digests, attention, calendar: calendar.sort((a, b) => a.start.localeCompare(b.start)) };
 }
 export type OperationsData = Awaited<ReturnType<typeof loadOperations>>;

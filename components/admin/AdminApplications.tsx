@@ -127,20 +127,25 @@ export default function AdminApplications() {
       setLoading(false);
       return;
     }
-    const supabase = createClient();
-    const [{ data: appData }, { data: slotData }] = await Promise.all([
-      supabase
-      .from("applications")
-      .select("*")
-      .order("created_at", { ascending: false }),
-      supabase
-        .from("interview_slots")
-        .select("id, label, slot_time, application_id, is_booked")
-        .order("slot_time", { ascending: true }),
-    ]);
-    setApps((appData as Application[]) ?? []);
-    setSlots((slotData as InterviewSlot[]) ?? []);
-    setLoading(false);
+    try {
+      const supabase = createClient();
+      const [{ data: appData, error: appDataError }, { data: slotData, error: slotDataError }] = await Promise.all([
+        supabase
+        .from("applications")
+        .select("*")
+        .order("created_at", { ascending: false }),
+        supabase
+          .from("interview_slots")
+          .select("id, label, slot_time, application_id, is_booked")
+          .order("slot_time", { ascending: true }),
+      ]);
+      if (appDataError || slotDataError) throw new Error("Load failed");
+
+      setApps((appData as Application[]) ?? []);
+      setSlots((slotData as InterviewSlot[]) ?? []);
+    } catch {
+      setMessage("Couldn’t load applications and interview slots. Check your connection and refresh to retry.");
+    } finally { setLoading(false); }
   }
 
   useEffect(() => {

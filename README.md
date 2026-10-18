@@ -6,6 +6,10 @@ moderated student Q&A.
 
 ## What's included
 
+GEAI provides cached AI dashboard descriptions with no Groq calls on page visits. `npm run dev` also runs the bounded local background worker; production uses the configured cron job.
+For existing installs, run `supabase/gea-geai.sql` and configure the scheduled job:
+see [GEAI setup and request limits](docs/geai.md).
+
 | Page | Path | Notes |
 |---|---|---|
 | Home | `/` | Hero + academy overview, original copy |

@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import AdminTabs from "@/components/admin/AdminTabs";
 import type { AdminSectionKey } from "@/components/admin/AdminTabs";
 import Link from "next/link";
+import WorkspaceGreeting from "@/components/WorkspaceGreeting";
 
 type StaffPortalProps = {
   title: string;
@@ -32,8 +33,8 @@ export default async function StaffPortal({
     <div className={styles.workspace}>
       <header className={styles.header}>
         <div>
-          <h1 className={styles.title}>{workspace === "officers" ? "Officer workspace" : "Academy administration"}</h1>
-          <p className={styles.identity}>{displayName} · {accessLabel}</p>
+          <WorkspaceGreeting name={displayName} />
+          <p className={styles.identity}>{workspace === "officers" ? "Officer workspace" : "Academy administration"} · {accessLabel}</p>
         </div>
         <div className={styles.utilities}>
           <nav aria-label="Workspace areas" className={styles.areas}>

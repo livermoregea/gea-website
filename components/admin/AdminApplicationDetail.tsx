@@ -62,17 +62,22 @@ export default function AdminApplicationDetail({ applicationId }: { applicationI
       return;
     }
 
-    const supabase = createClient();
-    const [{ data: appData }, { data: allApps }, { data: slotData }] = await Promise.all([
-      supabase.from("applications").select("*").eq("id", applicationId).maybeSingle(),
-      supabase.from("applications").select("id, name").order("created_at", { ascending: false }),
-      supabase.from("interview_slots").select("id, label, slot_time, application_id").eq("application_id", applicationId),
-    ]);
+    try {
+      const supabase = createClient();
+      const [{ data: appData, error: appDataError }, { data: allApps, error: allAppsError }, { data: slotData, error: slotDataError }] = await Promise.all([
+        supabase.from("applications").select("*").eq("id", applicationId).maybeSingle(),
+        supabase.from("applications").select("id, name").order("created_at", { ascending: false }),
+        supabase.from("interview_slots").select("id, label, slot_time, application_id").eq("application_id", applicationId),
+      ]);
 
-    setApplication((appData as Application | null) ?? null);
-    setApplicationSummaries((allApps as ApplicationSummary[]) ?? []);
-    setSlots((slotData as Slot[]) ?? []);
-    setLoading(false);
+      if (appDataError || allAppsError || slotDataError) throw new Error("Load failed");
+
+      setApplication((appData as Application | null) ?? null);
+      setApplicationSummaries((allApps as ApplicationSummary[]) ?? []);
+      setSlots((slotData as Slot[]) ?? []);
+    } catch {
+      setMessage("Couldn’t load the application. Check your connection and refresh to retry.");
+    } finally { setLoading(false); }
   }
 
   useEffect(() => {
@@ -133,7 +138,7 @@ export default function AdminApplicationDetail({ applicationId }: { applicationI
   if (!application) {
     return (
       <div className="space-y-4">
-        <p className="text-sm text-graphite/80">This application could not be found.</p>
+        <p role={message ? "alert" : "status"} className="text-sm text-graphite/80">{message || "This application could not be found."}</p>
         <Link href="/admin-portal-x7k9/applications" className="text-sm font-medium text-forest underline">
           Back to applications
         </Link>
@@ -228,7 +233,7 @@ export default function AdminApplicationDetail({ applicationId }: { applicationI
             >
               {draftLoading ? "Generating..." : "Generate Interview Link"}
             </button>
-            {message ? <p className="mt-3 text-xs text-graphite/80">{message}</p> : null}
+            {message ? <p role="status" className="mt-3 text-sm text-graphite/80">{message}</p> : null}
           </section>
           {draft ? (
             <section className="rounded-[8px] border border-forest/10 bg-paper p-5">

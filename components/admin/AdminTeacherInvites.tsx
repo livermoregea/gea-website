@@ -1,7 +1,7 @@
 "use client";
 
 import controls from "@/components/workspace-controls.module.css";
-import { useEffect, useId, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { hasSupabaseConfig } from "@/lib/supabase/config";
 
@@ -23,6 +23,7 @@ export default function AdminTeacherInvites() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+  const locked = useRef(false);
   const nameId = useId();
   const emailId = useId();
   const expiryId = useId();
@@ -34,13 +35,18 @@ export default function AdminTeacherInvites() {
       setLoading(false);
       return;
     }
-    const supabase = createClient();
-    const { data } = await supabase
-      .from("teacher_invites")
-      .select("*")
-      .order("created_at", { ascending: false });
-    setInvites((data as TeacherInvite[]) ?? []);
-    setLoading(false);
+    try {
+      const supabase = createClient();
+      const { data, error: dataError } = await supabase
+        .from("teacher_invites")
+        .select("*")
+        .order("created_at", { ascending: false });
+      if (dataError) throw new Error("Load failed");
+
+      setInvites((data as TeacherInvite[]) ?? []);
+    } catch {
+      setMessage("Couldn’t load teacher invites. Check your connection and refresh to retry.");
+    } finally { setLoading(false); }
   }
 
   useEffect(() => {
@@ -49,50 +55,55 @@ export default function AdminTeacherInvites() {
 
   async function createInvite(e: React.FormEvent) {
     e.preventDefault();
+    if (locked.current) return;
     setMessage(null);
 
     const name = teacherName.trim();
     const email = teacherEmail.trim().toLowerCase();
-    const days = Number.parseInt(expiryDays, 10);
+    const days = Number(expiryDays);
 
-    if (!name || !email || !Number.isFinite(days) || days <= 0) {
-      setMessage("Please enter a teacher name, email, and valid expiry days.");
+    if (!name || !email || !Number.isInteger(days) || days <= 0 || days > 365) {
+      setMessage("Please enter a teacher name, email, and expiry between 1 and 365 days.");
       return;
     }
 
     if (!hasSupabaseConfig()) return;
 
+    locked.current = true;
     setSaving(true);
-    const supabase = createClient();
-    const invite_token = crypto.randomUUID();
-    const expires_at = new Date(Date.now() + days * 24 * 60 * 60 * 1000).toISOString();
-    const { data, error } = await supabase
-      .from("teacher_invites")
-      .upsert(
-        {
-          invite_token,
-          teacher_name: name,
-          teacher_email: email,
-          expires_at,
-          used_at: null,
-          used_auth_user_id: null,
-        },
-        { onConflict: "teacher_email" }
-      )
-      .select("*")
-      .maybeSingle();
+    try {
+      const supabase = createClient();
+      const invite_token = crypto.randomUUID();
+      const expires_at = new Date(Date.now() + days * 24 * 60 * 60 * 1000).toISOString();
+      const { data, error } = await supabase
+        .from("teacher_invites")
+        .upsert(
+          {
+            invite_token,
+            teacher_name: name,
+            teacher_email: email,
+            expires_at,
+            used_at: null,
+            used_auth_user_id: null,
+          },
+          { onConflict: "teacher_email" }
+        )
+        .select("*")
+        .maybeSingle();
 
-    setSaving(false);
-    if (error) {
-      setMessage(error.message);
-      return;
-    }
+      setSaving(false);
+      if (error) {
+        setMessage(error.message);
+        return;
+      }
 
-    setTeacherName("");
-    setTeacherEmail("");
-    setExpiryDays("7");
-    setMessage(`Invite link ready: ${window.location.origin}/teacher/signup/${data?.invite_token ?? invite_token}`);
-    load();
+      setTeacherName("");
+      setTeacherEmail("");
+      setExpiryDays("7");
+      setMessage(`Invite link ready: ${window.location.origin}/teacher/signup/${data?.invite_token ?? invite_token}`);
+      await load();
+    } catch { setMessage("Couldn’t create the invite. Check your connection and try again."); }
+    finally { locked.current = false; setSaving(false); }
   }
 
   return (
@@ -111,6 +122,7 @@ export default function AdminTeacherInvites() {
             </label>
             <input
               id={nameId}
+              required disabled={saving}
               value={teacherName}
               onChange={(e) => setTeacherName(e.target.value)}
               className="mt-2 w-full rounded-[8px] border border-forest/65 bg-paper px-3 py-2 text-base"
@@ -123,6 +135,7 @@ export default function AdminTeacherInvites() {
             </label>
             <input
               id={emailId}
+              required disabled={saving}
               type="email"
               value={teacherEmail}
               onChange={(e) => setTeacherEmail(e.target.value)}
@@ -136,6 +149,7 @@ export default function AdminTeacherInvites() {
             </label>
             <input
               id={expiryId}
+              type="number" min={1} max={365} step={1} required disabled={saving}
               inputMode="numeric"
               value={expiryDays}
               onChange={(e) => setExpiryDays(e.target.value)}

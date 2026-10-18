@@ -10,7 +10,7 @@ function load(file, dependencies = {}, env = {}) {
   const exports = {};
   vm.runInNewContext(ts.transpileModule(fs.readFileSync(file, 'utf8'), {
     compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020, jsx: ts.JsxEmit.ReactJSX, esModuleInterop: true },
-  }).outputText, { exports, require: name => dependencies[name] ?? require(name), process: { env }, Error, URL, AbortSignal, Request, Response });
+  }).outputText, { exports, require: name => dependencies[name] ?? require(name), process: { env }, Error, URL, AbortSignal, Request, Response, TextDecoder });
   return exports;
 }
 const schemas = load('lib/peet-ai.ts');
@@ -181,4 +181,21 @@ test('The integrated submission form keeps the supporting link beside work descr
   const html=renderToStaticMarkup(React.createElement(ui.PeetSubmissionForm,{sourceTask:source,onSaved(){}}));
   assert.match(html,/name="description"/);assert.match(html,/type="url" name="url"/);assert.match(html,/https:\/\/example.com\/slides/);
   assert.doesNotMatch(html,/href="\/peet/);
+});
+
+test('PEET bounds chunked bodies by bytes and cancels before reading the full upload', async () => {
+  let pulls = 0, cancelled = false;
+  const stream = new ReadableStream({
+    pull(controller) { pulls++; controller.enqueue(new TextEncoder().encode('😀'.repeat(4000))); },
+    cancel() { cancelled = true; },
+  }, { highWaterMark: 0 });
+  const request = new Request('https://gea.test/api/peet', { method: 'POST', body: stream, duplex: 'half' });
+  await assert.rejects(server.peetBody(request, schemas.submissionSchema), error => error.status === 413);
+  assert.equal(pulls, 2);
+  assert.equal(cancelled, true);
+});
+test('Reviewer UI discloses remote processing and AI limitations before generating questions', () => {
+  const html = renderToStaticMarkup(React.createElement(ui.PeetReviewForm, { task, actorId: 'reviewer', onSaved() {} }));
+  assert.match(html, /sent to Groq/);
+  assert.match(html, /AI can make mistakes and cannot open supporting links/);
 });

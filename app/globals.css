@@ -160,15 +160,41 @@ dialog { max-height: calc(100dvh - 2rem); overflow-y: auto; }
   box-shadow: inset 0 1px 0 rgba(228, 199, 102, .15);
 }
 .gea-one-mark { width: 2rem; height: 2rem; color: #e4c766; flex-shrink: 0; }
-.gea-one-wordmark { display: inline-flex; align-items: baseline; gap: .3em; line-height: 1.2; font-family: var(--font-display); font-size: 1rem; font-weight: 700; letter-spacing: -.02em; }
+.gea-one-wordmark { display: inline-flex; align-items: baseline; gap: .3em; line-height: 1.2; font-family: var(--font-display); font-size: 1.15rem; font-weight: 700; letter-spacing: -.02em; }
 .gea-one-signature { color: #e4c766; font-style: italic; font-weight: 500; }
 .gea-one-badge--compact { padding: .35rem .9rem .35rem .4rem; gap: .55rem; }
 .gea-one-badge--compact .gea-one-mark { width: 1.5rem; height: 1.5rem; }
-.gea-one-badge--compact .gea-one-wordmark { font-size: .85rem; }
+.gea-one-badge--compact .gea-one-wordmark { font-size: 1rem; }
 .gea-one-badge--hero { padding: .65rem 1.3rem .65rem .7rem; gap: .85rem; }
 .gea-one-badge--hero .gea-one-mark { width: 2.75rem; height: 2.75rem; }
-.gea-one-badge--hero .gea-one-wordmark { font-size: 1.6rem; }
+.gea-one-badge--hero .gea-one-wordmark { font-size: 1.85rem; }
 .gea-one-badge--inverse { background: rgba(246, 243, 236, .04); border-color: rgba(228, 199, 102, .4); }
+
+/* A single soft reflection on interaction. */
+.gea-one-badge { position: relative; overflow: hidden; isolation: isolate; }
+.gea-one-badge::after {
+  content: "";
+  position: absolute;
+  pointer-events: none;
+  inset: -50% auto -50% -50%;
+  width: 45%;
+  background: linear-gradient(90deg, transparent, rgba(255, 248, 216, .06) 20%, rgba(255, 248, 216, .28) 50%, rgba(255, 248, 216, .06) 80%, transparent);
+  transform: translateX(0) skewX(-20deg);
+  opacity: 0;
+}
+@keyframes gea-one-shine {
+  0% { transform: translateX(0) skewX(-20deg); opacity: 0; }
+  15%,75% { opacity: 1; }
+  100% { transform: translateX(450%) skewX(-20deg); opacity: 0; }
+}
+@media (hover: hover) and (pointer: fine) {
+  :is(a,button):hover .gea-one-badge::after, .gea-one-badge:hover::after { animation: gea-one-shine 1.25s ease-in-out; }
+}
+:is(a,button):focus-visible .gea-one-badge::after,
+.gea-one-badge--tapped::after { animation: gea-one-shine 1.25s ease-in-out; }
+@media (prefers-reduced-motion: reduce) {
+  .gea-one-badge::after { display: none; }
+}
 
 
 /* Base alignment allows component utilities to keep cards and menus left aligned. */

@@ -1,5 +1,6 @@
 import { accountMemberships } from "@/lib/account-landing";
 import GEAOneBadge from "@/components/GEAOneBadge";
+import WorkspaceGreeting from "@/components/WorkspaceGreeting";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import QAHub from "@/components/QAHub";
@@ -47,10 +48,11 @@ export default async function DashboardPage() {
 
   return (
     <div id="qa" className="mx-auto max-w-6xl scroll-mt-28 px-4 py-10 sm:px-6 md:py-14">
+      <div className="mb-8"><WorkspaceGreeting name={membership.displayName} /></div>
       <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
         <div className="flex flex-wrap items-center gap-4">
           <GEAOneBadge />
-          <h1 className="font-display text-2xl text-forest">Q&amp;A / Forum</h1>
+          <h2 className="font-display text-2xl text-forest">Q&amp;A / Forum</h2>
         </div>
         <nav aria-label="GEA One account" className="flex flex-wrap items-center gap-5">
           {membership.hasWorkspace && <Link href="/account" className="inline-flex min-h-11 items-center text-sm text-forest underline underline-offset-4">GEA One home</Link>}

@@ -3,16 +3,17 @@ import type { OperationsData } from '@/lib/gea-operations-data';
 import { downloadFile } from '@/lib/gea-operations';
 import { schoolDate } from '@/lib/officer-tracking';
 import type { SaveAction } from './MeetingWorkspace';
+import GeaiBriefing from './GeaiBriefing';
 import s from './operations.module.css';
 
-export default function WorkspaceUpdates({ data, save, busy, compact = false }: { data: OperationsData; save: SaveAction; busy: boolean; compact?: boolean }) {
+export default function WorkspaceUpdates({ data, save, busy }: { data: OperationsData; save: SaveAction; busy: boolean; compact?: boolean }) {
   const unseen = data.attention.filter(item => !data.readKeys.includes(item.key));
-  const items = compact ? data.attention.filter(item => !['Tasks', 'Calendar'].includes(item.category) && !item.key.startsWith('task-review:')) : data.attention;
+  const items = data.attention;
   const visible = items.slice(0, 5);
   return <div className={s.overviewColumns}>
-    <section className={s.panel}>
-      <h2>{compact ? 'Other next steps' : 'Needs your attention'}</h2>
-      {!compact && <p className={s.muted}>Open an item to act on it. Pending work stays here until it is resolved.</p>}
+    <div><GeaiBriefing data={data} />
+    <details className={s.quietDisclosure}>
+      <summary>All workspace updates · {items.length}</summary>
       {items.length ? visible.map(item => <a className={s.updateRow} href={item.href} key={item.key}>
         <div>
           <span className={s.badge}>{item.category}</span>{!data.readKeys.includes(item.key) && <span className={s.newLabel}>New</span>}
@@ -22,7 +23,7 @@ export default function WorkspaceUpdates({ data, save, busy, compact = false }: 
         </div>
       </a>) : <p>No other actions needed.</p>}
       {items.length > visible.length && <details className={s.quietDisclosure}><summary>{items.length - visible.length} more updates</summary>{items.slice(visible.length).map(item => <a className={s.updateRow} href={item.href} key={item.key}><span className={s.badge}>{item.category}</span><h3>{item.title}</h3><p>{item.detail}</p></a>)}</details>}
-    </section>
+    </details></div>
     <details className={`${s.panel} ${s.summaryColumn} ${s.noPrint}`}>
       <summary>Updates &amp; weekly summaries{unseen.length ? ` · ${unseen.length} new` : ''}</summary>
       <p className={s.muted}>These are reminders about the work above. Marking an update as seen does not complete the work.</p>

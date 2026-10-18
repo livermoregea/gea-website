@@ -3,6 +3,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import styles from "./home.module.css";
 import GEAOneBadge from "@/components/GEAOneBadge";
+import WorkspaceGreeting from "@/components/WorkspaceGreeting";
 import { accountMemberships } from "@/lib/account-landing";
 import { createClient } from "@/lib/supabase/server";
 import { hasSupabaseConfig } from "@/lib/supabase/config";
@@ -28,9 +29,9 @@ export default async function AccountHomePage() {
   return <div className={styles.page}>
     <header className={styles.welcome}>
       <div className={styles.welcomeContent}>
-        <GEAOneBadge inverse />
-        <h1>Welcome to GEA One</h1>
-        {membership.displayName && <p>Good to see you, {membership.displayName}.</p>}
+        <GEAOneBadge />
+        <div className={styles.greeting}><WorkspaceGreeting name={membership.displayName} /></div>
+        <p>Your GEA One workspaces, all in one place.</p>
       </div>
       <span className={styles.access}>{membership.isAdmin ? "Admin" : membership.isTeacher ? "Teacher" : membership.isOfficer ? "Officer" : "Member"}</span>
     </header>

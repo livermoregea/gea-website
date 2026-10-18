@@ -14,7 +14,7 @@ export default function MeetingSchedule({ event, kind, save, busy, dirtyScope, m
   const [editing, setEditing] = useState(false);
   const [error, setError] = useState('');
   return <details className={s.schedule} open={editing} onToggle={e => setEditing(e.currentTarget.open)}>
-    <summary>{event ? 'Edit schedule' : kind === 'meeting' ? 'Schedule a meeting' : 'Schedule an event'}</summary>
+    <summary>{event ? 'Edit schedule & description' : kind === 'meeting' ? 'Schedule a meeting' : 'Schedule an event'}</summary>
     <form className={s.scheduleForm} key={event?.id ?? kind} onChange={() => { markDirty(scope); setError(''); }} onSubmit={async e => {
       e.preventDefault();
       const form = e.currentTarget, f = new FormData(form);
@@ -28,12 +28,14 @@ export default function MeetingSchedule({ event, kind, save, busy, dirtyScope, m
         p_public_description: f.has('public_description') ? f.get('public_description') : null,
         p_public_signup_open: f.has('public_description') ? f.get('public_signup_open') === 'on' : null,
         p_public_capacity: f.get('public_capacity') ? Number(f.get('public_capacity')) : null,
-        p_notes: event?.notes ?? '', p_event_id: event?.id ?? null, p_cancelled: f.get('cancelled') === 'on',
+        p_notes: f.has('notes') ? f.get('notes') : event?.notes ?? '', p_event_id: event?.id ?? null, p_cancelled: f.get('cancelled') === 'on',
       }, event ? 'Schedule updated.' : kind === 'meeting' ? 'Meeting scheduled. Choose it above to add documents or take attendance.' : 'Event scheduled. Choose it above to plan it.');
       if (saved) { setEditing(false); if (!event) form.reset(); }
     }}>
       <fieldset disabled={busy || Boolean(dirtyScope && dirtyScope !== scope)}>
         <label>{kind === 'meeting' ? 'Meeting title' : 'Event title'}<input name="title" defaultValue={event?.title} required maxLength={200} /></label>
+        <label>{kind === 'meeting' ? 'Meeting description' : 'Event description'}<textarea name="notes" rows={3} maxLength={10000} defaultValue={event?.notes ?? ''} placeholder={kind === 'meeting' ? 'What will this meeting cover? What should officers prepare?' : 'What is the event for, and what will officers be doing?'} /></label>
+        <p className={s.muted}>Visible to officers. GEAI uses this description for its short summaries; keep the full agenda or plan in Google Docs.</p>
         <div className={s.grid}>
           {kind !== 'meeting' && <label>Event type<select name="kind" defaultValue={event?.kind ?? 'volunteer'}><option value="volunteer">Volunteer</option><option value="outreach">Outreach</option></select></label>}
           <label>Academic year<input name="year" defaultValue={event?.academic_year ?? CONTRACT_YEAR} required pattern="[0-9]{4}-[0-9]{4}" /></label>

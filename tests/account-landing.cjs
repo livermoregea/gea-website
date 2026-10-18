@@ -43,6 +43,7 @@ function accountHome(supabase){return load('app/account/page.tsx',{
  'next/link':{default:({children,...props})=>React.createElement('a',props,children)},
  'next/navigation':{redirect:path=>{throw new Error('redirect:'+path);}},
  '@/components/GEAOneBadge':{default:()=>React.createElement('span',null,'GEA One')},
+ '@/components/WorkspaceGreeting':{default:({name})=>React.createElement('h1',null,`Good morning, ${name}.`)},
  '@/lib/account-landing':{accountMemberships},
  '@/lib/supabase/server':{createClient:async()=>supabase},
  '@/lib/supabase/config':{hasSupabaseConfig:()=>true},
@@ -54,7 +55,7 @@ for(const [name,roles,expected,hidden] of [
  ['disabled officer',{officer_profiles:{id:'membership',access_enabled:false}},['/dashboard#qa','/profile'],['/officerboard','/admin-portal-x7k9','/teacher']],
 ])test('GEA One home shows only authorized workspace shortcuts: '+name,async()=>{
  const html=renderToStaticMarkup(await accountHome(client(roles)));
- assert.match(html,/Welcome to GEA One/);
+ assert.match(html,/Good morning/);
  for(const href of expected)assert.ok(html.includes(`href="${href}"`),href);
  for(const href of hidden)assert.ok(!html.includes(`href="${href}"`),href);
 });

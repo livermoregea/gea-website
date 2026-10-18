@@ -45,15 +45,32 @@ export async function peetBody<T>(request: Request, schema: z.ZodType<T>): Promi
   const origin = request.headers.get("origin");
   if (origin && origin !== new URL(request.url).origin) throw new PeetHttpError(403, "Submit changes from GEA One.");
   if (Number(request.headers.get("content-length") || 0) > 24000) throw new PeetHttpError(413, "Submission is too large.");
-  const raw = await request.text();
-  if (raw.length > 24000) throw new PeetHttpError(413, "Submission is too large.");
+  // Bound bytes while reading, including chunked bodies and multibyte text.
+  const reader = request.body?.getReader();
+  const decoder = new TextDecoder();
+  let raw = "", bytes = 0;
+  if (reader) {
+    try {
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        bytes += value.byteLength;
+        if (bytes > 24000) {
+          void reader.cancel().catch(() => {});
+          throw new PeetHttpError(413, "Submission is too large.");
+        }
+        raw += decoder.decode(value, { stream: true });
+      }
+      raw += decoder.decode();
+    } finally { reader.releaseLock(); }
+  }
   try { return schema.parse(JSON.parse(raw)); }
   catch { throw new PeetHttpError(400, "Check the required fields and allowed lengths, then try again."); }
 }
 export function peetFailure(error: unknown) {
-  if (error instanceof PeetHttpError) return NextResponse.json({ error: error.message }, { status: error.status });
+  if (error instanceof PeetHttpError) return NextResponse.json({ error: error.message }, { status: error.status, headers: { "Cache-Control": "no-store" } });
   // Never return prompts, student data, keys, or provider response bodies.
-  return NextResponse.json({ error: "The AI assessment could not finish. Please try again; no evaluation was approved." }, { status: 502 });
+  return NextResponse.json({ error: "The AI assessment could not finish. Please try again; no evaluation was approved." }, { status: 502, headers: { "Cache-Control": "no-store" } });
 }
 
 export async function loadPeetReview(taskId: string, version: number) {

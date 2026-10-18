@@ -67,6 +67,7 @@ export function PeetLegacyClarification({ officerTask, onSaved, onBusyChange }: 
   return <section><h2>{officerTask.title}</h2><p className={styles.copy}>{officerTask.description}</p><p className={styles.copy}>{officerTask.submission_description}</p>
     {productLink(officerTask.final_product_url) && <a className="inline-flex min-h-11 items-center underline" href={productLink(officerTask.final_product_url)!} target="_blank" rel="noopener noreferrer">View supporting deliverable ↗</a>}
     <p className={styles.hint}>This task was submitted before clarification began. Prepare a few questions for the submitter; their answers will appear here before your reviewer questions and AI scoring.</p>
+    <p className={styles.hint}>Task details will be sent to Groq, our AI provider, to prepare clarification questions. Avoid sensitive personal information.</p>
     <form onSubmit={start} className={styles.form}><fieldset disabled={busy}><label>Task category<select name="category">{peetCategories.map(category => <option key={category}>{category}</option>)}</select></label><button className={styles.primary} type="submit">{busy ? "Preparing questions…" : "Ask submitter for clarification"}</button></fieldset></form>
     {error && <p role="alert" className={styles.error}>{error}</p>}
   </section>;
@@ -92,7 +93,7 @@ export function PeetSubmissionForm({ sourceTask, onSaved, onBusyChange }: { sour
       <label>Completed work and deliverables<textarea name="description" required maxLength={5000} rows={4} defaultValue={sourceTask.submission_description} placeholder="What did you deliver? How did you use your time and resources? When was the work finished?" /></label>
       <label>Supporting link (optional)<input type="url" name="url" maxLength={2048} readOnly={sourceTask.status === "submitted"} defaultValue={sourceTask.final_product_url || ""} placeholder="https://…" /></label>
       <label>Category<select name="category" required>{peetCategories.map(category => <option key={category}>{category}</option>)}</select></label>
-      <p className={styles.hint}>Work details and clarification answers are sent to our AI provider for this review. Avoid sensitive personal information.</p>
+      <p className={styles.hint}>Task details and clarification answers are sent to Groq, our AI provider, for this review. Avoid sensitive personal information.</p>
       <button type="submit" className={styles.primary}>{busy ? "Preparing your questions…" : "Get clarification questions"}</button>
     </fieldset>{error && <p role="alert" className={styles.error}>{error}</p>}</form>
   </section>;
@@ -105,7 +106,7 @@ export function PeetTaskCard({ task, actorId, own, canReview, onSaved, onBusyCha
     <div className={styles.assessment}><strong>Original task goals</strong><p className={styles.copy}>{task.source_context.description || "No written goals recorded."}</p><p>Due: {task.source_context.due_date || "No deadline recorded"} · Submitted: {task.source_context.submitted_at ? new Intl.DateTimeFormat("en-US", { dateStyle: "medium", timeZone: "America/Los_Angeles" }).format(new Date(task.source_context.submitted_at)) : "Not yet submitted"}</p></div>
     <h3 className="mt-4">Submitter’s deliverables</h3><p className={styles.copy}>{task.description}</p>
     {url && <a className="inline-flex min-h-11 items-center underline" href={url} target="_blank" rel="noopener noreferrer">View supporting deliverable ↗</a>}
-    <div className={styles.assessment}><strong>Initial clarification</strong><p>{task.assessment.initialAssessmentSummary}</p></div>
+    <div className={styles.assessment}><strong>AI-generated clarification</strong><p>{task.assessment.initialAssessmentSummary}</p></div>
     {task.status === "clarification" && own ? <PeetClarificationForm task={task} onSaved={onSaved} onBusyChange={onBusyChange} /> : <QuestionAnswers title="Submitter questions and answers" questions={task.assessment.studentQuestions} answers={task.answers} />}
     {task.status === "clarification" && !own && <p className={styles.hint}>{task.student_name} needs to answer the clarification questions. They can reopen this task and choose “Submission & clarification.”</p>}
     {task.status === "pending" && canReview && !own ? <PeetReviewForm task={task} actorId={actorId} onSaved={onSaved} onBusyChange={onBusyChange} /> : <>
@@ -168,6 +169,7 @@ export function PeetReviewForm({ task, actorId, onSaved, onBusyChange }: { task:
   }
   return <section className={styles.review} aria-label="Reviewer clarification and scoring">
     <p className={styles.eyebrow}>2 · Reviewer clarification</p>
+    <p className={styles.hint}>Task details, submitter answers, and your notes and answers are sent to Groq for AI-assisted review. Avoid sensitive personal information. Verify recommendations against the actual work; AI can make mistakes and cannot open supporting links.</p>
     <form onSubmit={event => { event.preventDefault(); void run("clarify-review", { taskId: task.id, version: task.version, reviewerNotes: notes }); }} className={styles.form}><fieldset disabled={!!busy}>
       <label>Reviewer Notes/Observation <span className={styles.hint}>(optional; visible to the submitter)</span><textarea value={notes} onChange={event => setNotes(event.target.value)} maxLength={3000} rows={3} placeholder="What were the goals, and how did the deliverables compare with your expectations?" /></label>
       <button type="submit" className={styles.secondary}>{busy === "clarify-review" ? "Preparing reviewer questions…" : questions.length ? "Refresh reviewer questions" : "Get reviewer questions"}</button>

@@ -2,6 +2,7 @@
 -- Run reset-test-tasks.sql FIRST, then run this ENTIRE file in the Supabase
 -- SQL editor as postgres. Removes the Auth login, profiles, access grants,
 -- and personal attendance/service/accountability records for this test user.
+-- Also removes account-management audit entries targeting or made by this user.
 -- Shared events, meeting content, and other users' records are preserved.
 -- If shared records still require this account, everything rolls back and
 -- the error identifies the dependency that needs reassignment first.
@@ -62,6 +63,11 @@ begin
   -- Personal-record deletion triggers write audit entries; clear them afterward.
   if to_regclass('public.officer_tracking_audit') is not null then
     delete from public.officer_tracking_audit where officer_id = v_id or actor_id = v_id;
+  end if;
+  -- These references are NOT NULL and do not cascade on Auth deletion.
+  -- Remove test-account audit entries without affecting unrelated entries.
+  if to_regclass('public.account_management_audit') is not null then
+    delete from public.account_management_audit where target_id = v_id or actor_id = v_id;
   end if;
 
   -- Clear optional attribution to this user on retained shared records.

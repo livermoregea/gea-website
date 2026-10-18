@@ -53,7 +53,7 @@ export default async function OfficerWorkspace({ embedded = false, search = {} }
   const clarificationTaskIds = (clarification.data ?? []).map(item => item.task_id);
   const board = <OfficerBoard clarificationTaskIds={clarificationTaskIds} unified teammates={teammates.data ?? []} embedded={embedded} cancellationRequests={cancellationRequests.data ?? []} profile={{...profile,...profiles.data?.find(person => person.id === profile.id)}} profiles={profiles.data ?? []} tasks={tasks.data ?? []} evaluations={evaluations.data ?? []} isSuperAdmin={Boolean(superAdmin)} tracking={tracking} />;
   try {
-    let operations = await loadOperations(supabase, user.id, { tasks: tasks.data ?? [], events: events.data ?? [], attendance: attendance.data ?? [], logs: volunteerLogs.data ?? [], signups: signups.data ?? [], people: teammates.data ?? [] });
+    let operations = await loadOperations(supabase, user.id, { tasks: tasks.data ?? [], events: events.data ?? [], attendance: attendance.data ?? [], logs: volunteerLogs.data ?? [], signups: signups.data ?? [], people: teammates.data ?? [], clarificationTaskIds });
     if (operations.digestEnabled) {
       const { error: digestError } = await supabase.rpc("save_gea_digest", { p_items: operations.attention });
       if (!digestError) {

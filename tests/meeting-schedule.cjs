@@ -28,3 +28,15 @@ test('Unchecked volunteer audience saves leadership-only and meetings do not off
  assert.equal(h.saved[0][1].p_public_volunteering,false);
  const meeting=harness();assert.equal(meeting.elements(meeting.render()).filter(n=>n.type==='audience-fields').length,0);
 });
+
+test('Meeting and event descriptions are editable, saved through the existing notes field, and can be cleared',async()=>{
+ for(const kind of ['meeting','volunteer']) {
+  const event={id:'event',title:'Existing',academic_year:'2026-2027',notes:'Previous description'};
+  const h=harness(event,kind);
+  const textarea=h.elements(h.render()).find(node=>node.type==='textarea'&&node.props.name==='notes');
+  assert.equal(textarea.props.defaultValue,'Previous description');assert.equal(textarea.props.maxLength,10000);
+  const values={title:'Updated',kind,year:'2026-2027',starts_at:'2026-10-16T15:00',ends_at:'2026-10-16T16:00',notes:'Bring outreach display materials. Help visitors with the hands-on demo.'};
+  await h.submit(values);assert.equal(h.saved[0][1].p_notes,values.notes);
+  await h.submit({...values,notes:''});assert.equal(h.saved[1][1].p_notes,'');
+ }
+});

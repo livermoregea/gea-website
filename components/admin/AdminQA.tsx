@@ -40,14 +40,19 @@ export default function AdminQA() {
       setLoading(false);
       return;
     }
-    const supabase = createClient();
-    const [{ data: q }, { data: a }] = await Promise.all([
-      supabase.from("qa_questions").select("*").eq("status", "pending").order("created_at", { ascending: true }),
-      supabase.from("qa_answers").select("*").eq("status", "pending").order("created_at", { ascending: true }),
-    ]);
-    setQuestions((q as Question[]) ?? []);
-    setAnswers((a as Answer[]) ?? []);
-    setLoading(false);
+    try {
+      const supabase = createClient();
+      const [{ data: q, error: qError }, { data: a, error: aError }] = await Promise.all([
+        supabase.from("qa_questions").select("*").eq("status", "pending").order("created_at", { ascending: true }),
+        supabase.from("qa_answers").select("*").eq("status", "pending").order("created_at", { ascending: true }),
+      ]);
+      if (qError || aError) throw new Error("Load failed");
+
+      setQuestions((q as Question[]) ?? []);
+      setAnswers((a as Answer[]) ?? []);
+    } catch {
+      setMessage("Couldn’t load pending forum posts. Check your connection and refresh to retry.");
+    } finally { setLoading(false); }
   }
 
   useEffect(() => {

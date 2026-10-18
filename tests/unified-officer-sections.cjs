@@ -56,3 +56,13 @@ test('Overview task actions open the existing modal and consume the action once'
  assert.equal(nodes(tree,n=>n.type==='OfficerTaskPeet')[0].props.mode,'submit');assert.ok(!h.window.location.href.includes('action='));
  const denied=harness('tasks',false);denied.window.location.href='https://gea.test/officerboard?task=task-b&action=submit';denied.render();denied.openLinkedTask();assert.equal(nodes(denied.render(),n=>n.type==='Modal').length,0);
 });
+
+test('Linked service verification selects the event school year before showing the roster',()=>{
+ const h=harness('volunteer');
+ h.window.location.href='https://gea.test/officerboard?view=volunteer&event=prior-event';
+ h.workspace.eventId='prior-event';
+ h.props.tracking.events=[{id:'prior-event',title:'Previous service event',academic_year:'2024-2025',kind:'volunteer',starts_at:'2024-10-01T12:00:00Z',ends_at:'2024-10-01T13:00:00Z'}];
+ h.render();h.openLinkedTask();
+ const roster=nodes(h.render(),n=>n.type==='OfficerRoster')[0];
+ assert.equal(roster.props.rosterMode,'volunteer');assert.equal(roster.props.initialEventId,'prior-event');assert.equal(roster.props.year,'2024-2025');
+});
