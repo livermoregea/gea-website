@@ -29,9 +29,32 @@ export default function GeaiBriefing({ data }: { data?: OperationsData }) {
     return () => controller.abort();
   }, [revision, requestId]);
 
+  // Pick up background results while this tab is open. This endpoint only
+  // reads/queues cached facts; polling never invokes the model.
+  const pending = result?.revision === revision && (result.brief.aiStatus === 'pending' || result.brief.aiStatus === 'retry_pending');
+  useEffect(() => {
+    if (!pending) return;
+    const controller = new AbortController();
+    let reading = false;
+    const check = async () => {
+      if (document.visibilityState !== 'visible' || reading) return;
+      reading = true;
+      try {
+        const response = await fetch('/api/operations/geai', { method: 'POST', cache: 'no-store', signal: controller.signal });
+        if (!response.ok) return;
+        const next = await response.json() as GeaiBrief;
+        if (!controller.signal.aborted) setResult({ revision, brief: next });
+      } catch { /* Keep the last usable briefing until the next cache check. */ }
+      finally { reading = false; }
+    };
+    const timer = window.setInterval(check, 30000);
+    document.addEventListener('visibilitychange', check);
+    return () => { controller.abort(); window.clearInterval(timer); document.removeEventListener('visibilitychange', check); };
+  }, [pending, revision]);
+
   return <section className={`${s.panel} ${s.geai} ${loading ? s.geaiPreparing : ''}`} aria-labelledby={headingId} aria-busy={loading}>
     <div className={s.geaiHeading}><div><h2 id={headingId}><GeaiBrand active={loading} /></h2>
-      <p className={s.geaiStatus}>{loading ? 'Loading your briefing…' : brief?.mode === 'ai' ? `AI descriptions · updated ${new Date(brief.generatedAt).toLocaleString('en-US', { timeZone: 'America/Los_Angeles', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}` : hasSavedDescriptions ? 'Saved descriptions · not AI-generated' : 'Live workspace snapshot'}</p></div>
+      <p className={s.geaiStatus}>{loading ? 'Loading your briefing…' : brief?.mode === 'ai' || brief?.mode === 'mixed' ? `${brief.mode === 'mixed' ? 'AI descriptions + live updates' : 'AI descriptions'} · updated ${new Date(brief.generatedAt).toLocaleString('en-US', { timeZone: 'America/Los_Angeles', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}` : hasSavedDescriptions ? 'Saved descriptions · not AI-generated' : 'Live workspace snapshot'}</p></div>
       <button type="button" disabled={loading} onClick={() => setRequestId(id => id + 1)} aria-label="Refresh GEAI briefing">Refresh</button>
     </div>
     {loading && <div className={s.geaiSkeleton} aria-hidden="true"><span /><span /><span /><div><span /><span /></div></div>}
@@ -41,7 +64,7 @@ export default function GeaiBriefing({ data }: { data?: OperationsData }) {
         <ul className={s.geaiPriorities}>{brief.priorities.map((item, i) => <li className={s.geaiPriority} style={{ animationDelay: `${200 + i * 110}ms` }} key={`${item.href}-${i}`}><Link href={item.href}><span className={s.geaiPriorityCopy}><span className={s.geaiPriorityTitle}>{item.text}</span><span className={s.geaiNextStep}><strong>{item.descriptionSource === 'ai' ? 'GEAI:' : item.descriptionSource === 'saved' ? 'Description:' : 'Next step:'}</strong> {item.description || item.nextStep || 'Open this item to review its details and available actions.'}</span></span><span aria-hidden="true">→</span></Link></li>)}</ul>
       </div>}
       {error && <p className={s.geaiNotice}>GEAI couldn’t update right now. Your workspace records are still available.</p>}
-      {!loading && !error && brief?.mode === 'snapshot' && brief.priorities.length > 0 && <p className={s.geaiNotice}>{fallbackLabel}{' '}{brief.aiStatus === 'not_configured' ? 'GEAI background updates are not configured yet.' : brief.aiStatus === 'setup_required' ? 'GEAI’s cache needs database setup.' : brief.aiStatus === 'unavailable' ? 'GEAI’s background cache is temporarily unavailable.' : 'GEAI’s scheduled update is pending.'}</p>}
+      {!loading && !error && (brief?.mode === 'snapshot' || brief?.mode === 'mixed') && brief.priorities.length > 0 && <p className={s.geaiNotice}>{brief.mode === 'mixed' ? 'Updated items are awaiting AI descriptions.' : fallbackLabel}{' '}{brief.aiStatus === 'not_configured' ? 'GEAI background updates are not configured yet.' : brief.aiStatus === 'setup_required' ? 'GEAI’s cache needs database setup.' : brief.aiStatus === 'unavailable' ? 'GEAI’s background cache is temporarily unavailable.' : brief.aiStatus === 'retry_pending' ? 'The last AI update couldn’t finish. A background retry is pending.' : 'GEAI’s scheduled update is pending.'}</p>}
     </div>
     <div className={s.geaiFooter}><Link className={s.detailLink} href={brief?.workspaceHref ? `${brief.workspaceHref}?view=tasks` : '/account/redirect'}>Open workspace tasks →</Link></div>
   </section>;

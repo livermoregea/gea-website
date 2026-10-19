@@ -38,7 +38,7 @@ async function tick() {
 }
 if (enabled) {
   // Only this timer calls the worker. Page loads and Refresh remain provider-free.
-  // SQL still caps generation at one attempt per user / six hours and 24 / day.
+  // SQL caps generation at 24 / day, with a six-hour normal interval and one bounded failure retry.
   timer = setInterval(tick, 60000);
   console.log('[GEAI] Local background worker enabled; checks queued descriptions every minute.');
 }

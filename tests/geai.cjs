@@ -10,6 +10,7 @@ function load(file,deps={},env={}) {
  return exports;
 }
 const geai=load('lib/geai.ts',{'./peet':load('lib/peet.ts')});
+const cacheHelpers=load('lib/geai-cache.ts',{'./geai':geai});
 const fixture=()=>({userId:'officer',reviewer:false,workspaceHref:'/officerboard',attention:[],calendar:[],tasks:[],notes:[{minutes:'PRIVATE MINUTES'}],evaluations:[{justification:'PRIVATE EVALUATION'}]});
 test('GEAI omits private contents and distinguishes shared tasks, completed work, and submitted work',()=>{
  const data=fixture();
@@ -36,7 +37,7 @@ test('GEAI prioritizes overdue tasks and help, removes duplicate task notificati
 });
 test('AI output cannot supply external links, unknown source IDs, duplicate actions, or unlimited text',()=>{
  const sources=[{id:'s0',title:'Posters',detail:'Due today',href:'/officerboard?task=1',nextStep:'Submit the completed poster for review.'}];
- const valid={descriptions:[{sourceId:'s0',description:'Your poster is due today. Submit the finished file for review.'}]};
+ const valid={descriptions:[{sourceId:'s0',description:'Your poster is due October 18. Submit the finished file for review.'}]};
  assert.equal(geai.geaiRecommendation(valid,sources,'/officerboard').priorities[0].href,sources[0].href);
  assert.throws(()=>geai.geaiRecommendation({descriptions:[{sourceId:'evil',description:'Wrong'}]},sources,'/officerboard'));
  assert.throws(()=>geai.geaiRecommendation({descriptions:[valid.descriptions[0],valid.descriptions[0]]},sources,'/officerboard'));
@@ -44,14 +45,14 @@ test('AI output cannot supply external links, unknown source IDs, duplicate acti
  assert.equal(geai.geaiSchema.safeParse({descriptions:[{sourceId:'s0',description:'x'.repeat(261)}]}).success,false);
 });
 const next={NextResponse:{json:(body,init={})=>({body,status:init.status||200,headers:init.headers})}};
-function page({signedIn=true,access=true,cache=null,setup=true,configured=false,cacheError=null}={}) {
+function page({signedIn=true,access=true,cache=null,setup=true,configured=false,cacheError=null,data=fixture()}={}) {
  let reads=0,queues=0;
  const api=load('app/api/operations/geai/route.ts',{
  'next/server':next,'@/lib/supabase/server':{createClient:async()=>({auth:{getUser:async()=>({data:{user:signedIn?{id:'officer'}:null}})}})},
  '@/lib/supabase/admin':{createAdminClient:()=>({rpc:async()=>{queues++;return {data:cache,error:cacheError};}})},
  '@/lib/account-landing':{accountMemberships:async()=>({hasWorkspace:access})},
- '@/lib/gea-operations-data':{loadOperations:async()=>{reads++;return fixture();}},
- '@/lib/officer-tracking':{schoolToday:()=> '2026-10-18'},'@/lib/geai':geai,
+ '@/lib/gea-operations-data':{loadOperations:async()=>{reads++;return data;}},
+ '@/lib/officer-tracking':{schoolToday:()=> '2026-10-18'},'@/lib/geai':geai,'@/lib/geai-cache':cacheHelpers,
  },setup?{SUPABASE_SERVICE_ROLE_KEY:'test-only',...(configured?{GROQ_API_KEY:'test',CRON_SECRET:'test'}:{})}:{});
  return {api,get reads(){return reads;},get queues(){return queues;}};
 }
@@ -80,7 +81,7 @@ test('An empty cache or missing setup returns a clearly distinguished live snaps
 test('Only a configured scheduler secret authorizes background generation',async()=>{
  let claimed=0;
  const api=load('app/api/operations/geai/refresh/route.ts',{'next/server':next,ai:{},'@ai-sdk/openai':{},
- '@/lib/supabase/admin':{createAdminClient:()=>({rpc:async()=>{claimed++;return {data:null,error:null};}})},'@/lib/geai':geai},
+ '@/lib/supabase/admin':{createAdminClient:()=>({rpc:async()=>{claimed++;return {data:null,error:null};}})},'@/lib/geai':geai,'@/lib/geai-cache':cacheHelpers},
  {CRON_SECRET:'secret',GROQ_API_KEY:'test',SUPABASE_SERVICE_ROLE_KEY:'test'});
  const req=token=>({headers:new Headers(token?{authorization:`Bearer ${token}`}:{})});
  assert.equal((await api.GET(req())).status,401);
@@ -161,7 +162,7 @@ test('Background generation makes one batched description call for only the thre
  const sources=Array.from({length:6},(_,i)=>({id:`s${i}`,title:`Task ${i}`,detail:'In progress',href:`/officerboard?task=${i}`,nextStep:'Check the requirements and submit your completed work.'}));
  sources[0].taskInstructions='Create a print-ready poster and a square social-media version.';
  const job={user_id:'officer',lease_token:'test-lease',fingerprint:'test-fingerprint',snapshot:{version:2,today:'2026-10-18',reviewer:false,sources,workspaceHref:'/officerboard'}};
- let claims=0,calls=0,saved;
+ let claims=0,calls=0,saved,selectedModel;
  const api=load('app/api/operations/geai/refresh/route.ts',{'next/server':next,
  'ai':{wrapLanguageModel:()=>({}),generateObject:async options=>{
   calls++;const facts=JSON.parse(options.prompt);assert.equal(facts.sources.length,3);
@@ -169,12 +170,13 @@ test('Background generation makes one batched description call for only the thre
   assert.equal(facts.sources[0].taskInstructions,sources[0].taskInstructions);
   assert.equal(options.maxRetries,0);
   return {object:{descriptions:[{sourceId:'s2',description:'Third description.'},{sourceId:'s0',description:'First description.'},{sourceId:'s1',description:'Second description.'}]}};
- }},'@ai-sdk/openai':{createOpenAI:()=>({chat:()=>({})})},
+ }},'@ai-sdk/openai':{createOpenAI:()=>({chat:id=>{selectedModel=id;return {};}})},
  '@/lib/supabase/admin':{createAdminClient:()=>({rpc:async(name,args)=>{
   if(name==='claim_gea_geai_brief')return {data:claims++===0?job:null,error:null};
   assert.equal(name,'finish_gea_geai_brief');saved=args.p_brief;return {data:true,error:null};
- }})},'@/lib/geai':geai},{CRON_SECRET:'secret',GROQ_API_KEY:'test',SUPABASE_SERVICE_ROLE_KEY:'test'});
+ }})},'@/lib/geai':geai,'@/lib/geai-cache':cacheHelpers},{CRON_SECRET:'secret',GROQ_API_KEY:'test',SUPABASE_SERVICE_ROLE_KEY:'test',GROQ_PEET_MODEL:'expensive-reasoning-model'});
  const response=await api.GET({headers:new Headers({authorization:'Bearer secret'})});
+ assert.equal(selectedModel,'openai/gpt-oss-20b');
  assert.equal(response.body.updated,1);assert.equal(calls,1);
  assert.equal(saved.priorities.length,3);
  assert.equal(saved.priorities[0].title,'Task 0');assert.equal(saved.priorities[0].description,'First description.');
@@ -242,4 +244,72 @@ test('The cache API distinguishes missing configuration, missing migration, and 
  assert.equal((await page({configured:true}).api.POST(request())).body.aiStatus,'pending');
  assert.equal((await page({configured:true,cacheError:{code:'PGRST202'}}).api.POST(request())).body.aiStatus,'setup_required');
  assert.equal((await page({configured:true,cacheError:{code:'NETWORK'}}).api.POST(request())).body.aiStatus,'unavailable');
+});
+
+
+test('Changed neighboring items do not erase AI text for unchanged facts, even after reordering',()=>{
+ const a={id:'s0',title:'Meeting',detail:'Upcoming meeting',href:'/officerboard?view=meetings&event=one',nextStep:'Attend the meeting',eventDescription:'Discuss outreach'};
+ const b={id:'s1',title:'Dinner',detail:'Upcoming event',href:'/officerboard?view=events&event=two',nextStep:'Attend as a guest',eventDescription:'No activities or materials to prepare'};
+ const snapshot={today:'2026-10-18',reviewer:false,workspaceHref:'/officerboard',sources:[a,b]};
+ const generated=cacheHelpers.cacheGeaiBrief(geai.geaiRecommendation({descriptions:[{sourceId:'s0',description:'Discuss outreach at the leadership meeting.'},{sourceId:'s1',description:'Attend the dinner as a guest; no materials are needed.'}]},snapshot.sources,snapshot.workspaceHref),snapshot);
+ const edited={...b,id:'s0',eventDescription:'Bring materials and lead an activity'};
+ const result=cacheHelpers.reuseGeaiDescriptions({...snapshot,sources:[edited,{...a,id:'s1'}]},{kind:'geai-cache-candidate',brief:generated,lastErrorCode:'timeout'});
+ assert.equal(result.mode,'mixed');assert.equal(result.aiStatus,'retry_pending');
+ assert.equal(result.priorities[0].descriptionSource,'saved');assert.equal(result.priorities[0].description,edited.eventDescription);
+ assert.equal(result.priorities[1].descriptionSource,'ai');assert.equal(result.priorities[1].description,'Discuss outreach at the leadership meeting.');
+ assert.equal(result.priorities[0].href,edited.href);assert.equal(result.priorities[1].href,a.href);
+ const reordered=cacheHelpers.reuseGeaiDescriptions({...snapshot,sources:[{...b,id:'s0'},{...a,id:'s1'}]},{kind:'geai-cache-candidate',brief:generated});
+ assert.equal(reordered.mode,'ai');assert.match(reordered.priorities[0].description,/dinner/);
+});
+
+test('AI descriptions are never carried across changed roles, instructions, or workspace scopes',()=>{
+ const source={id:'s0',title:'Task',detail:'Your task',href:'/officerboard?task=one',nextStep:'Submit work',taskInstructions:'Prepare posters'};
+ const snapshot={today:'2026-10-18',reviewer:false,workspaceHref:'/officerboard',sources:[source]};
+ const brief=cacheHelpers.cacheGeaiBrief(geai.geaiRecommendation({descriptions:[{sourceId:'s0',description:'Prepare your posters.'}]},[source],snapshot.workspaceHref),snapshot);
+ for(const next of [{...snapshot,reviewer:true},{...snapshot,workspaceHref:'/admin-portal-x7k9/officers'},{...snapshot,sources:[{...source,taskInstructions:'Create a website'}]},{...snapshot,sources:[{...source,nextStep:'Review someone else’s work'}]}]){
+  const result=cacheHelpers.reuseGeaiDescriptions(next,{kind:'geai-cache-candidate',brief});
+  assert.equal(result.mode,'snapshot');assert.ok(result.priorities.every(p=>p.descriptionSource!=='ai'));
+ }
+ const {cacheScope,...legacy}=brief;
+ assert.equal(cacheHelpers.reuseGeaiDescriptions(snapshot,{kind:'geai-cache-candidate',brief:legacy}).mode,'snapshot');
+});
+
+test('Background failures store an allowlisted category without provider response text',async()=>{
+ let claims=0,failure;
+ const job={user_id:'officer',lease_token:'lease',fingerprint:'fingerprint',snapshot:{today:'2026-10-18',reviewer:false,workspaceHref:'/officerboard',sources:[{id:'s0',title:'Task',detail:'Your task',href:'/officerboard?task=one',nextStep:'Submit work'}]}};
+ const api=load('app/api/operations/geai/refresh/route.ts',{'next/server':next,
+ ai:{wrapLanguageModel:()=>({}),generateObject:async()=>{throw Object.assign(new Error('PRIVATE PROVIDER BODY'),{statusCode:429});}},
+ '@ai-sdk/openai':{createOpenAI:()=>({chat:()=>({})})},'@/lib/geai':geai,'@/lib/geai-cache':cacheHelpers,
+ '@/lib/supabase/admin':{createAdminClient:()=>({rpc:async(name,args)=>{if(name==='claim_gea_geai_brief')return{data:claims++===0?job:null,error:null};assert.equal(name,'fail_gea_geai_brief');failure=args;return{data:true,error:null}}})}},
+ {CRON_SECRET:'secret',GROQ_API_KEY:'test',SUPABASE_SERVICE_ROLE_KEY:'test'});
+ const response=await api.GET({headers:new Headers({authorization:'Bearer secret'})});
+ assert.equal(response.body.attempted,1);assert.equal(response.body.updated,0);assert.equal(failure.p_error_code,'rate_limited');
+ assert.ok(!JSON.stringify(failure).includes('PRIVATE'));assert.ok(!JSON.stringify(response).includes('PRIVATE'));
+ assert.equal(cacheHelpers.geaiFailureCode({name:'AI_NoObjectGeneratedError',cause:{name:'ZodError'}}),'invalid_response');
+ assert.equal(cacheHelpers.geaiFailureCode({name:'TimeoutError'}),'timeout');
+});
+
+test('Dashboard merges a cache candidate into current authorized items without exposing cache metadata',async()=>{
+ const data=fixture();
+ data.tasks=[{id:'one',title:'Poster',description:'Print the poster',assigned_to:'officer',status:'in_progress'}];
+ const snapshot={today:'2026-10-18',reviewer:false,workspaceHref:'/officerboard',sources:geai.geaiSources(data,'2026-10-18')};
+ const brief=cacheHelpers.cacheGeaiBrief(geai.geaiRecommendation({descriptions:[{sourceId:'s0',description:'Finish the print-ready poster.'}]},snapshot.sources,snapshot.workspaceHref),snapshot);
+ const h=page({data,configured:true,cache:{kind:'geai-cache-candidate',brief,lastErrorCode:'timeout'}});
+ const response=await h.api.POST(request());
+ assert.equal(response.body.mode,'ai');
+ assert.equal(response.body.priorities[0].description,'Finish the print-ready poster.');
+ assert.equal(response.body.aiStatus,'retry_pending');
+ assert.ok(!JSON.stringify(response.body).includes('cacheKey'));
+ assert.ok(!JSON.stringify(response.body).includes('cacheScope'));
+ assert.equal(h.queues,1);
+});
+
+test('Unchanged absolute-date descriptions survive midnight but expire after 24 hours',()=>{
+ const source={id:'s0',title:'Task',detail:'Your task',href:'/officerboard?task=one',nextStep:'Submit work'};
+ const snapshot={today:'2026-10-18',reviewer:false,workspaceHref:'/officerboard',sources:[source]};
+ const brief=cacheHelpers.cacheGeaiBrief(geai.geaiRecommendation({descriptions:[{sourceId:'s0',description:'Prepare your posters for October 21.'}]},[source],snapshot.workspaceHref),snapshot);
+ assert.equal(cacheHelpers.reuseGeaiDescriptions({...snapshot,today:'2026-10-19'},{kind:'geai-cache-candidate',brief}).mode,'ai');
+ brief.generatedAt=new Date(Date.now()-86400001).toISOString();
+ assert.equal(cacheHelpers.reuseGeaiDescriptions(snapshot,{kind:'geai-cache-candidate',brief}).mode,'snapshot');
+ for(const text of ['Submit today.','Prepare tomorrow.','Attend next week.'])assert.equal(geai.geaiSchema.safeParse({descriptions:[{sourceId:'s0',description:text}]}).success,false);
 });

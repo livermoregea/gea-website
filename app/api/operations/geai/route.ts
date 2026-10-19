@@ -6,6 +6,7 @@ import { accountMemberships } from '@/lib/account-landing';
 import { loadOperations } from '@/lib/gea-operations-data';
 import { schoolToday } from '@/lib/officer-tracking';
 import { geaiSources, geaiSnapshot, type GeaiBrief } from '@/lib/geai';
+import { reuseGeaiDescriptions, type GeaiCacheCandidate } from '@/lib/geai-cache';
 
 export const dynamic = 'force-dynamic';
 const headers = { 'Cache-Control': 'private, no-store' };
@@ -39,6 +40,11 @@ export async function POST(request: Request) {
       return NextResponse.json(fallback, { headers });
     }
     if (!cached) return NextResponse.json(fallback, { headers });
+    if ((cached as GeaiCacheCandidate).kind === 'geai-cache-candidate') {
+      const brief = reuseGeaiDescriptions(snapshot, cached as GeaiCacheCandidate);
+      if (fallback.aiStatus === 'not_configured') brief.aiStatus = 'not_configured';
+      return NextResponse.json(brief, { headers });
+    }
     // The RPC returns only a matching cached summary. Never show an AI summary
     // generated for older facts or a different permission scope.
     return NextResponse.json(cached as GeaiBrief, { headers });
