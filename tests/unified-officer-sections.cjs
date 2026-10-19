@@ -1,15 +1,16 @@
 const {test}=require('node:test');const assert=require('node:assert/strict');const fs=require('node:fs');const vm=require('node:vm');const ts=require('typescript');const jsx=require('react/jsx-runtime');
 function load(file,deps,globals={}){const exports={};vm.runInNewContext(ts.transpileModule(fs.readFileSync(file,'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2020,jsx:ts.JsxEmit.ReactJSX}}).outputText,{exports,require:name=>{assert.ok(name in deps,name);return deps[name];},URLSearchParams,Date,...globals});return exports;}
 function nodes(tree,predicate){const result=[];function walk(n){if(Array.isArray(n)){n.forEach(walk);return;}if(!n?.props)return;if(predicate(n))result.push(n);walk(n.props.children);}walk(tree);return result;}
-function harness(section='tasks',reviewer=true){
- const values=[],effects=[];let at=0;const window={location:{href:'https://gea.test/officerboard',get search(){return new URL(this.href).search;}},history:{state:{},replaceState(_state,_title,url){window.location.href=String(url);}},addEventListener(){},removeEventListener(){}};const workspace={view:section,eventId:'chosen-event',navigate(view){workspace.view=view;}};
+function harness(section='tasks',reviewer=true,storage=new Map()){
+ const sessionStorage={getItem:key=>storage.get(key)||null,setItem:(key,value)=>storage.set(key,value),removeItem:key=>storage.delete(key)};
+ const values=[],effects=[];let at=0;const window={sessionStorage,location:{href:'https://gea.test/officerboard',get search(){return new URL(this.href).search;}},history:{state:{},replaceState(_state,_title,url){window.location.href=String(url);}},addEventListener(){},removeEventListener(){}};const workspace={view:section,eventId:'chosen-event',navigate(view){workspace.view=view;}};
  const peet=load('lib/peet.ts',{}),tracking=load('lib/officer-tracking.ts',{});
- const deps={react:{useState(initial){const i=at++;if(!(i in values))values[i]=initial;return[values[i],next=>{values[i]=typeof next==='function'?next(values[i]):next;}];},useRef:()=>({current:null}),useEffect(fn){effects.push(fn);},useContext:()=>workspace,useTransition:()=>[false,fn=>fn()]},'react/jsx-runtime':jsx,'next/link':{default:'link'},'next/navigation':{useRouter:()=>({refresh(){}})},'@/components/WorkspaceActivity':{default:'activity'},'@/components/ActionError':{default:'error'},'@/components/GEAOneBadge':{default:'badge'},'@/lib/supabase/client':{createClient:()=>({})},'@/lib/peet':peet,'@/lib/officer-dashboard':load('lib/officer-dashboard.ts',{'./peet':peet,'./officer-tracking':tracking}),'@/lib/officer-tracking':tracking,'@/lib/officer-workspace-navigation':{officerRecordTarget:()=>null},'@/lib/workspace-navigation-context':{WorkspaceNavigationContext:{}},'@/components/admin/AdminTabs':{default:'admin-tabs'},'./officerboard.module.css':{default:new Proxy({},{get:(_,key)=>String(key)})}};
+ const deps={react:{useState(initial){const i=at++;if(!(i in values))values[i]=initial;return[values[i],next=>{values[i]=typeof next==='function'?next(values[i]):next;}];},useRef:()=>({current:null}),useEffect(fn){effects.push(fn);},useContext:()=>workspace,useTransition:()=>[false,fn=>fn()]},'react/jsx-runtime':jsx,'next/link':{default:'link'},'next/navigation':{useRouter:()=>({refresh(){}})},'@/components/WorkspaceActivity':{default:'activity'},'@/components/ActionError':{default:'error'},'@/components/GEAOneBadge':{default:'badge'},'@/lib/supabase/client':{createClient:()=>({})},'@/lib/peet':peet,'@/lib/officer-task-draft':load('lib/officer-task-draft.ts',{}),'@/lib/officer-dashboard':load('lib/officer-dashboard.ts',{'./peet':peet,'./officer-tracking':tracking}),'@/lib/officer-tracking':tracking,'@/lib/officer-workspace-navigation':{officerRecordTarget:()=>null},'@/lib/workspace-navigation-context':{WorkspaceNavigationContext:{}},'@/components/admin/AdminTabs':{default:'admin-tabs'},'./officerboard.module.css':{default:new Proxy({},{get:(_,key)=>String(key)})}};
  for(const name of ['OfficerTaskPeet','Modal','PeetExplainer','TrackingPanel','OfficerRoster','OfficerTaskSubmission','OfficerTaskHistory','TaskSection','TaskPeoplePicker','OfficerTopicNavigation','AccountsPanel'])deps['./'+name]={default:name};
- const Component=load('components/officerboard/OfficerBoard.tsx',deps,{window,URL}).default;
+ const Component=load('components/officerboard/OfficerBoard.tsx',deps,{window,URL,FormData:class {constructor(fields){this.fields=fields;}get(key){return this.fields[key]??null;}}}).default;
  const profiles=[{id:'a',name:'A',role:reviewer?'admin':'officer',reviewer_kind:reviewer?'president':null},{id:'b',name:'B',role:'officer'}];
  const props={unified:true,embedded:true,profile:profiles[0],profiles,tasks:profiles.map(p=>({id:'task-'+p.id,title:'Task '+p.name,assigned_to:p.id,created_by:p.id,status:'in_progress',cancelled_at:null,due_date:null})),evaluations:[],tracking:{events:[],attendance:[],signups:[],volunteerLogs:[],strikes:[],reviews:[],generalNotes:[]}};
- return{workspace,props,window,openLinkedTask(){effects.find(fn=>fn.toString().includes("openWorkspaceTarget"))();},render(){at=0;effects.length=0;return Component(props);}};
+ return{workspace,props,window,storage,restoreDraft(){effects.find(fn=>fn.toString().includes("readTaskDraft"))();},persistDraft(){effects.find(fn=>fn.toString().includes("writeTaskDraft"))();},openLinkedTask(){effects.find(fn=>fn.toString().includes("openWorkspaceTarget"))();},render(){at=0;effects.length=0;return Component(props);}};
 }
 test('Tasks opens a team task list directly with one officer filter and no nested workspace navigation',()=>{
  const h=harness(),tree=h.render();assert.equal(nodes(tree,n=>n.props['aria-label']==='Workspace navigation').length,0);assert.equal(nodes(tree,n=>n.type==='aside').length,0);assert.equal(nodes(tree,n=>n.type==='OfficerRoster').length,0);assert.equal(nodes(tree,n=>n.type==='OfficerTopicNavigation').length,0);
@@ -89,4 +90,58 @@ test('A direct reviewer concern link opens their own record rather than a blank 
  const h=harness('accountability',true),tree=h.render();
  const panel=nodes(tree,n=>n.type==='TrackingPanel')[0];
  assert.equal(panel.props.mode,'accountability');assert.equal(panel.props.officerId,'a');
+});
+
+test('Conduct logger opens an officer picker and stays in that section after selecting an officer',()=>{
+ const h=harness('conduct',true);let tree=h.render();
+ assert.equal(nodes(tree,n=>n.type==='TrackingPanel').length,0);
+ const officer=nodes(tree,n=>n.type==='button'&&n.props.className==='personCard'&&n.key==='b')[0];
+ assert.ok(officer);officer.props.onClick();tree=h.render();
+ assert.equal(h.workspace.view,'conduct');
+ const panel=nodes(tree,n=>n.type==='TrackingPanel')[0];
+ assert.equal(panel.props.mode,'accountability');assert.equal(panel.props.officerId,'b');
+ assert.equal(nodes(tree,n=>n.props['aria-label']==='Officer record details').length,0);
+ assert.equal(nodes(tree,n=>n.type==='button'&&n.props.children==='Assign task').length,0);
+});
+
+
+test('A partly written task survives remounting and explicit cancellation clears it',()=>{
+ const storage=new Map();const h=harness('tasks',true,storage);let tree=h.render();
+ nodes(tree,n=>n.type==='button'&&n.props.children==='Assign task')[0].props.onClick();tree=h.render();
+ nodes(tree,n=>n.type==='input'&&n.props.name==='officer-choice')[1].props.onChange({target:{checked:true}});tree=h.render();
+ const form=nodes(tree,n=>n.type==='form'&&n.props.onChange)[0];
+ form.props.onChange({currentTarget:{title:'Prepare outreach',description:'Bring the demo materials',due_date:'2026-11-01'}});
+ tree=h.render();h.persistDraft();
+ assert.equal(tree.props['data-workspace-dirty'],'true');
+ const remount=harness('tasks',true,storage);remount.render();remount.restoreDraft();tree=remount.render();
+ assert.equal(nodes(tree,n=>n.type==='Modal').length,1);
+ assert.equal(nodes(tree,n=>n.type==='input'&&n.props.name==='officer-choice')[1].props.checked,true);
+ assert.equal(nodes(tree,n=>n.type==='input'&&n.props.name==='title')[0].props.defaultValue,'Prepare outreach');
+ assert.equal(nodes(tree,n=>n.type==='textarea'&&n.props.name==='description')[0].props.defaultValue,'Bring the demo materials');
+ assert.equal(nodes(tree,n=>n.type==='input'&&n.props.name==='due_date')[0].props.defaultValue,'2026-11-01');
+ nodes(tree,n=>n.type==='Modal')[0].props.onClose();tree=remount.render();
+ assert.equal(storage.size,0);assert.equal(nodes(tree,n=>n.type==='Modal').length,0);
+});
+
+test('A stored creation draft does not interrupt a linked task submission',()=>{
+ const h=harness('tasks',false);
+ h.window.sessionStorage.setItem('gea:task-draft:v1:a',JSON.stringify({version:1,title:'Draft',description:'Work',dueDate:'',assignees:[],people:['a'],shared:false}));
+ h.window.location.href='https://gea.test/officerboard?view=tasks&task=task-a&action=submit';
+ h.render();h.restoreDraft();h.openLinkedTask();const tree=h.render();
+ assert.equal(nodes(tree,n=>n.type==='OfficerTaskPeet')[0].props.officerTask.id,'task-a');
+ assert.equal(h.storage.size,1);
+});
+
+
+test('Draft storage isolates accounts, preserves shared participants, and tolerates invalid or blocked storage',()=>{
+ const api=load('lib/officer-task-draft.ts',{}),values=new Map();
+ const storage={getItem:key=>values.get(key)||null,setItem:(key,value)=>values.set(key,value),removeItem:key=>values.delete(key)};
+ const draft={...api.emptyTaskDraft(),title:'Shared outreach',description:'Prepare table',people:['a','b'],assignees:[],shared:true};
+ api.writeTaskDraft(storage,'a',draft);
+ assert.deepEqual(JSON.parse(JSON.stringify(api.readTaskDraft(storage,'a'))),JSON.parse(JSON.stringify(draft)));
+ assert.equal(api.readTaskDraft(storage,'b'),null);
+ storage.setItem(api.taskDraftKey('a'),'broken json');assert.equal(api.readTaskDraft(storage,'a'),null);
+ storage.setItem(api.taskDraftKey('a'),JSON.stringify({...draft,people:[{}]}));assert.equal(api.readTaskDraft(storage,'a'),null);
+ const blocked={getItem(){throw Error('blocked')},setItem(){throw Error('blocked')},removeItem(){throw Error('blocked')}};
+ assert.equal(api.readTaskDraft(blocked,'a'),null);assert.doesNotThrow(()=>api.writeTaskDraft(blocked,'a',draft));assert.doesNotThrow(()=>api.clearTaskDraft(blocked,'a'));
 });

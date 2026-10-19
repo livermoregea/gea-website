@@ -14,7 +14,7 @@ export function officerWorkspaceHref(staff: boolean) {
 export function workspaceView(view?: string, task?: string, topic?: string, officer?: string) {
   if (task || view === 'blockers') return 'tasks';
   if (recordTopics.includes(topic as RecordTopic)) return topic === 'tasks' ? 'tasks' : !officer && ['attendance', 'volunteer', 'accountability'].includes(topic ?? '') ? topic! : 'people';
-  if (['tasks', 'people', 'attendance', 'volunteer', 'accountability', 'accounts'].includes(view ?? '')) return view!;
+  if (['tasks', 'people', 'attendance', 'volunteer', 'accountability', 'conduct', 'accounts'].includes(view ?? '')) return view!;
   if (view === 'inbox' || view === 'today' || view === 'overview') return 'overview';
   return ['calendar', 'meetings', 'events', 'reports'].includes(view ?? '') ? view! : 'overview';
 }

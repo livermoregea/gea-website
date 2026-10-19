@@ -1,4 +1,5 @@
 import OperationsHub from "@/components/operations/OperationsHub";
+import OfficerScores from "@/components/operations/OfficerScores";
 import OfficerDashboard from "@/components/operations/OfficerDashboard";
 import { loadOperations } from "@/lib/gea-operations-data";
 import { workspaceView } from "@/lib/officer-workspace-navigation";
@@ -9,6 +10,8 @@ import OfficerBoard from "@/components/officerboard/OfficerBoard";
 import { createClient } from "@/lib/supabase/server";
 import { hasSupabaseConfig } from "@/lib/supabase/config";
 import { peetError, type OfficerTask, type PeetEvaluation, type OfficerProfile, type TaskCancellationRequest, type TaskTeammate } from "@/lib/peet";
+import { CONTRACT_YEAR } from "@/lib/officer-tracking";
+import type { CageScore } from "@/lib/cage";
 import type { OfficerEvent, OfficerAttendance, EventSignup, VolunteerLog, OfficerStrike, RemovalReview, AccountabilityNotes } from "@/lib/officer-tracking";
 
 
@@ -30,8 +33,8 @@ export default async function OfficerWorkspace({ embedded = false, search = {} }
   if (!profile || profile.access_enabled === false) return <AccessMessage message="Your GEA One account doesn’t have officer access. Ask a President or advisor to add you to the officer roster." />;
   const { data: superAdmin } = await supabase.from("super_admins").select("auth_user_id").eq("auth_user_id",user.id).maybeSingle();
   const [tasks, evaluations, profiles, events, attendance, signups, volunteerLogs, strikes, reviews, generalNotes, cancellationRequests, teammates] = await Promise.all([
-    readAll<OfficerTask>((from, to) => supabase.from("tasks").select("id,title,description,assigned_to,created_by,due_date,original_due_date,status,final_product_url,submission_description,created_at,submitted_at,completed_at,ended_by,end_notes,cancelled_at,cancellation_reason,officer_task_members(officer_id)").order("created_at", { ascending: false }).order("id").range(from, to)),
-    readAll<PeetEvaluation>((from, to) => supabase.from("peet_evaluations").select("id,task_id,evaluated_by,efficiency,effectiveness,time,feedback_notes,evaluated_at").order("id").range(from, to)),
+    readAll<OfficerTask>((from, to) => supabase.from("tasks").select("id,title,description,assigned_to,created_by,due_date,original_due_date,status,final_product_url,submission_description,created_at,submitted_at,completed_at,ended_by,end_notes,cancelled_at,cancellation_reason,individual_peet,officer_task_members(officer_id),contributions:gea_peet_tasks(student_id,status)").order("created_at", { ascending: false }).order("id").range(from, to)),
+    readAll<PeetEvaluation>((from, to) => supabase.from("peet_evaluations").select("id,task_id,officer_id,evaluated_by,efficiency,effectiveness,time,feedback_notes,evaluated_at").order("id").range(from, to)),
     readAll<OfficerProfile>((from,to) => supabase.rpc("officer_directory").order("name").order("id").range(from,to)),
     readAll<OfficerEvent>((from,to) => supabase.from("officer_events").select("id,title,kind,academic_year,starts_at,ends_at,location,mandatory,gea_approved,cancelled,notes,public_volunteering,public_description,public_signup_open,public_capacity").order("starts_at").order("id").range(from,to)),
     readAll<OfficerAttendance>((from,to) => supabase.from("officer_attendance").select("id,event_id,officer_id,status,absence_notice,notice_at,reviewer_notes").order("id").range(from,to)),
@@ -61,8 +64,13 @@ export default async function OfficerWorkspace({ embedded = false, search = {} }
         if (digests) operations = { ...operations, digests };
       }
     }
-    const overview = <OfficerDashboard clarificationTaskIds={clarificationTaskIds} data={operations} profile={profile} profiles={profiles.data ?? []} tasks={tasks.data ?? []} evaluations={evaluations.data ?? []} tracking={tracking} />;
-    return <OperationsHub data={operations} clarificationTaskIds={clarificationTaskIds} canManageAccounts={Boolean(superAdmin)} officerOverview={overview} officerTools={board} embedded={embedded} initialView={workspaceView(search.view, search.task, search.topic, search.officer)} initialEvent={search.event} initialTask={search.task} />;
+    // This optional migration must not prevent officers from opening their work.
+    const { data: cageRow, error: cageError } = await supabase.from("officer_cage_scores")
+      .select("officer_id,academic_year,score,formula_version,calculated_at").eq("officer_id", user.id).eq("academic_year", CONTRACT_YEAR).maybeSingle();
+    if (cageError && !["42P01", "PGRST205"].includes(cageError.code)) console.error("[CAGE] Could not load score", { code: cageError.code });
+    const scores = <OfficerScores cageScore={cageError ? null : cageRow as CageScore | null} data={operations} profile={profile} tasks={tasks.data ?? []} evaluations={evaluations.data ?? []} />;
+    const overview = <OfficerDashboard showScores={false} clarificationTaskIds={clarificationTaskIds} data={operations} profile={profile} profiles={profiles.data ?? []} tasks={tasks.data ?? []} evaluations={evaluations.data ?? []} tracking={tracking} />;
+    return <OperationsHub data={operations} clarificationTaskIds={clarificationTaskIds} canManageAccounts={Boolean(superAdmin)} officerScores={scores} officerOverview={overview} officerTools={board} embedded={embedded} initialView={workspaceView(search.view, search.task, search.topic, search.officer)} initialEvent={search.event} initialTask={search.task} />;
   } catch (error) {
     console.error("[GEA officer workspace] Could not load updates", { message: (error as Error).message });
     return <><p role="status" className="mb-4 rounded border border-forest/20 p-4">Updates and meeting planning could not load. Your officer records are still available below.</p>{board}</>;

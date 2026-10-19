@@ -363,25 +363,17 @@ support keyboard and screen-reader navigation.
 
 ## Shared officer tasks
 
-Apply `supabase/officer-shared-tasks.sql` after `officer-task-scored-ending.sql`.
-Officers can expand **Add people** when creating or editing their own in-progress
-task. Presidents can select **Create one shared task with me** instead of assigning
-separate copies. The creator stays on the task and can add or remove other active
-officers until submission. Teachers and advisors cannot be added. The picker exposes
-only names and positions; ordinary officer-directory access stays private.
+Apply `supabase/officer-individual-contributions.sql` after `gea-peet-ai.sql` and the existing shared-task migrations. It is also included last in `supabase/schema.sql`.
 
-A shared task has one record, deadline, submission, status, and evaluation. Every
-participant sees it in their own workspace, can submit the shared work, and receives
-the same PEET evaluation in their personal totals. One submission locks the task for
-everyone. Membership changes use the same task lock as submission and are audited.
-Only the creator can change the people; reviewers can edit assignment details,
-cancel, or end the task, but shared tasks retain their primary creator. Participants
-must request cancellation, and cannot review cancellation, end, or evaluate their
-own shared task even when they are reviewers. If any participant is a President,
-existing advisor/super-admin evaluation rules apply. Ending with or without scores
-continues to work for reviewers outside the team.
+Reviewers can select **Shared collaborative task** and choose two or more officers. Assigning a collaboration does not automatically include the assigner. Regular multi-officer assignment still creates separate task copies. Officers who add people to their own task remain a participant.
 
-Run `tests/officer-shared-tasks.sql` last in the disposable fixture database.
+A collaboration has one task, deadline, and shared deliverable. The first participant submits the team's deliverable along with their own contribution reflection. Other participants see that the deliverable is already submitted and describe their own work, then answer their own clarification questions. Their reflections never replace the shared deliverable.
+
+Each reflection has its own reviewer questions, recommendation, approved scores, and evaluation. Reviewers select the person they are evaluating. Scores can differ and update only that officer's PEET total. A participant cannot review any contributor on their own collaborative task; tasks involving the President still require an advisor or super admin. Reflections and individual feedback are readable by their author and independent authorized reviewers.
+
+Approving one contribution does not score anyone else. An officer's own work can show evaluated while teammates still owe reflections; the shared task closes after everyone is evaluated. Existing completed group evaluations retain their historical behavior. Open, unscored shared tasks upgrade to individual contribution scoring. Membership locks after delivery. Manual per-person scoring remains available after a reflection is submitted; task-wide scoring is blocked for these collaborations.
+
+New columns distinguish personal evaluation subjects (`peet_evaluations.officer_id`) and shared-task mode (`tasks.individual_peet`). `gea_peet_tasks` is unique per task and student, rather than per task alone. Shared deliverables stay on `tasks`; private reflection answers and their submission timestamp stay on each student's clarification record.
 
 ## Unified officer workspace
 
@@ -441,3 +433,8 @@ Super admins open **Officer workspace → Accounts**, find the person, and choos
 **Grant officer access** action also lets you attach an existing GEA One login.
 For someone already on the officer roster, use **Edit officer access & position**.
 Officer creation, access, and position management are available in **Accounts**.
+
+
+### Unfinished task drafts
+
+New-task forms keep a draft in browser `sessionStorage`, scoped to the signed-in officer and browser tab. Text, deadline, separate assignees, shared-task choice, and participants restore if the task screen remounts or reloads in that tab. Switching browser tabs does not trigger a workspace refresh while the form is open. Saving successfully or explicitly closing/cancelling the task clears its draft; failed saves retain it. A pending creation draft never takes over a linked task submission or review. This draft is not a submitted task and is not stored in Supabase or sent to GEAI.

@@ -7,11 +7,14 @@ export type OfficerProfile = {
 export type OfficerTask = {
   id: string; title: string; description: string; assigned_to: string; created_by: string;
   officer_task_members?: { officer_id: string }[];
+  individual_peet?: boolean;
+  contributions?: { student_id: string; status: "clarification" | "pending" | "approved" }[];
   due_date: string | null; original_due_date: string | null; status: "in_progress" | "submitted" | "completed";
   final_product_url: string | null; submission_description: string; created_at: string; submitted_at: string | null;
   ended_by?: string | null; end_notes?: string | null; completed_at: string | null; cancelled_at?: string | null; cancellation_reason?: string | null;
 };
 export type PeetEvaluation = {
+  officer_id?: string | null;
   id: string; task_id: string; evaluated_by: string; efficiency: number;
   effectiveness: number; time: number; feedback_notes: string; evaluated_at: string;
 };
@@ -20,13 +23,29 @@ export function taskAverage(evaluation: PeetEvaluation) {
   return (Number(evaluation.efficiency) + Number(evaluation.effectiveness) + Number(evaluation.time)) / 3;
 }
 
-export function peetSummary(tasks: OfficerTask[], evaluations: PeetEvaluation[]) {
-  const completed = tasks.filter(task => !task.cancelled_at && task.status === "completed");
-  const ids = new Set(completed.map(task => task.id));
-  const scored = evaluations.filter(evaluation => ids.has(evaluation.task_id));
+export function contributionFor(task: OfficerTask, officerId: string) {
+  return task.contributions?.find(row => row.student_id === officerId);
+}
+export function needsTaskContribution(task: OfficerTask, officerId: string) {
+  return Boolean(task.individual_peet && task.status === 'submitted' && !task.cancelled_at
+    && isOfficerTaskParticipant(task, officerId) && !['pending','approved'].includes(contributionFor(task, officerId)?.status || ''));
+}
+export function taskCompleteFor(task: OfficerTask, officerId?: string) {
+  return task.status === 'completed' || Boolean(officerId && task.individual_peet && contributionFor(task, officerId)?.status === 'approved');
+}
+export function evaluationForOfficer(evaluations: PeetEvaluation[], taskId: string, officerId?: string) {
+  const rows = evaluations.filter(row => row.task_id === taskId && (!officerId || !row.officer_id || row.officer_id === officerId));
+  return officerId ? rows.find(row => row.officer_id === officerId) || rows.find(row => !row.officer_id) : rows.find(row => !row.officer_id);
+}
+export function peetSummary(tasks: OfficerTask[], evaluations: PeetEvaluation[], officerId?: string) {
+  const open = tasks.filter(task => !task.cancelled_at);
+  const completed = open.filter(task => taskCompleteFor(task, officerId));
+  const ids = new Set(open.map(task => task.id));
+  const scored = evaluations.filter(evaluation => ids.has(evaluation.task_id)
+    && (!evaluation.officer_id ? completed.some(task => task.id === evaluation.task_id) : !officerId || evaluation.officer_id === officerId));
   return {
     score: scored.length ? scored.reduce((sum, evaluation) => sum + taskAverage(evaluation), 0) / scored.length / 4 * 100 : null,
-    active: tasks.filter(task => !task.cancelled_at && task.status !== "completed").length,
+    active: open.filter(task => !taskCompleteFor(task, officerId)).length,
     completed: completed.length,
     evaluated: scored.length,
   };

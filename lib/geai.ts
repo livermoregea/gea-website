@@ -1,3 +1,4 @@
+import { needsTaskContribution, taskCompleteFor } from './peet';
 import { z } from 'zod';
 import type { OperationsData } from './gea-operations-data';
 
@@ -45,6 +46,7 @@ export function geaiNextStep(data: OperationsData, item: { href: string; key?: s
   const task = data.tasks.find(task => task.id === params.get('task'));
   if (task) {
     const own = task.assigned_to === data.userId || task.officer_task_members?.some(member => member.officer_id === data.userId);
+    if (needsTaskContribution(task, data.userId)) return 'Your teammate has submitted the shared deliverable. Describe your own contribution and answer the reflection questions to receive your individual PEET score.';
     if (data.clarificationTaskIds?.includes(task.id)) return 'Open your submission and answer the follow-up questions so the reviewer can continue.';
     if (task.status === 'submitted') return own
       ? 'No action is needed right now: your submission is awaiting independent review. Open it to check its status.'
@@ -111,7 +113,7 @@ export function geaiSources(data: OperationsData, today: string): GeaiSource[] {
     if (taskId) coveredTasks.add(taskId);
     add({ title: item.title, detail: `${task ? isOwn(task) ? 'Your task · ' : 'Team task · ' : ''}${item.category === 'Help' ? 'Help requested · ' : ''}${task && needsAnswers(task.id) ? 'Your clarification answers are needed before review can continue' : item.detail}`, href: task && needsAnswers(task.id) ? `${data.workspaceHref}?view=tasks&task=${encodeURIComponent(task.id)}&action=submit` : item.href, date: item.date, nextStep: geaiNextStep(data, item) });
   }
-  for (const task of data.tasks.filter(t => !t.cancelled_at && t.status !== 'completed').sort((a, b) => (a.due_date || '9999').localeCompare(b.due_date || '9999'))) {
+  for (const task of data.tasks.filter(t => !t.cancelled_at && t.status !== 'completed' && !(isOwn(t) && taskCompleteFor(t, data.userId))).sort((a, b) => (a.due_date || '9999').localeCompare(b.due_date || '9999'))) {
     if (coveredTasks.has(task.id)) continue;
     const own = isOwn(task);
     add({ title: task.title, detail: `${own ? 'Your task' : 'Team task'} · ${needsAnswers(task.id) ? 'Your clarification answers are needed' : task.status === 'submitted' ? 'Submitted, awaiting review' : 'In progress'}${task.due_date && task.due_date < today ? ' · Overdue' : ''}`, date: task.due_date || undefined,

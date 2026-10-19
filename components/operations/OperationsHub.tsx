@@ -19,14 +19,15 @@ import MeetingWorkspace from './MeetingWorkspace';
 import EventPlanning from './EventPlanning';
 import AccomplishmentsReport from './AccomplishmentsReport';
 import s from './operations.module.css';
-const recordViews = ['tasks', 'people', 'attendance', 'volunteer', 'accountability', 'accounts'];
+const recordViews = ['tasks', 'people', 'attendance', 'volunteer', 'accountability', 'conduct', 'accounts'];
 const views = [['overview', 'Overview'], ['tasks', 'Tasks'], ['attendance', 'Attendance'], ['volunteer', 'Volunteer'], ['people', 'Officers'], ['calendar', 'Calendar'], ['meetings', 'Meetings'], ['events', 'Events'], ['reports', 'Reports']] as const;
-export default function OperationsHub({ data, initialView = 'overview', initialEvent = '', initialTask = '', officerTools, officerOverview, canManageAccounts = false, embedded = false, clarificationTaskIds = [] }: {
+export default function OperationsHub({ data, initialView = 'overview', initialEvent = '', initialTask = '', officerTools, officerOverview, officerScores, canManageAccounts = false, embedded = false, clarificationTaskIds = [] }: {
     data: OperationsData;
     clarificationTaskIds?: string[];
     initialTask?: string;
     officerTools?: ReactNode;
     officerOverview?: ReactNode;
+    officerScores?: ReactNode;
     canManageAccounts?: boolean;
     embedded?: boolean;
     initialView?: string;
@@ -90,7 +91,7 @@ export default function OperationsHub({ data, initialView = 'overview', initialE
             setSaving(false);
         }
     }
-    const available = [...views.filter(([key]) => data.membership.isOfficer ? !recordViews.includes(key) || Boolean(officerTools) : ['overview', 'calendar'].includes(key)), ...(!data.reviewer && officerTools ? [['accountability', 'Concerns & notes'] as const] : []), ...(canManageAccounts && officerTools ? [['accounts', 'Accounts'] as const] : [])];
+    const available = [...views.filter(([key]) => data.membership.isOfficer ? !recordViews.includes(key) || Boolean(officerTools) : ['overview', 'calendar'].includes(key)), ...(officerTools ? [data.reviewer ? ['conduct', 'Conduct & strikes'] as const : ['accountability', 'Concerns & notes'] as const] : []), ...(canManageAccounts && officerTools ? [['accounts', 'Accounts'] as const] : [])];
     const primarySections = available.filter(([key]) => ['overview', 'tasks', 'meetings', 'events'].includes(key));
     const moreSections = available.filter(([key]) => !primarySections.some(([primary]) => primary === key));
     const mobileScheduleSections = primarySections.filter(([key]) => ['meetings', 'events'].includes(key));
@@ -137,7 +138,7 @@ export default function OperationsHub({ data, initialView = 'overview', initialE
         setDraftEpoch(n => n + 1);
         router.refresh();
     } }}>Discard unsaved changes</button>}{error && <p role="alert" className={s.error}>{error}</p>}</div>
- {view === 'overview' && <><WorkspaceUpdates data={data} save={save} busy={busy} compact={Boolean(officerOverview)}/>{officerOverview}</>}
+ {view === 'overview' && <>{officerScores}<WorkspaceUpdates data={data} save={save} busy={busy} compact={Boolean(officerOverview)}/>{officerOverview}</>}
  {officerTools && toolsVisited && <section hidden={!recordViews.includes(view)} aria-label="Tasks and officer progress" className={s.officerTools}><WorkspaceNavigationContext.Provider value={{view, eventId, navigate: changeView}}>{officerTools}</WorkspaceNavigationContext.Provider></section>}
  {view === 'calendar' && <section className={s.panel}><h2>Combined calendar</h2><div className={s.grid}><label>Show<select value={kind} onChange={e => setKind(e.target.value)}>{[['all', 'Everything'], ['meeting', 'Meetings'], ['volunteer', 'Volunteer'], ['outreach', 'Outreach'], ['task', 'Task deadlines'], ...(staff ? [['interview', 'Interviews']] : [])].map(([v, l]) => <option key={v} value={v}>{l}</option>)}</select></label><label>From<input type="date" value={from} onChange={e => setFrom(e.target.value)}/></label><label>Through<input type="date" min={from} value={to} onChange={e => setTo(e.target.value)}/></label></div><button onClick={() => downloadFile('gea-calendar.ics', calendarIcs(calendar), 'text/calendar;charset=utf-8')} disabled={!calendar.length}>Export filtered calendar (.ics)</button><p className={s.muted}>Import the file into your calendar. Export again after schedule changes.</p>{calendar.map(e => <article className={s.row} key={e.id}><div><span className={s.badge}>{e.kind}</span><h3><a href={e.href}>{e.title}</a></h3><p>{schoolDate(e.start, !e.allDay)}{e.location ? ` · ${e.location}` : ''}</p></div><button onClick={() => downloadFile('gea-event.ics', calendarIcs([e]), 'text/calendar;charset=utf-8')}>Add to calendar<span className="sr-only">: {e.title}</span></button></article>)}{!calendar.length && <p>No events or deadlines match these filters.</p>}</section>}
  {['meetings', 'events'].includes(view) && data.membership.isOfficer && <><section className={`${s.selectorBar} ${s.noPrint}`}><label>{view === 'meetings' ? 'Choose meeting' : 'Choose service event'}<select value={events.some(e => e.id === eventId) ? eventId : ''} disabled={busy} onChange={e => { if (discard()) {

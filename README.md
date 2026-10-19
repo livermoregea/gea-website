@@ -4,11 +4,15 @@ Next.js 15 + Supabase site for the GEA at Livermore High School: public marketin
 a leadership application system, a hidden admin portal, an interview-booking flow, and a
 moderated student Q&A.
 
+Collaborative tasks now share one deliverable while each officer submits a private contribution reflection and receives their own PEET evaluation. Existing projects must apply `supabase/officer-individual-contributions.sql` after `gea-peet-ai.sql`; see [collaborative tasks](docs/officerboard.md#shared-officer-tasks).
+
 ## What's included
 
 GEAI provides cached AI dashboard descriptions with no Groq calls on page visits. `npm run dev` also runs the bounded local background worker; production uses the configured cron job.
 For existing installs, run `supabase/gea-geai.sql` and configure the scheduled job:
 see [GEAI setup and request limits](docs/geai.md).
+
+Officer Overview displays personal PEET and CAGE score cards. CAGE is pending the academy's formula; existing Supabase projects should run `supabase/officer-cage.sql` to add its storage. See [CAGE setup](docs/cage.md).
 
 | Page | Path | Notes |
 |---|---|---|

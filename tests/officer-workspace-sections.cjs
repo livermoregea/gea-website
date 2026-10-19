@@ -83,12 +83,23 @@ test('Personal navigation has one More menu with working personal destinations a
  }
 });
 
-test('Personal overview puts the GEAI briefing before the officer work queue',()=>{
- const h=harness();const tree=h.render({officerOverview:'personal-work-queue'});
+test('Personal overview orders scores, GEAI, then the officer work queue',()=>{
+ const h=harness();const tree=h.render({officerScores:'personal-scores',officerOverview:'personal-work-queue'});
  function flatten(n,out=[]){if(Array.isArray(n))n.forEach(x=>flatten(x,out));else if(n?.props){out.push(n);flatten(n.props.children,out);}else if(typeof n==='string')out.push(n);return out;}
  const flat=flatten(tree);
  const index=flat.indexOf('personal-work-queue');
  assert.ok(index>=0);
  const updates=flat.findIndex(n=>n?.props?.compact===true);
  assert.ok(updates>=0 && updates<index);
+ assert.ok(flat.indexOf('personal-scores')>=0 && flat.indexOf('personal-scores')<updates);
+});
+
+test('Conduct and strikes is directly reachable by reviewers while officers retain their own concerns view',()=>{
+ const h=harness(true);let tree=h.render();
+ const button=h.button(tree,'Conduct & strikes');assert.ok(button);button.props.onClick();tree=h.render();
+ const context=h.elements(tree).find(n=>n.props?.['aria-label']==='Tasks and officer progress').props.children.props.value;
+ assert.equal(context.view,'conduct');assert.match(h.window.location.href,/view=conduct/);
+ const officer=harness(),personal=officer.render();
+ assert.equal(officer.button(personal,'Conduct & strikes'),undefined);
+ assert.ok(officer.button(personal,'Concerns & notes'));
 });

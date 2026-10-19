@@ -90,7 +90,7 @@ export async function loadPeetReview(taskId: string, version: number) {
 }
 
 export function reviewEvidence(task: PeetTask, source: PeetSourceTask) {
-  return { originalTask: source, submitterDescription: task.description, category: task.category,
+  return { originalTask: source, submitter: { id: task.student_id, name: task.student_name }, contributionReflection: task.description, reflectionSubmittedAt: task.reflected_at, submitterDescription: task.description, category: task.category,
     studentQuestionsAndAnswers: task.assessment.studentQuestions.map((question, i) => ({ question, answer: task.answers[i] })) };
 }
 

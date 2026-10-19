@@ -24,14 +24,16 @@ export async function POST(request: Request) {
     const source = sourceData as PeetSourceTask;
     if (!source || source.cancelled_at || source.status === "completed") throw new PeetHttpError(409, "This task is closed or unavailable.");
     if (body.requestForSubmitter && source.status !== "submitted") throw new PeetHttpError(409, "The officer must submit their work before you request clarification.");
-    const { data: existing, error: existingError } = await actor.supabase.from("gea_peet_tasks").select("*").eq("task_id", source.id).maybeSingle();
+    const studentId = body.requestForSubmitter ? body.studentId || source.assigned_to : actor.user.id;
+    if (body.studentId && !body.requestForSubmitter && body.studentId !== actor.user.id) throw new PeetHttpError(403, "Submit your own contribution only.");
+    if (source.participant_ids && !source.participant_ids.includes(studentId)) throw new PeetHttpError(403, "Choose a participant on this task.");
+    const { data: existing, error: existingError } = await actor.supabase.from("gea_peet_tasks").select("*").eq("task_id", source.id).eq("student_id", studentId).maybeSingle();
     if (existingError) dbFailure(existingError);
     if (existing) return NextResponse.json({ task: existing }, { headers: { "Cache-Control": "no-store" } });
     const submissionUrl = source.status === "submitted" ? source.final_product_url || "" : body.submissionUrl;
     if (submissionUrl && !productLink(submissionUrl)) throw new PeetHttpError(400, "Enter a valid HTTP or HTTPS supporting link, or leave it blank.");
-    const studentId = body.requestForSubmitter ? source.assigned_to : actor.user.id;
     const submission = { description: body.requestForSubmitter ? source.submission_description.slice(0, 5000) || "Supporting deliverable submitted for review." : body.description,
-      category: body.category, submissionUrl };
+      category: body.category, submissionUrl, deliverableDescription: source.status === "submitted" ? source.submission_description : body.deliverableDescription };
     const { model, modelId } = peetModel();
     await limitPeetAI(actor.user.id);
     const { object } = await generateObject({
@@ -44,11 +46,12 @@ export async function POST(request: Request) {
       const { data: allowed } = await actor.supabase.rpc("gea_peet_can_review", { p_task_id: source.id });
       if (!allowed) throw new PeetHttpError(403, "Your reviewer access changed. Reopen this task.");
     }
-    const { data: task, error } = await peetAdmin().rpc("save_gea_peet_assessment", {
+    const { data: task, error } = await peetAdmin().rpc(source.individual_peet ? "save_gea_peet_contribution_assessment" : "save_gea_peet_assessment", {
       p_task_id: source.id, p_student_id: studentId, p_description: submission.description,
       p_category: submission.category, p_source_context: source,
       p_assessment: assessmentSchema.parse(object), p_model: modelId,
       p_submission_url: submissionUrl || null,
+      ...(source.individual_peet ? { p_deliverable_description: submission.deliverableDescription } : {}),
     });
     if (error) dbFailure(error);
     return NextResponse.json({ task }, { status: 201, headers: { "Cache-Control": "no-store" } });

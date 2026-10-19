@@ -65,7 +65,7 @@ test('submitter clarification reads stored task goals and saves a draft against 
   let saved, evidence;
   const submitter = { student: true, user: { id: 'student' }, supabase: {
     rpc: async name => ({ data: name === 'is_officer_task_participant' ? true : source }),
-    from: () => ({ select: () => ({ eq: () => ({ maybeSingle: async () => ({ data: null }) }) }) }),
+    from: () => ({ select: () => ({ eq() { return this; }, maybeSingle: async () => ({ data: null }) }) }),
   } };
   const api = route('evaluate-submission', { peetActor: async () => submitter,
     peetAdmin: () => ({ rpc: async (name, body) => { saved = { name, body }; return { data: { ...task, status: 'clarification' } }; } }),
@@ -142,7 +142,7 @@ test('approval forwards three editable PEET scores to the existing evaluation in
 });
 test('provider failure leaves the assessment unsaved and hides private provider details', async () => {
   let writes = 0;
-  const submitter = { student: true, user: { id: 'student' }, supabase: { rpc: async name => ({ data: name === 'is_officer_task_participant' ? true : source }), from: () => ({ select: () => ({ eq: () => ({ maybeSingle: async () => ({ data: null }) }) }) }) } };
+  const submitter = { student: true, user: { id: 'student' }, supabase: { rpc: async name => ({ data: name === 'is_officer_task_participant' ? true : source }), from: () => ({ select: () => ({ eq() { return this; }, maybeSingle: async () => ({ data: null }) }) }) } };
   const api = route('evaluate-submission', { peetActor: async () => submitter, peetAdmin: () => { writes++; } }, async () => { throw new Error('private provider secret'); });
   const result = await api.POST(req({ officerTaskId: uuid, description: 'Work', category: 'Media' }));
   assert.equal(result.status, 502); assert.equal(writes, 0); assert.doesNotMatch(result.body.error, /private provider/);
@@ -163,7 +163,7 @@ test('review UI renders targeted reviewer Q&A and editable Efficiency, Effective
 test('Reviewers can request clarification for older submissions, using the actual submitter and saved deliverables', async () => {
   let saved, evidence;
   const original={...source,assigned_to:'actual-student',final_product_url:'https://example.com/original'};
-  const reviewer={...actor,supabase:{rpc:async name=>({data:name==='gea_peet_can_review'?true:original}),from:()=>({select:()=>({eq:()=>({maybeSingle:async()=>({data:null})})})})}};
+  const reviewer={...actor,supabase:{rpc:async name=>({data:name==='gea_peet_can_review'?true:original}),from:()=>({select:()=>({eq(){return this;},maybeSingle:async()=>({data:null})})})}};
   const api=route('evaluate-submission',{peetActor:async()=>reviewer,peetAdmin:()=>({rpc:async(name,body)=>{saved=body;return{data:task};}})},async options=>{evidence=JSON.parse(options.prompt);return{object:assessment};});
   const result=await api.POST(req({officerTaskId:uuid,description:'Forged replacement evidence',category:'Outreach',submissionUrl:'https://example.com/forged',requestForSubmitter:true}));
   assert.equal(result.status,201);assert.equal(saved.p_student_id,'actual-student');assert.equal(saved.p_submission_url,original.final_product_url);
@@ -171,7 +171,7 @@ test('Reviewers can request clarification for older submissions, using the actua
 });
 test('Officers cannot request clarification on another person’s behalf or attach invalid supporting links',async()=>{
   let calls=0;
-  const submitter={student:true,reviewer:false,user:{id:'student'},supabase:{rpc:async name=>({data:name==='is_officer_task_participant'?true:{...source,status:'in_progress'}}),from:()=>({select:()=>({eq:()=>({maybeSingle:async()=>({data:null})})})})}};
+  const submitter={student:true,reviewer:false,user:{id:'student'},supabase:{rpc:async name=>({data:name==='is_officer_task_participant'?true:{...source,status:'in_progress'}}),from:()=>({select:()=>({eq(){return this;},maybeSingle:async()=>({data:null})})})}};
   const api=route('evaluate-submission',{peetActor:async()=>submitter},async()=>{calls++;return{object:assessment};});
   assert.equal((await api.POST(req({officerTaskId:uuid,description:'Work',category:'Media',requestForSubmitter:true}))).status,403);
   assert.equal((await api.POST(req({officerTaskId:uuid,description:'Work',category:'Media',submissionUrl:'javascript:alert(1)'}))).status,400);
@@ -198,4 +198,15 @@ test('Reviewer UI discloses remote processing and AI limitations before generati
   const html = renderToStaticMarkup(React.createElement(ui.PeetReviewForm, { task, actorId: 'reviewer', onSaved() {} }));
   assert.match(html, /sent to Groq/);
   assert.match(html, /AI can make mistakes and cannot open supporting links/);
+});
+
+test('Shared clarification saves a personal reflection without replacing the already shared deliverable',async()=>{
+ let saved,evidence;
+ const personalSource={...source,individual_peet:true,participant_ids:['student','teammate']};
+ const client={rpc:async name=>({data:name==='is_officer_task_participant'?true:personalSource}),from:()=>({select:()=>({eq(){return this;},maybeSingle:async()=>({data:null})})})};
+ const api=route('evaluate-submission',{peetActor:async()=>({student:true,user:{id:'student'},supabase:client}),peetAdmin:()=>({rpc:async(name,body)=>{saved={name,body};return{data:task}}})},async options=>{evidence=JSON.parse(options.prompt);return{object:assessment}});
+ const result=await api.POST(req({officerTaskId:uuid,description:'I built the slide deck and rehearsed',category:'Media',submissionUrl:'https://example.com/replacement',deliverableDescription:'Replace the team deliverable'}));
+ assert.equal(result.status,201);assert.equal(saved.name,'save_gea_peet_contribution_assessment');assert.equal(saved.body.p_student_id,'student');
+ assert.equal(saved.body.p_submission_url,source.final_product_url);assert.equal(saved.body.p_deliverable_description,source.submission_description);
+ assert.equal(evidence.submission.description,'I built the slide deck and rehearsed');
 });

@@ -30,7 +30,7 @@ test('Dashboard record links choose the requested officer and section only for r
 });
 
 test('Direct workspace destinations and old per-officer links preserve their intended scope',()=>{
- for(const view of ['tasks','people','attendance','volunteer','accountability','accounts'])assert.equal(api.workspaceView(view),view);
+ for(const view of ['tasks','people','attendance','volunteer','accountability','conduct','accounts'])assert.equal(api.workspaceView(view),view);
  assert.equal(api.workspaceView('tasks',undefined,'attendance'),'attendance');
  assert.equal(api.workspaceView('tasks',undefined,'attendance','officer-a'),'people');
  assert.equal(api.workspaceView(undefined,undefined,'volunteer'),'volunteer');

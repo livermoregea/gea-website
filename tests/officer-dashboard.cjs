@@ -57,6 +57,32 @@ test('Officers without evaluations have an empty score rather than a zero', () =
 function render(reviewer) {
   return renderToStaticMarkup(React.createElement(Dashboard, { profile: profiles[0], profiles, tasks, evaluations, tracking, data: { reviewer, workspaceHref: '/officerboard', calendar: [{ id: 'old', title: 'Past deadline', start: '2020-01-01', kind: 'task', allDay: true, href: '/past' }, { id: 'future', title: 'Future meeting', start: '2099-01-01T20:00:00Z', kind: 'meeting', href: '/meeting' }] } }));
 }
+test('Personal scores are visible without opening progress and reviewers see their own PEET, not the team average', () => {
+  const otherScore = { task_id: 'bob-only', efficiency: 4, effectiveness: 4, time: 4 };
+  const html = renderToStaticMarkup(React.createElement(Dashboard, { profile: profiles[0], profiles,
+    tasks: [...tasks, { id: 'bob-only', assigned_to: 'b', status: 'completed' }], evaluations: [...evaluations, otherScore], tracking,
+    data: { reviewer: true, workspaceHref: '/officerboard', calendar: [] } }));
+  const start = html.indexOf('aria-labelledby="personal-scores-heading"');
+  const end = html.indexOf('</section>', start);
+  const personal = html.slice(start, end);
+  assert.ok(personal.includes('75.0'));
+  assert.ok(!personal.includes('81.3'));
+  assert.ok(html.includes('81.3')); // Team average remains separate below.
+  assert.ok(personal.includes('CAGE score'));
+  assert.ok(personal.includes('N/A'));
+  assert.ok(!personal.includes('Pending formula'));
+  assert.ok(!personal.includes('0.0'));
+  assert.ok(start < html.indexOf('class="workOverview"'));
+});
+test('CAGE only displays a complete result for the signed-in officer and current year', () => {
+  const { currentCageScore } = load('lib/cage.ts');
+  const record = { officer_id: 'a', academic_year: '2026-2027', score: 0, formula_version: 'future-approved-v1', calculated_at: '2026-10-18T12:00:00Z' };
+  assert.equal(currentCageScore(record, 'a', '2026-2027'), record);
+  for (const candidate of [null, { ...record, officer_id: 'b' }, { ...record, academic_year: '2025-2026' },
+    { ...record, score: null }, { ...record, score: NaN }, { ...record, formula_version: null }, { ...record, calculated_at: null }]) {
+    assert.equal(currentCageScore(candidate, 'a', '2026-2027'), null);
+  }
+});
 test('Reviewer overview links each snapshot to a detailed record without exposing private notes', () => {
   const html = render(true);
   assert.ok(html.includes('Team PEET average'));

@@ -3,7 +3,7 @@ import { accountMemberships } from './account-landing';
 import { legacyPlanningHref, officerWorkspaceHref } from './officer-workspace-navigation';
 import { BUILDERS_ENABLED } from './site-features';
 import { taskAttention, type AttentionItem, type CalendarItem, type MeetingNotes, type AgendaItem, type EventPlan, type Blocker, type Digest } from './gea-operations';
-import type { OfficerTask, TaskTeammate } from './peet';
+import { needsTaskContribution, contributionFor, type OfficerTask, type TaskTeammate } from './peet';
 import { schoolToday, type OfficerEvent, type OfficerAttendance, type VolunteerLog, type EventSignup } from './officer-tracking';
 export async function allRows<T>(query: (from: number, to: number) => PromiseLike<{
     data: T[] | null;
@@ -37,7 +37,7 @@ export async function loadOperations(supabase: Awaited<ReturnType<typeof createC
         throw new Error('The operations database update is required.');
     const reviewer = Boolean(reviewerResult.data), canMeetings = Boolean(secretaryResult.data);
     const [tasks, events, attendance, logs, signups, people, notes, agenda, plans, blockers, reads, prefs, digests, cancellations, concerns] = await Promise.all([
-        seed ? Promise.resolve(seed.tasks) : allRows<OfficerTask>((f, t) => supabase.from('tasks').select('id,title,description,assigned_to,created_by,due_date,status,cancelled_at,submitted_at,completed_at,created_at,officer_task_members(officer_id)').order('id').range(f, t)),
+        seed ? Promise.resolve(seed.tasks) : allRows<OfficerTask>((f, t) => supabase.from('tasks').select('id,title,description,assigned_to,created_by,due_date,status,cancelled_at,submitted_at,completed_at,created_at,individual_peet,officer_task_members(officer_id),contributions:gea_peet_tasks(student_id,status)').order('id').range(f, t)),
         seed ? Promise.resolve(seed.events) : allRows<OfficerEvent>((f, t) => supabase.from('officer_events').select('*').order('starts_at').order('id').range(f, t)),
         seed ? Promise.resolve(seed.attendance) : allRows<OfficerAttendance>((f, t) => supabase.from('officer_attendance').select('id,event_id,officer_id,status').order('id').range(f, t)),
         seed ? Promise.resolve(seed.logs) : allRows<VolunteerLog>((f, t) => supabase.from('officer_volunteer_logs').select('id,event_id,officer_id,status,minutes,check_in').order('id').range(f, t)),
@@ -74,7 +74,8 @@ export async function loadOperations(supabase: Awaited<ReturnType<typeof createC
         }
     }
     const attention: AttentionItem[] = taskAttention(tasks, reviewer, taskHref);
-    const ownSubmitted = tasks.filter(t => !t.cancelled_at && t.status === 'submitted' && !reviewer);
+    for (const task of tasks.filter(task => needsTaskContribution(task, userId))) attention.push({ key: `contribution:${task.id}`, title: task.title, detail: 'Shared deliverable submitted · Your contribution reflection is needed', href: `${taskHref}?view=tasks&task=${task.id}&action=submit`, category: 'Response' });
+    const ownSubmitted = tasks.filter(t => !t.cancelled_at && t.status === 'submitted' && !needsTaskContribution(t, userId) && contributionFor(t, userId)?.status !== 'approved' && !reviewer);
     for (const t of ownSubmitted)
         attention.push({ key: `submitted:${t.id}:${t.submitted_at}`, title: t.title, detail: 'Your work is awaiting review', href: `${taskHref}?task=${t.id}`, category: 'Tasks' });
     for (const c of cancellations)

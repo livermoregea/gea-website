@@ -9,7 +9,7 @@ function load(file,deps={},env={}) {
  {exports,require:name=>deps[name]??require(name),process:{env},URL,Date,Set,Map,Buffer,AbortSignal});
  return exports;
 }
-const geai=load('lib/geai.ts');
+const geai=load('lib/geai.ts',{'./peet':load('lib/peet.ts')});
 const fixture=()=>({userId:'officer',reviewer:false,workspaceHref:'/officerboard',attention:[],calendar:[],tasks:[],notes:[{minutes:'PRIVATE MINUTES'}],evaluations:[{justification:'PRIVATE EVALUATION'}]});
 test('GEAI omits private contents and distinguishes shared tasks, completed work, and submitted work',()=>{
  const data=fixture();

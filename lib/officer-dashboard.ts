@@ -1,4 +1,4 @@
-import { isOfficerTaskParticipant, peetSummary, taskOfficers, type OfficerProfile, type OfficerTask, type PeetEvaluation } from './peet';
+import { isOfficerTaskParticipant, contributionFor, needsTaskContribution, taskCompleteFor, peetSummary, taskOfficers, type OfficerProfile, type OfficerTask, type PeetEvaluation } from './peet';
 import { trackingSummary, type TrackingData } from './officer-tracking';
 
 /** Dates are Pacific calendar dates, so a task stays due today until midnight. */
@@ -8,10 +8,10 @@ export function sortOfficerTasks(tasks: OfficerTask[]) {
 }
 
 export function officerWorkQueue(tasks: OfficerTask[], officerId: string, clarificationTaskIds: string[] = []) {
-  const own = tasks.filter(task => !task.cancelled_at && isOfficerTaskParticipant(task, officerId) && task.status !== 'completed');
+  const own = tasks.filter(task => !task.cancelled_at && isOfficerTaskParticipant(task, officerId) && !taskCompleteFor(task, officerId));
   return {
-    toComplete: sortOfficerTasks(own.filter(task => task.status === 'in_progress' || clarificationTaskIds.includes(task.id))),
-    awaitingReview: sortOfficerTasks(own.filter(task => task.status === 'submitted' && !clarificationTaskIds.includes(task.id))),
+    toComplete: sortOfficerTasks(own.filter(task => task.status === 'in_progress' || needsTaskContribution(task, officerId) || clarificationTaskIds.includes(task.id))),
+    awaitingReview: sortOfficerTasks(own.filter(task => task.status === 'submitted' && !needsTaskContribution(task, officerId) && !clarificationTaskIds.includes(task.id))),
   };
 }
 
@@ -20,11 +20,11 @@ export function officerDashboard(profile: OfficerProfile, profiles: OfficerProfi
   const people = reviewer ? taskOfficers(profiles) : [profiles.find(person => person.id === profile.id) ?? profile];
   const officers = people.map(person => ({
     person,
-    peet: peetSummary(tasks.filter(task => isOfficerTaskParticipant(task, person.id)), evaluations),
+    peet: peetSummary(tasks.filter(task => isOfficerTaskParticipant(task, person.id)), evaluations, person.id),
     participation: trackingSummary(tracking, person.id, year),
   }));
   const visibleTasks = tasks.filter(task => people.some(person => isOfficerTaskParticipant(task, person.id)));
-  const work = peetSummary(visibleTasks, evaluations);
+  const work = peetSummary(visibleTasks, evaluations, reviewer ? undefined : profile.id);
   const scored = officers.filter(row => row.peet.score !== null);
   return {
     officers, work,
@@ -34,6 +34,6 @@ export function officerDashboard(profile: OfficerProfile, profiles: OfficerProfi
     excused: officers.reduce((total, row) => total + row.participation.excused, 0),
     unexcused: officers.reduce((total, row) => total + row.participation.unexcused, 0),
     serviceMinutes: officers.reduce((total, row) => total + row.participation.volunteerMinutes, 0),
-    submitted: visibleTasks.filter(task => !task.cancelled_at && task.status === 'submitted').length,
+    submitted: visibleTasks.filter(task => !task.cancelled_at && task.status === 'submitted' && (!task.individual_peet || (reviewer ? task.contributions?.some(row => row.status === 'pending') : contributionFor(task, profile.id)?.status === 'pending'))).length,
   };
 }

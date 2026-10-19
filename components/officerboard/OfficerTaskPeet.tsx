@@ -15,10 +15,13 @@ async function saveTask(endpoint: string, body: unknown): Promise<PeetTask> {
   return result.task;
 }
 
-export default function OfficerTaskPeet({ officerTask, actorId, mode, manualFallback, onComplete, onBusyChange }: {
+export default function OfficerTaskPeet({ officerTask, actorId, mode, manualFallback, onComplete, onBusyChange, peopleNames = {} }: {
+  peopleNames?: Record<string, string>;
   officerTask: OfficerTask; actorId: string; mode: "submit" | "review"; manualFallback: ReactNode;
   onComplete: (message: string) => void; onBusyChange: (busy: boolean) => void;
 }) {
+  const [contributions, setContributions] = useState<PeetTask[]>([]);
+  const [selectedStudent, setSelectedStudent] = useState("");
   const [task, setTask] = useState<PeetTask | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
@@ -28,27 +31,38 @@ export default function OfficerTaskPeet({ officerTask, actorId, mode, manualFall
     setLoading(true); setLoadError(""); onBusyChange(true);
     async function load() {
       try {
-        const { data, error } = await createClient().from("gea_peet_tasks").select("*").eq("task_id", officerTask.id).maybeSingle();
+        let query = createClient().from("gea_peet_tasks").select("*").eq("task_id", officerTask.id);
+        if (mode === "submit") query = query.eq("student_id", actorId);
+        const { data, error } = await query;
         if (error) throw new Error("Could not load task clarification. Retry, or use the manual form below.");
-        if (active) setTask(data as PeetTask | null);
+        if (active) {
+          const rows = (data || []) as PeetTask[];
+          setContributions(rows);
+          const selected = mode === "submit" ? rows.find(row => row.student_id === actorId) : rows.find(row => row.status === "pending") || rows[0];
+          setSelectedStudent(selected?.student_id || ""); setTask(selected || null);
+        }
       } catch (error) { if (active) setLoadError(error instanceof Error ? error.message : "Could not load task clarification."); }
       finally { if (active) { setLoading(false); onBusyChange(false); } }
     }
     void load();
     return () => { active = false; onBusyChange(false); };
-  }, [officerTask.id, retry, onBusyChange]);
+  }, [officerTask.id, actorId, mode, retry, onBusyChange]);
   function update(saved: PeetTask) {
     setTask(saved);
-    if (saved.status === "approved") onComplete("PEET evaluation saved. The task is complete and the overall PEET score is updated.");
+    setContributions(rows => [...rows.filter(row => row.id !== saved.id), saved]);
+    setSelectedStudent(saved.student_id);
+    if (saved.status === "approved") onComplete(officerTask.individual_peet ? "This officer’s PEET evaluation is saved. Teammates keep their own reflections and scores." : "PEET evaluation saved. The task is complete and the overall PEET score is updated.");
     else if (saved.status === "pending" && mode === "submit") onComplete("Work and clarification answers submitted for review.");
   }
   return <div className={styles.taskFlow}>
+    {!loading && officerTask.individual_peet && mode === "review" && <section className={styles.assessment}><h2>Individual contribution reviews</h2><p>One shared deliverable, a separate reflection and PEET score for each officer.</p><ul>{[officerTask.assigned_to, ...(officerTask.officer_task_members || []).map(member => member.officer_id)].map(id => <li key={id}>{peopleNames[id] || contributions.find(row => row.student_id === id)?.student_name || "Officer"} · {contributions.find(row => row.student_id === id)?.status === "approved" ? "Evaluated" : contributions.find(row => row.student_id === id)?.status === "pending" ? "Ready for review" : contributions.some(row => row.student_id === id) ? "Reflection in progress" : "Reflection not submitted"}</li>)}</ul>{contributions.length ? <label>Officer contribution<select value={selectedStudent} onChange={event => { setSelectedStudent(event.target.value); setTask(contributions.find(row => row.student_id === event.target.value) || null); }}>{contributions.map(row => <option key={row.id} value={row.student_id}>{row.student_name} · {row.status === "pending" ? "Ready for review" : row.status === "approved" ? "Evaluated" : "Reflection in progress"}</option>)}</select></label> : <p>No individual reflections have been submitted yet. Each participant can open this task to describe their contribution.</p>}</section>}
     {loading && <><h2>{officerTask.title}</h2><p role="status">Loading task clarification…</p></>}
     {loadError && <><h2>{officerTask.title}</h2><p role="alert" className={styles.error}>{loadError}</p><button className={styles.secondary} onClick={() => setRetry(value => value + 1)}>Retry</button></>}
+    {!loading && !loadError && officerTask.individual_peet && task && mode === "review" && task.status !== "clarification" && <ContributionManualReview task={task} onComplete={onComplete} onBusyChange={onBusyChange} />}
     {!loading && !loadError && (task ? <PeetTaskCard key={`${task.id}:${task.version}`} task={task} actorId={actorId} own={task.student_id === actorId} canReview={mode === "review"} onSaved={update} onBusyChange={onBusyChange} />
       : mode === "submit" ? <PeetSubmissionForm sourceTask={officerTask as PeetSourceTask} onSaved={update} onBusyChange={onBusyChange} />
-      : <PeetLegacyClarification officerTask={officerTask} onSaved={update} onBusyChange={onBusyChange} />)}
-    {!loading && <details className={styles.manual}><summary>{mode === "submit" ? "Submit manually" : "Enter PEET scores manually"}</summary>{manualFallback}</details>}
+      : officerTask.individual_peet ? <p>Participants must submit their own contribution reflections before they can receive a score.</p> : <PeetLegacyClarification officerTask={officerTask} onSaved={update} onBusyChange={onBusyChange} />)}
+    {!loading && !officerTask.individual_peet && <details className={styles.manual}><summary>{mode === "submit" ? "Submit manually" : "Enter PEET scores manually"}</summary>{manualFallback}</details>}
   </div>;
 }
 
@@ -81,16 +95,18 @@ export function PeetSubmissionForm({ sourceTask, onSaved, onBusyChange }: { sour
     event.preventDefault(); if (locked.current) return;
     locked.current = true; setBusy(true); onBusyChange?.(true); setError("");
     const data = new FormData(event.currentTarget);
-    try { onSaved(await saveTask("evaluate-submission", { officerTaskId: sourceTask.id, description: data.get("description"), category: data.get("category"), submissionUrl: data.get("url") })); }
+    try { onSaved(await saveTask("evaluate-submission", { officerTaskId: sourceTask.id, description: data.get("description"), category: data.get("category"), submissionUrl: data.get("url"), deliverableDescription: data.get("deliverableDescription") || "" })); }
     catch (error) { setError(error instanceof Error ? error.message : "Could not submit your work."); }
     finally { locked.current = false; setBusy(false); onBusyChange?.(false); }
   }
   return <section className={styles.card} aria-labelledby="peet-submit-heading">
-    <p className={styles.eyebrow}>1 · Submitter clarification</p><h2 id="peet-submit-heading">{sourceTask.title}</h2>
+    {sourceTask.individual_peet && sourceTask.status === "submitted" && <div className={styles.assessment}><h2>The shared deliverable is already submitted!</h2><p>Nice work reaching this step with your team. Now tell us what you contributed and answer a few questions so you can receive your own PEET score.</p><p className={styles.copy}>{sourceTask.submission_description}</p></div>}
+    <p className={styles.eyebrow}>1 · {sourceTask.individual_peet ? 'Your contribution & reflection' : 'Submitter clarification'}</p><h2 id="peet-submit-heading">{sourceTask.title}</h2>
     <p className={styles.copy}>Task goals: {sourceTask.description || "No written goals recorded."}</p>
     <p className={styles.hint}>Due: {sourceTask.due_date || "No deadline recorded"}. The AI will ask a few questions about your work before the reviewer begins.</p>
     <form onSubmit={submit} className={styles.form}><fieldset disabled={busy}>
-      <label>Completed work and deliverables<textarea name="description" required maxLength={5000} rows={4} defaultValue={sourceTask.submission_description} placeholder="What did you deliver? How did you use your time and resources? When was the work finished?" /></label>
+      {sourceTask.individual_peet && sourceTask.status === "in_progress" && <label>Shared deliverable description<textarea name="deliverableDescription" required maxLength={5000} rows={3} placeholder="What did your team deliver together? This description is shared with your teammates." /></label>}
+      <label>{sourceTask.individual_peet ? 'Your contribution and reflection' : 'Completed work and deliverables'}<textarea name="description" required maxLength={5000} rows={4} defaultValue={sourceTask.individual_peet ? "" : sourceTask.submission_description} placeholder="What did you deliver? How did you use your time and resources? When was the work finished?" /></label>
       <label>Supporting link (optional)<input type="url" name="url" maxLength={2048} readOnly={sourceTask.status === "submitted"} defaultValue={sourceTask.final_product_url || ""} placeholder="https://…" /></label>
       <label>Category<select name="category" required>{peetCategories.map(category => <option key={category}>{category}</option>)}</select></label>
       <p className={styles.hint}>Task details and clarification answers are sent to Groq, our AI provider, for this review. Avoid sensitive personal information.</p>
@@ -103,8 +119,10 @@ export function PeetTaskCard({ task, actorId, own, canReview, onSaved, onBusyCha
   const url = productLink(task.submission_url ?? task.source_context.final_product_url);
   return <article className={styles.card}>
     <div className={styles.heading}><div><p className={styles.eyebrow}>{task.category} · {task.student_name}</p><h2>{task.title}</h2></div><span className={styles.badge}>{task.status === "clarification" ? "Submitter answers needed" : task.status === "pending" ? "Pending PEET review" : "Approved"}</span></div>
-    <div className={styles.assessment}><strong>Original task goals</strong><p className={styles.copy}>{task.source_context.description || "No written goals recorded."}</p><p>Due: {task.source_context.due_date || "No deadline recorded"} · Submitted: {task.source_context.submitted_at ? new Intl.DateTimeFormat("en-US", { dateStyle: "medium", timeZone: "America/Los_Angeles" }).format(new Date(task.source_context.submitted_at)) : "Not yet submitted"}</p></div>
-    <h3 className="mt-4">Submitter’s deliverables</h3><p className={styles.copy}>{task.description}</p>
+    <div className={styles.assessment}><strong>Original task goals</strong><p className={styles.copy}>{task.source_context.description || "No written goals recorded."}</p><p>Due: {task.source_context.due_date || "No deadline recorded"} · {task.source_context.individual_peet ? "Shared deliverable submitted" : "Submitted"}: {task.source_context.submitted_at ? new Intl.DateTimeFormat("en-US", { dateStyle: "medium", timeZone: "America/Los_Angeles" }).format(new Date(task.source_context.submitted_at)) : "Not yet submitted"}</p></div>
+    {task.source_context.individual_peet && <div className={styles.assessment}><strong>Shared team deliverable</strong><p className={styles.copy}>{task.source_context.submission_description}</p></div>}
+    {task.reflected_at && task.source_context.individual_peet && <p className={styles.hint}>This officer’s reflection submitted: {new Intl.DateTimeFormat("en-US", { dateStyle: "medium", timeZone: "America/Los_Angeles" }).format(new Date(task.reflected_at))}</p>}
+    <h3 className="mt-4">{task.source_context.individual_peet ? "This officer’s contribution and reflection" : "Submitter’s deliverables"}</h3><p className={styles.copy}>{task.description}</p>
     {url && <a className="inline-flex min-h-11 items-center underline" href={url} target="_blank" rel="noopener noreferrer">View supporting deliverable ↗</a>}
     <div className={styles.assessment}><strong>AI-generated clarification</strong><p>{task.assessment.initialAssessmentSummary}</p></div>
     {task.status === "clarification" && own ? <PeetClarificationForm task={task} onSaved={onSaved} onBusyChange={onBusyChange} /> : <QuestionAnswers title="Submitter questions and answers" questions={task.assessment.studentQuestions} answers={task.answers} />}
@@ -194,4 +212,23 @@ export function PeetReviewForm({ task, actorId, onSaved, onBusyChange }: { task:
     </>}
     {error && <p role="alert" className={styles.error}>{error}</p>}
   </section>;
+}
+
+
+function ContributionManualReview({ task, onComplete, onBusyChange }: { task: PeetTask; onComplete: (message: string) => void; onBusyChange: (busy: boolean) => void }) {
+  const [busy, setBusy] = useState(false), [error, setError] = useState("");
+  const locked = useRef(false);
+  async function submit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault(); if (locked.current) return;
+    locked.current = true; setBusy(true); onBusyChange(true); setError("");
+    const fields = new FormData(event.currentTarget);
+    try {
+      const { error } = await createClient().rpc("evaluate_officer_contribution", { p_task_id: task.task_id, p_officer_id: task.student_id, p_version: task.version,
+        p_efficiency: Number(fields.get("efficiency")), p_effectiveness: Number(fields.get("effectiveness")), p_time: Number(fields.get("time")), p_feedback: fields.get("feedback") });
+      if (error) throw new Error(error.message || "Could not save this contribution evaluation.");
+      onComplete(`${task.student_name}’s individual PEET evaluation saved.`);
+    } catch (error) { setError(error instanceof Error ? error.message : "Could not save evaluation."); }
+    finally { locked.current = false; setBusy(false); onBusyChange(false); }
+  }
+  return <details className={styles.manual}><summary>Enter individual PEET scores manually</summary><form className={styles.form} onSubmit={submit}><p>Score only {task.student_name}’s contribution. Other participants are evaluated separately.</p><fieldset disabled={busy}>{pillars.map(pillar => <label key={pillar}>{pillar}<input type="number" name={pillar} required min="1" max="4" step="0.1" defaultValue={task.approved_scores?.[pillar]} /></label>)}<label>Contribution feedback<textarea name="feedback" required maxLength={10000} rows={3} /></label><button className={styles.primary}>Save this officer’s evaluation</button></fieldset>{error && <p role="alert">{error}</p>}</form></details>;
 }

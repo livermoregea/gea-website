@@ -59,7 +59,7 @@ export function taskAttention(tasks: OfficerTask[], reviewer: boolean, taskHref:
     soon.setUTCDate(soon.getUTCDate() + 7);
     const last = soon.toISOString().slice(0, 10);
     return tasks.filter(t => !t.cancelled_at && t.status !== 'completed').flatMap(t => {
-        if (reviewer && t.status === 'submitted')
+        if (reviewer && t.status === 'submitted' && (!t.individual_peet || t.contributions?.some(row => row.status === 'pending')))
             return [{ key: `task-review:${t.id}:${t.submitted_at}`, title: t.title, detail: 'Submission awaiting review', href: `${taskHref}?task=${encodeURIComponent(t.id)}`, date: t.submitted_at ?? undefined, category: 'Review' }];
         if (t.status === 'in_progress' && t.due_date && t.due_date <= last)
             return [{ key: `task-due:${t.id}:${t.due_date}`, title: t.title, detail: t.due_date < today ? 'Overdue task' : 'Due in the next seven days', href: `${taskHref}?task=${encodeURIComponent(t.id)}`, date: t.due_date, category: 'Tasks' }];

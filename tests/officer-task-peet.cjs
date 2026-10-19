@@ -4,7 +4,7 @@ function harness(mode='submit',initial=null){
  let cursor=0,effectCursor=0,result={data:initial,error:null};const state=[],effects=[],pending=[],busy=[],completed=[];
  const source={id:'task-1',title:'Workshop',description:'Deliver a workshop',assigned_to:'student',status:mode==='review'?'submitted':'in_progress',submission_description:'Delivered workshop',final_product_url:null};
  const props={officerTask:source,actorId:mode==='review'?'reviewer':'student',mode,manualFallback:jsx.jsx('form',{'aria-label':'Manual form'}),onComplete:message=>completed.push(message),onBusyChange:value=>busy.push(value)};
- const deps={react:{useState(initial){const i=cursor++;if(!(i in state))state[i]=initial;return[state[i],next=>{state[i]=typeof next==='function'?next(state[i]):next;}];},useRef(){const i=cursor++;if(!(i in state))state[i]={current:false};return state[i];},useEffect(fn,dependencies){const i=effectCursor++,previous=effects[i];if(!previous||dependencies.some((value,index)=>value!==previous.dependencies[index])){pending.push(()=>{previous?.cleanup?.();const cleanup=fn();effects[i]={dependencies,cleanup};});}}},'react/jsx-runtime':jsx,'@/lib/supabase/client':{createClient:()=>({from:()=>({select:()=>({eq:()=>({maybeSingle:async()=>result})})})})},'@/lib/peet-ai':{peetCategories:['Outreach'],pillars:['efficiency','effectiveness','time'],peetScorePercent:()=>75},'@/lib/peet':{productLink:value=>value},'./peet.module.css':{default:new Proxy({},{get:(_,key)=>String(key)})}};
+ const deps={react:{useState(initial){const i=cursor++;if(!(i in state))state[i]=initial;return[state[i],next=>{state[i]=typeof next==='function'?next(state[i]):next;}];},useRef(){const i=cursor++;if(!(i in state))state[i]={current:false};return state[i];},useEffect(fn,dependencies){const i=effectCursor++,previous=effects[i];if(!previous||dependencies.some((value,index)=>value!==previous.dependencies[index])){pending.push(()=>{previous?.cleanup?.();const cleanup=fn();effects[i]={dependencies,cleanup};});}}},'react/jsx-runtime':jsx,'@/lib/supabase/client':{createClient:()=>({from:()=>({select:()=>({eq(){return this;},then(resolve){return Promise.resolve({...result,data:result.data ? (Array.isArray(result.data)?result.data:[result.data]) : []}).then(resolve);}})})})},'@/lib/peet-ai':{peetCategories:['Outreach'],pillars:['efficiency','effectiveness','time'],peetScorePercent:()=>75},'@/lib/peet':{productLink:value=>value},'./peet.module.css':{default:new Proxy({},{get:(_,key)=>String(key)})}};
  const exports={};vm.runInNewContext(ts.transpileModule(fs.readFileSync('components/officerboard/OfficerTaskPeet.tsx','utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2020,jsx:ts.JsxEmit.ReactJSX}}).outputText,{exports,require:name=>{assert.ok(name in deps,name);return deps[name];}});
  return{props,busy,completed,setResult(value){result=value;},render(){cursor=0;effectCursor=0;return exports.default(props);},async settle(){while(pending.length)pending.shift()();await new Promise(setImmediate);},type(name){return exports[name];}};
 }
@@ -31,4 +31,22 @@ test('Older submissions request submitter questions inside evaluation, with a ma
  const failed=harness('review');failed.setResult({data:null,error:{message:'Offline'}});failed.render();await failed.settle();tree=failed.render();
  assert.equal(nodes(tree,n=>n.props.role==='alert').length,1);assert.equal(nodes(tree,n=>n.props['aria-label']==='Manual form').length,1);
  failed.setResult({data:null,error:null});nodes(tree,n=>n.type==='button')[0].props.onClick();failed.render();await failed.settle();tree=failed.render();assert.equal(nodes(tree,n=>n.type===failed.type('PeetLegacyClarification')).length,1);
+});
+
+test('A teammate gets their own reflection form after shared delivery instead of another officer card',async()=>{
+ const h=harness('submit');h.props.officerTask.individual_peet=true;h.props.officerTask.status='submitted';
+ h.render();await h.settle();const tree=h.render();
+ const form=nodes(tree,n=>n.type===h.type('PeetSubmissionForm'))[0];
+ assert.ok(form);assert.equal(form.props.sourceTask.individual_peet,true);
+ assert.equal(nodes(tree,n=>n.type==='details'&&n.props.children?.[1]===h.props.manualFallback).length,0);
+});
+
+test('Reviewers select and score each participant contribution separately',async()=>{
+ const a={id:'a-reflection',task_id:'task-1',student_id:'a',student_name:'Alice',status:'pending',version:2};
+ const b={id:'b-reflection',task_id:'task-1',student_id:'b',student_name:'Bob',status:'pending',version:2};
+ const h=harness('review',[a,b]);h.props.officerTask.individual_peet=true;
+ h.render();await h.settle();let tree=h.render();
+ nodes(tree,n=>n.type==='select')[0].props.onChange({target:{value:'b'}});tree=h.render();
+ const card=nodes(tree,n=>n.type===h.type('PeetTaskCard'))[0];assert.equal(card.props.task.student_id,'b');
+ card.props.onSaved({...b,status:'approved',version:3});assert.match(h.completed[0],/officer.*evaluation.*saved/i);assert.doesNotMatch(h.completed[0],/task is complete/);
 });

@@ -1,12 +1,14 @@
 import type { OperationsData } from '@/lib/gea-operations-data';
-import { isOfficerTaskParticipant, type OfficerProfile, type OfficerTask, type PeetEvaluation } from '@/lib/peet';
+import { isOfficerTaskParticipant, needsTaskContribution, type OfficerProfile, type OfficerTask, type PeetEvaluation } from '@/lib/peet';
 import { officerDashboard, officerWorkQueue, sortOfficerTasks } from '@/lib/officer-dashboard';
 import { CONTRACT_YEAR, durationLabel, schoolDate, schoolToday, type TrackingData } from '@/lib/officer-tracking';
+import type { CageScore } from '@/lib/cage';
+import OfficerScores from './OfficerScores';
 import s from './operations.module.css';
 
-export default function OfficerDashboard({ profile, profiles, tasks, evaluations, tracking, data, clarificationTaskIds = [] }: {
+export default function OfficerDashboard({ profile, profiles, tasks, evaluations, tracking, data, clarificationTaskIds = [], cageScore = null, showScores = true }: {
   profile: OfficerProfile; profiles: OfficerProfile[]; tasks: OfficerTask[]; evaluations: PeetEvaluation[];
-  tracking: TrackingData; data: OperationsData; clarificationTaskIds?: string[];
+  tracking: TrackingData; data: OperationsData; clarificationTaskIds?: string[]; cageScore?: CageScore | null; showScores?: boolean;
 }) {
   const summary = officerDashboard(profile, profiles, tasks, evaluations, tracking, data.reviewer, CONTRACT_YEAR);
   const own = officerWorkQueue(tasks, profile.id, clarificationTaskIds);
@@ -15,8 +17,9 @@ export default function OfficerDashboard({ profile, profiles, tasks, evaluations
   const now = new Date(), today = schoolToday(now);
   const upcoming = data.calendar.filter(item => item.kind !== 'task' && (item.allDay ? item.start >= today : new Date(item.end || item.start) >= now)).slice(0, 3);
   const overdue = own.toComplete.filter(task => task.status === 'in_progress' && task.due_date && task.due_date < today).length;
-  const reviews = sortOfficerTasks(tasks.filter(task => !task.cancelled_at && task.status === 'submitted' && !isOfficerTaskParticipant(task, profile.id)));
+  const reviews = sortOfficerTasks(tasks.filter(task => !task.cancelled_at && task.status === 'submitted' && (!task.individual_peet || task.contributions?.some(row => row.status === 'pending')) && !isOfficerTaskParticipant(task, profile.id)));
   return <div className={s.dashboard}>
+    {showScores && <OfficerScores profile={profile} tasks={tasks} evaluations={evaluations} data={data} cageScore={cageScore} />}
     <div className={s.workOverview}>
       <div className={s.workMain}>
         {(!data.reviewer || own.toComplete.length > 0 || own.awaitingReview.length > 0) && <section className={s.workCard} aria-label="Your assigned tasks">
@@ -24,7 +27,7 @@ export default function OfficerDashboard({ profile, profiles, tasks, evaluations
           {own.toComplete.slice(0, 6).map(task => {
             const answersNeeded = clarificationTaskIds.includes(task.id);
             const late = !answersNeeded && task.due_date && task.due_date < today;
-            return <div className={s.workRow} key={task.id}><div><h3>{task.title}</h3><p className={late || answersNeeded ? s.workUrgent : s.muted}>{answersNeeded ? 'Your clarification answers are needed' : !task.due_date ? 'No deadline set' : `${late ? 'Overdue · ' : task.due_date === today ? 'Due today · ' : 'Due '}${schoolDate(task.due_date, false)}`}</p></div><a className={s.workAction} href={taskHref(task, 'submit')}>{answersNeeded ? 'Answer questions' : 'Submit work'}<span className="sr-only"> for {task.title}</span><span aria-hidden="true"> →</span></a></div>;
+            return <div className={s.workRow} key={task.id}><div><h3>{task.title}</h3><p className={late || answersNeeded ? s.workUrgent : s.muted}>{needsTaskContribution(task, profile.id) ? 'Team deliverable submitted · Your contribution reflection is needed' : answersNeeded ? 'Your clarification answers are needed' : !task.due_date ? 'No deadline set' : `${late ? 'Overdue · ' : task.due_date === today ? 'Due today · ' : 'Due '}${schoolDate(task.due_date, false)}`}</p></div><a className={s.workAction} href={taskHref(task, 'submit')}>{needsTaskContribution(task, profile.id) ? 'Add my reflection' : answersNeeded ? 'Answer questions' : 'Submit work'}<span className="sr-only"> for {task.title}</span><span aria-hidden="true"> →</span></a></div>;
           })}
           {own.toComplete.length > 6 && <a className={s.detailLink} href={record('tasks', data.reviewer ? profile.id : undefined)}>View {own.toComplete.length - 6} more tasks →</a>}
           {own.awaitingReview.length > 0 && <details className={s.quietDisclosure}><summary>{own.awaitingReview.length} {own.awaitingReview.length === 1 ? 'submission' : 'submissions'} awaiting review</summary>{own.awaitingReview.map(task => <a className={s.waitingRow} href={taskHref(task, 'submit')} key={task.id}><span>{task.title}</span><span>View submission →</span></a>)}</details>}

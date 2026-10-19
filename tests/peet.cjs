@@ -106,3 +106,22 @@ test('Shared tasks belong to all participants, with one evaluation counting in e
   assert.equal(canEditOfficerTask({...shared,status:'in_progress'},'reviewer',true),true);
   assert.equal(canEditOfficerTask({...shared,status:'in_progress'},'creator'),true);
 });
+
+test('Shared contributions have independent completion, scores, and reflection requirements',()=>{
+ const shared={...task('collaboration','submitted'),individual_peet:true,assigned_to:'a',officer_task_members:[{officer_id:'b'}],contributions:[{student_id:'a',status:'approved'}]};
+ const scores=[{...evaluation('collaboration',4,4,4),officer_id:'a'}];
+ assert.equal(peetSummary([shared],scores,'a').score,100);
+ assert.equal(peetSummary([shared],scores,'a').completed,1);
+ assert.equal(peetSummary([shared],scores,'a').active,0);
+ assert.equal(peetSummary([shared],scores,'b').score,null);
+ assert.equal(peetSummary([shared],scores,'b').active,1);
+ assert.equal(exported.needsTaskContribution(shared,'b'),true);
+ assert.equal(exported.needsTaskContribution(shared,'a'),false);
+ shared.contributions.push({student_id:'b',status:'pending'});
+ assert.equal(exported.needsTaskContribution(shared,'b'),false);
+ scores.push({...evaluation('collaboration',2,2,2),officer_id:'b'});
+ assert.equal(peetSummary([shared],scores,'b').score,50);
+ assert.equal(peetSummary([shared],scores,'a').score,100);
+ assert.equal(exported.evaluationForOfficer(scores,'collaboration','b').officer_id,'b');
+ assert.equal(exported.evaluationForOfficer(scores,'collaboration'),undefined);
+});

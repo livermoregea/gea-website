@@ -88,3 +88,8 @@ This layout update requires no new migration. Clarification labels use a read of
 On phones, task actions sit beneath the title and due date with a 48px minimum touch height. Task dialogs use single-column score inputs, 16px form text, and safe-area padding. The More menu stays within the workspace width and scrolls on short screens. Automated responsive-style and interaction checks cover these rules; live phone/browser rendering remains to be verified.
 
 Meetings and events also have a short description directly in GEA One. Reviewers can add it when scheduling or through **Edit schedule & description**. Officers see it above the document links, and GEAI uses a bounded excerpt for cached descriptions. Google Docs remain optional supporting links. This reuses the existing event-notes field and does not require another database migration.
+
+
+### Professionalism and conduct logging
+
+Reviewers can open **More → Conduct & strikes**, select an officer, and choose **Log conduct concern**. The form defaults to **Leadership conduct & professionalism**; attendance concerns remain a separate category. Concerns are stored in the existing `officer_strikes` table and use the existing response and confirmation process. Logging a concern does not immediately confirm a strike. Ordinary officers use **More → Concerns & notes** to read their own concerns and respond. No new SQL migration is needed for this navigation change.

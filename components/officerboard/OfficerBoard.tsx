@@ -8,7 +8,8 @@ import GEAOneBadge from "@/components/GEAOneBadge";
 import { useContext, useEffect, useRef, useState, useTransition, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
-import { peetError, officerTaskPeople, isOfficerTaskParticipant, canEditOfficerTask, selfTaskDeadlineBounds, peetSummary, productLink, taskAverage, type TaskTeammate, type OfficerProfile, type OfficerTask, type PeetEvaluation, type TaskCancellationRequest, taskOfficers } from "@/lib/peet";
+import { peetError, needsTaskContribution, taskCompleteFor, evaluationForOfficer, officerTaskPeople, isOfficerTaskParticipant, canEditOfficerTask, selfTaskDeadlineBounds, peetSummary, productLink, taskAverage, type TaskTeammate, type OfficerProfile, type OfficerTask, type PeetEvaluation, type TaskCancellationRequest, taskOfficers } from "@/lib/peet";
+import { emptyTaskDraft, readTaskDraft, writeTaskDraft, clearTaskDraft } from "@/lib/officer-task-draft";
 import { sortOfficerTasks } from "@/lib/officer-dashboard";
 import Modal from "./Modal";
 import PeetExplainer from "./PeetExplainer";
@@ -43,6 +44,7 @@ export default function OfficerBoard({ profile, profiles, tasks, evaluations, tr
   const section = workspace?.view;
   const [explainer, setExplainer] = useState(false);
   const [action, setAction] = useState<Action | null>(null);
+  const [taskDraft, setTaskDraft] = useState(emptyTaskDraft());
   const [selectedOfficer, setSelectedOfficer] = useState(section === "accountability" ? profile.id : isSuperAdmin || profile.role === "admin" ? "all" : profile.id);
   const [rosterSearch, setRosterSearch] = useState("");
   const [taskSearch, setTaskSearch] = useState("");
@@ -66,8 +68,8 @@ export default function OfficerBoard({ profile, profiles, tasks, evaluations, tr
   const [siteSection, setSiteSection] = useState<AdminSectionKey>("website");
   const admin = isSuperAdmin || profile.role === "admin";
   const busy = saving || refreshing || aiBusy;
-  const view = admin && (section === "attendance" || section === "volunteer") ? "roster" : section === "accounts" ? "accounts" : section === "tasks" || section === "people" || section === "accountability" ? "dashboard" : localView;
-  const topic = section === "accountability" ? "accountability" : section === "tasks" ? "tasks" : !admin && (section === "attendance" || section === "volunteer") ? section : section === "people" && localTopic === "tasks" ? "overview" : localTopic;
+  const view = admin && (section === "attendance" || section === "volunteer") ? "roster" : section === "accounts" ? "accounts" : section === "tasks" || section === "people" || section === "accountability" || section === "conduct" ? "dashboard" : localView;
+  const topic = section === "accountability" || section === "conduct" ? "accountability" : section === "tasks" ? "tasks" : !admin && (section === "attendance" || section === "volunteer") ? section : section === "people" && localTopic === "tasks" ? "overview" : localTopic;
   const editingSelfTask = action?.kind === "edit" && action.task.created_by === profile.id && action.task.assigned_to === profile.id;
   const deadlineBounds = editingSelfTask && action?.kind === "edit" ? selfTaskDeadlineBounds(action.task.original_due_date) : null;
   const today = schoolToday();
@@ -82,7 +84,7 @@ export default function OfficerBoard({ profile, profiles, tasks, evaluations, tr
   const recordSummary = trackingSummary(tracking, selectedOfficer, academicYear);
   const years = [...new Set([CONTRACT_YEAR,...tracking.events.map(event => event.academic_year),...tracking.strikes.map(strike => strike.academic_year)])].sort().reverse();
   const selectedRequests = cancellationRequests.filter(request => tasks.some(task => task.id === request.task_id && (overview || isOfficerTaskParticipant(task, selectedOfficer))));
-  function chooseOfficer(id: string) { if (workspace && section !== "tasks" && section !== "people") workspace.navigate("people"); setSelectedOfficer(id); setTaskSearch(""); if (id === "all" || section === "attendance" || section === "volunteer") setTopic("overview"); setView("dashboard"); setError(null); setNotice(""); }
+  function chooseOfficer(id: string) { if (workspace && section !== "tasks" && section !== "people" && section !== "conduct") workspace.navigate("people"); setSelectedOfficer(id); setTaskSearch(""); if (id === "all" || section === "attendance" || section === "volunteer") setTopic("overview"); setView("dashboard"); setError(null); setNotice(""); }
   function chooseTopic(next: OfficerTopic) { if (workspace && (!admin || next === "tasks")) workspace.navigate(next === "overview" ? "people" : next); setTopic(next); setNotice(""); setError(null); studentHeading.current?.scrollIntoView({block:"start"}); }
   useEffect(() => {
     // Returning through the main menu opens the summary; old concern links
@@ -90,10 +92,10 @@ export default function OfficerBoard({ profile, profiles, tasks, evaluations, tr
     if (workspace && !admin && section === "people" && !new URLSearchParams(window.location.search).get("topic")) setTopic("overview");
   }, [section, admin, workspace]);
   useEffect(() => { if (view === "dashboard" && selectedOfficer !== "all") studentHeading.current?.focus(); }, [selectedOfficer,view]);
-  const summary = peetSummary(visibleTasks, evaluations);
-  const evaluationFor = (task: OfficerTask) => evaluations.find(evaluation => evaluation.task_id === task.id);
+  const summary = peetSummary(visibleTasks, evaluations, overview ? undefined : selectedOfficer);
+  const evaluationFor = (task: OfficerTask) => evaluationForOfficer(evaluations, task.id, overview ? undefined : selectedOfficer);
   const ownerName = (task: OfficerTask) => { const person = profiles.find(person => person.id === task.assigned_to) ?? teammates.find(person => person.id === task.assigned_to); return person ? `${person.name}${"email" in person && person.email ? ` (${person.email})` : ""}` : "Officer"; };
-  const reviewQueue = admin ? tasks.filter(task => (overview || isOfficerTaskParticipant(task, selectedOfficer)) && !task.cancelled_at && task.status === "submitted" && !isOfficerTaskParticipant(task, profile.id)) : [];
+  const reviewQueue = admin ? tasks.filter(task => (overview || isOfficerTaskParticipant(task, selectedOfficer)) && !task.cancelled_at && task.status === "submitted" && (!task.individual_peet || task.contributions?.some(row => row.status === "pending")) && !isOfficerTaskParticipant(task, profile.id)) : [];
   const canEvaluate = (task: OfficerTask) => !isOfficerTaskParticipant(task, profile.id) &&
     (isSuperAdmin || profile.reviewer_kind === "advisor" || !officerTaskPeople(task).some(id => profiles.find(person => person.id === id)?.reviewer_kind === "president"));
   const peopleNames = Object.fromEntries([...teammates, ...profiles].map(person => [person.id, person.name]));
@@ -135,22 +137,64 @@ export default function OfficerBoard({ profile, profiles, tasks, evaluations, tr
   useEffect(() => {
     const refresh = () => {
       // The unified workspace owns refreshing when this board is nested inside it.
-      if (document.hidden || saving || refreshing || backgroundRefreshing || document.querySelector('[data-workspace-refresh-owner], [data-workspace-dirty="true"], [data-workspace-busy="true"], dialog[open]')) return;
+      if (document.hidden || action || saving || refreshing || backgroundRefreshing || document.querySelector('[data-workspace-refresh-owner], [data-workspace-dirty="true"], [data-workspace-busy="true"], dialog[open]')) return;
       startBackgroundRefresh(() => router.refresh());
     };
     window.addEventListener("focus", refresh);
     return () => window.removeEventListener("focus", refresh);
-  }, [router, saving, refreshing, backgroundRefreshing]);
+  }, [router, action, saving, refreshing, backgroundRefreshing]);
   async function closeExplainer() {
     setExplainer(false);
     if (!profile.peet_onboarding_seen_at) await mutate("mark_peet_onboarding_seen", {}, "PEET introduction saved.");
   }
-  function openAction(next: Action) { setCreateSharedTask(false); setTaskPeople(next.kind === "edit" ? officerTaskPeople(next.task) : [profile.id]); setEndWithScore(false); setError(null); setNotice(""); setAssignmentSearch(""); setAssignees(next.kind === "edit" ? [next.task.assigned_to] : officers.some(person => person.id === selectedOfficer) ? [selectedOfficer] : []); setAction(next); }
+  useEffect(() => {
+    try {
+      if (new URLSearchParams(window.location.search).has("task")) return;
+      const restored = readTaskDraft(window.sessionStorage, profile.id);
+      if (!restored) return;
+      setTaskDraft(restored);
+      setAssignees(restored.assignees.filter(id => officers.some(person => person.id === id)));
+      setTaskPeople(Array.from(new Set([profile.id, ...restored.people.filter(id => teammates.some(person => person.id === id))])));
+      setCreateSharedTask(admin && restored.shared);
+      setAction({ kind: "add" });
+    } catch { /* The form remains usable when browser storage is disabled. */ }
+  }, [profile.id]);
+  useEffect(() => {
+    if (action?.kind !== "add") return;
+    try { writeTaskDraft(window.sessionStorage, profile.id, { ...taskDraft, assignees, people: taskPeople, shared: createSharedTask }); } catch { /* Keep the live draft. */ }
+  }, [action, taskDraft, assignees, taskPeople, createSharedTask, profile.id]);
+  function discardTaskDraft() {
+    try { clearTaskDraft(window.sessionStorage, profile.id); } catch { /* Storage is optional. */ }
+    setTaskDraft(emptyTaskDraft());
+  }
+  function closeAction() { if (action?.kind === "add") discardTaskDraft(); setAction(null); }
+  function captureTaskDraft(event: FormEvent<HTMLFormElement>) {
+    if (action?.kind !== "add") return;
+    const fields = new FormData(event.currentTarget);
+    const draft = { ...taskDraft, title: String(fields.get("title") || ""), description: String(fields.get("description") || ""),
+      dueDate: String(fields.get("due_date") || ""), assignees, people: taskPeople, shared: createSharedTask };
+    setTaskDraft(draft);
+    try { writeTaskDraft(window.sessionStorage, profile.id, draft); } catch { /* Keep the live draft. */ }
+  }
+  function openAction(next: Action) {
+    if (next.kind === "add") {
+      try {
+        const restored = readTaskDraft(window.sessionStorage, profile.id);
+        if (restored) {
+          setTaskDraft(restored); setAssignees(restored.assignees.filter(id => officers.some(person => person.id === id)));
+          setTaskPeople(Array.from(new Set([profile.id, ...restored.people.filter(id => teammates.some(person => person.id === id))])));
+          setCreateSharedTask(admin && restored.shared); setError(null); setNotice(""); setAction(next); return;
+        }
+      } catch { /* Keep working without storage. */ }
+      setTaskDraft(emptyTaskDraft());
+    }
+    setCreateSharedTask(false); setTaskPeople(next.kind === "edit" ? officerTaskPeople(next.task) : [profile.id]); setEndWithScore(false); setError(null); setNotice(""); setAssignmentSearch(""); setAssignees(next.kind === "edit" ? [next.task.assigned_to] : officers.some(person => person.id === selectedOfficer) ? [selectedOfficer] : []); setAction(next); }
   async function mutate(name: string, args: Record<string, unknown>, message: string) {
     setSaving(true); setError(null); setNotice("");
     try {
       const { error: rpcError } = await createClient().rpc(name, args);
       if (rpcError) { setError(peetError(rpcError)); return; }
+      if (action?.kind === "add") discardTaskDraft();
       setAction(null); setNotice(message);
       startTransition(() => router.refresh());
     } catch { setError(peetError(null)); }
@@ -168,7 +212,7 @@ export default function OfficerBoard({ profile, profiles, tasks, evaluations, tr
     if (action?.kind === "add") {
       if (admin && !createSharedTask && !assignees.length) { setError("Choose at least one officer."); return; }
       if (!admin || createSharedTask) {
-        await mutate("save_officer_shared_task", { p_title: fields.get("title"), p_description: fields.get("description"), p_due_date: fields.get("due_date") || null, p_people: taskPeople }, "Task created. Everyone on it shares one submission and evaluation.");
+        await mutate(admin && createSharedTask ? "assign_officer_collaboration" : "save_officer_shared_task", { p_title: fields.get("title"), p_description: fields.get("description"), p_due_date: fields.get("due_date") || null, p_people: taskPeople }, "Task created. One shared deliverable; each officer submits their own reflection and receives an individual evaluation.");
         return;
       }
       await mutate("assign_officer_tasks", { p_title: fields.get("title"), p_description: fields.get("description"), p_due_date: fields.get("due_date") || null, p_assignees: admin ? assignees : [profile.id] }, "Tasks assigned. Each officer has their own submission and evaluation.");
@@ -203,8 +247,8 @@ export default function OfficerBoard({ profile, profiles, tasks, evaluations, tr
   }
   const taskQuery = taskSearch.trim().toLowerCase();
   const matchingTasks = visibleTasks.filter(task => [task.title, task.description, task.submission_description, task.cancellation_reason, task.end_notes, evaluationFor(task)?.feedback_notes].some(value => value?.toLowerCase().includes(taskQuery)));
-  const activeTasks = sortOfficerTasks(matchingTasks.filter(task => !task.cancelled_at && task.status !== "completed" && (task.status === "in_progress" || clarificationTaskIds.includes(task.id))));
-  const waitingTasks = sortOfficerTasks(matchingTasks.filter(task => !task.cancelled_at && task.status === "submitted" && !clarificationTaskIds.includes(task.id) && (!admin || isOfficerTaskParticipant(task, profile.id))));
+  const activeTasks = sortOfficerTasks(matchingTasks.filter(task => !task.cancelled_at && !taskCompleteFor(task, overview ? undefined : selectedOfficer) && (task.status === "in_progress" || needsTaskContribution(task, profile.id) || (admin && task.individual_peet && task.status === "submitted" && !task.contributions?.some(row => row.status === "pending")) || clarificationTaskIds.includes(task.id))));
+  const waitingTasks = sortOfficerTasks(matchingTasks.filter(task => !task.cancelled_at && task.status === "submitted" && !needsTaskContribution(task, profile.id) && !taskCompleteFor(task, profile.id) && !clarificationTaskIds.includes(task.id) && (!admin || isOfficerTaskParticipant(task, profile.id))));
   const cancelledTasks = matchingTasks.filter(task => task.cancelled_at);
   const matchingRequests = selectedRequests.filter(request => !taskQuery || matchingTasks.some(task => task.id === request.task_id) || `${request.reason} ${request.review_notes}`.toLowerCase().includes(taskQuery));
   const pendingRequests = matchingRequests.filter(request => request.status === "pending");
@@ -221,7 +265,7 @@ export default function OfficerBoard({ profile, profiles, tasks, evaluations, tr
     </details>;
   }
   function workLink(task: OfficerTask) {
-    return <>{officerTaskPeople(task).length > 1 && <p className={styles.sharedPeople}>Shared with {officerTaskPeople(task).map(id => peopleNames[id] || "Former officer").join(", ")} · One submission and evaluation</p>}<OfficerTaskSubmission task={task} /></>;
+    return <>{officerTaskPeople(task).length > 1 && <p className={styles.sharedPeople}>Shared with {officerTaskPeople(task).map(id => peopleNames[id] || "Former officer").join(", ")} · {task.individual_peet ? "Shared deliverable · Individual reflections and scores" : "Historical shared submission and evaluation"}</p>}<OfficerTaskSubmission task={task} /></>;
   }
 
   function manualEvaluationForm(task: OfficerTask) {
@@ -237,11 +281,11 @@ export default function OfficerBoard({ profile, profiles, tasks, evaluations, tr
       </form>;
   }
 
-  return <div className={`${styles.board} ${embedded ? styles.embedded : ""} ${unified ? styles.unified : ""} ${workspace && !admin ? styles.personalWorkspace : ""}`} data-workspace-dirty={rosterDirty ? "true" : undefined} data-workspace-busy={busy ? "true" : undefined}>
+  return <div className={`${styles.board} ${embedded ? styles.embedded : ""} ${unified ? styles.unified : ""} ${workspace && !admin ? styles.personalWorkspace : ""}`} data-workspace-dirty={rosterDirty || action?.kind === "add" || action?.kind === "edit" ? "true" : undefined} data-workspace-busy={busy ? "true" : undefined}>
     <WorkspaceActivity saving={saving} refreshing={refreshing || backgroundRefreshing} background={!busy} />
     {(!workspace || (view !== "roster" && view !== "accounts")) && <header className={unified ? styles.workToolbar : styles.header}>
       {!embedded && !unified && <GEAOneBadge size="compact" />}
-      <div>{unified ? <h2>{section === "tasks" ? admin ? "Tasks & PEET" : "My tasks" : section === "attendance" ? admin ? "Attendance" : "My attendance" : section === "volunteer" ? admin ? "Volunteer service" : "My service hours" : section === "accountability" ? "Concerns & notes" : section === "accounts" ? "Accounts" : admin ? "Officer records" : "My progress"}</h2> : <><p className={styles.eyebrow}>Tasks, progress &amp; participation</p>{embedded ? <h2 className={styles.boardTitle}>Officer workspace</h2> : <h1>Officer workspace</h1>}</>}</div>
+      <div>{unified ? <h2>{section === "tasks" ? admin ? "Tasks & PEET" : "My tasks" : section === "attendance" ? admin ? "Attendance" : "My attendance" : section === "volunteer" ? admin ? "Volunteer service" : "My service hours" : section === "conduct" ? "Professionalism & conduct" : section === "accountability" ? "Concerns & notes" : section === "accounts" ? "Accounts" : admin ? "Officer records" : "My progress"}</h2> : <><p className={styles.eyebrow}>Tasks, progress &amp; participation</p>{embedded ? <h2 className={styles.boardTitle}>Officer workspace</h2> : <h1>Officer workspace</h1>}</>}</div>
       <div className={styles.actions}>
         {(!workspace || section === "tasks") && <button className={unified ? styles.link : styles.secondary} onClick={() => setExplainer(true)} disabled={busy}>What is PEET?</button>}
         {view === "dashboard" && (!workspace || section === "tasks") && (section === "tasks" || overview || topic !== "tasks") && <button className={styles.primary} onClick={() => openAction({ kind: "add" })} disabled={busy}>{admin ? "Assign task" : "Add task"}</button>}
@@ -254,10 +298,10 @@ export default function OfficerBoard({ profile, profiles, tasks, evaluations, tr
     {tracking.strikes.some(strike => strike.officer_id === profile.id && strike.status === "notified") && <p className={styles.warning} role="status">You have an accountability concern awaiting a response. <button className={styles.link} disabled={rosterDirty} onClick={() => { chooseOfficer(profile.id); chooseTopic("accountability"); }}>Review and explain your circumstances →</button></p>}
     <div className={`${styles.studentWorkspace} ${!workspace && view === "dashboard" && !overview && admin ? styles.withStudent : ""}`}>
     {admin && view === "dashboard" && section !== "tasks" && (!workspace || overview) && <aside className={styles.roster} aria-label="Officer roster">
-      <div className={styles.sectionHeading}><div><h2>Officers</h2><p>{overview ? "Choose a name, then choose a topic." : "Choose another officer."}</p></div><span className={styles.badge}>{isSuperAdmin ? "Super admin" : "PEET reviewer"}</span></div>
+      <div className={styles.sectionHeading}><div><h2>Officers</h2><p>{section === "conduct" ? "Choose an officer to log a conduct concern or review their strike history." : overview ? "Choose a name, then choose a topic." : "Choose another officer."}</p></div><span className={styles.badge}>{isSuperAdmin ? "Super admin" : "PEET reviewer"}</span></div>
       <label className={styles.search}>Search officers<input type="search" value={rosterSearch} onChange={event => setRosterSearch(event.target.value)} placeholder="Name, email, or position" /></label>
       <div className={styles.rosterGrid}>
-      {matchingOfficers(rosterSearch).map(person => { const progress = peetSummary(tasks.filter(task => isOfficerTaskParticipant(task, person.id)), evaluations); const waiting = tasks.filter(task => isOfficerTaskParticipant(task, person.id) && !task.cancelled_at && task.status === "submitted").length + cancellationRequests.filter(request => tasks.some(task => task.id === request.task_id && isOfficerTaskParticipant(task, person.id)) && request.status === "pending").length + tracking.volunteerLogs.filter(log => log.officer_id === person.id && log.status === "pending").length; return <button className={styles.personCard} aria-pressed={selectedOfficer === person.id} key={person.id} onClick={() => chooseOfficer(person.id)}><strong>{person.name}{person.id === profile.id ? " (you)" : ""}</strong><span>{identity(person)}</span><span>{person.position || "Officer"} · {progress.active} active · PEET {progress.score === null ? "—" : `${progress.score.toFixed(1)}/100`}</span>{waiting > 0 && <span>{waiting} awaiting review</span>}</button>; })}</div>
+      {matchingOfficers(rosterSearch).map(person => { const progress = peetSummary(tasks.filter(task => isOfficerTaskParticipant(task, person.id)), evaluations, person.id); const waiting = tasks.filter(task => isOfficerTaskParticipant(task, person.id) && !task.cancelled_at && task.status === "submitted").length + cancellationRequests.filter(request => tasks.some(task => task.id === request.task_id && isOfficerTaskParticipant(task, person.id)) && request.status === "pending").length + tracking.volunteerLogs.filter(log => log.officer_id === person.id && log.status === "pending").length; return <button className={styles.personCard} aria-pressed={selectedOfficer === person.id} key={person.id} onClick={() => chooseOfficer(person.id)}><strong>{person.name}{person.id === profile.id ? " (you)" : ""}</strong><span>{identity(person)}</span>{section === "conduct" ? <span>{tracking.strikes.filter(strike => strike.officer_id === person.id && strike.category === "conduct" && strike.status === "confirmed" && strike.academic_year === academicYear).length} confirmed conduct strikes · {tracking.strikes.filter(strike => strike.officer_id === person.id && strike.status === "notified" && strike.academic_year === academicYear).length} concerns awaiting review</span> : <><span>{person.position || "Officer"} · {progress.active} active · PEET {progress.score === null ? "—" : `${progress.score.toFixed(1)}/100`}</span>{waiting > 0 && <span>{waiting} awaiting review</span>}</>}</button>; })}</div>
       {matchingOfficers(rosterSearch).length === 0 && <p className={styles.empty}>No officers match your search.</p>}
     </aside>}
     <div className={styles.studentContent}>
@@ -266,7 +310,7 @@ export default function OfficerBoard({ profile, profiles, tasks, evaluations, tr
       <header className={`${styles.studentContext} ${workspace && !admin ? styles.personalContext : ""}`}>
         {workspace && !admin && <p className={styles.personalHint}>{section === "attendance" ? "Your meeting record and absence notices." : section === "volunteer" ? "Join events, submit your hours, and track verification." : section === "accountability" ? "Read any concerns and send your response here." : "Your PEET score, participation, and completed work."}</p>}
         {admin && <label className={workspace ? styles.workspaceOfficerFilter : styles.mobileOfficerPicker}>Officer<select value={selectedOfficer} onChange={event => chooseOfficer(event.target.value)}>{officers.map(person => <option key={person.id} value={person.id}>{person.name} · {person.position || "Officer"}</option>)}</select></label>}
-        {(!workspace || admin) && <div className={styles.profileBar}><div className={styles.studentIdentity}><h2 ref={studentHeading} tabIndex={-1}>{selectedPerson?.name ?? profile.name}</h2><p>{selectedPerson?.position || "Officer"}{selectedPerson?.email ? ` · ${selectedPerson.email}` : ""}</p></div>{workspace ? <label className={styles.workspaceOfficerFilter}>Record details<select aria-label="Officer record details" value={topic} onChange={event => chooseTopic(event.target.value as OfficerTopic)}><option value="overview">Summary</option><option value="tasks">Tasks & PEET</option><option value="attendance">Attendance</option><option value="volunteer">Volunteer service</option><option value="accountability">Concerns & notes</option></select></label> : <OfficerTopicNavigation topic={topic} onSelect={chooseTopic} pending={{tasks:reviewQueue.length + selectedRequests.filter(request => request.status === "pending").length,volunteer:tracking.volunteerLogs.filter(log => log.officer_id === selectedOfficer && log.status === "pending" && tracking.events.some(event => event.id === log.event_id && event.academic_year === academicYear)).length,accountability:tracking.strikes.filter(strike => strike.officer_id === selectedOfficer && strike.status === "notified" && strike.academic_year === academicYear).length}} />}{admin && <button className={`${styles.secondary} ${styles.changeOfficer}`} onClick={() => chooseOfficer("all")}>Change officer</button>}</div>}
+        {(!workspace || admin) && <div className={styles.profileBar}><div className={styles.studentIdentity}><h2 ref={studentHeading} tabIndex={-1}>{selectedPerson?.name ?? profile.name}</h2><p>{selectedPerson?.position || "Officer"}{selectedPerson?.email ? ` · ${selectedPerson.email}` : ""}</p></div>{workspace ? section === "conduct" ? null : <label className={styles.workspaceOfficerFilter}>Record details<select aria-label="Officer record details" value={topic} onChange={event => chooseTopic(event.target.value as OfficerTopic)}><option value="overview">Summary</option><option value="tasks">Tasks & PEET</option><option value="attendance">Attendance</option><option value="volunteer">Volunteer service</option><option value="accountability">Concerns & notes</option></select></label> : <OfficerTopicNavigation topic={topic} onSelect={chooseTopic} pending={{tasks:reviewQueue.length + selectedRequests.filter(request => request.status === "pending").length,volunteer:tracking.volunteerLogs.filter(log => log.officer_id === selectedOfficer && log.status === "pending" && tracking.events.some(event => event.id === log.event_id && event.academic_year === academicYear)).length,accountability:tracking.strikes.filter(strike => strike.officer_id === selectedOfficer && strike.status === "notified" && strike.academic_year === academicYear).length}} />}{admin && <button className={`${styles.secondary} ${styles.changeOfficer}`} onClick={() => chooseOfficer("all")}>Change officer</button>}</div>}
         <div className={styles.contextScope}>{topic === "tasks" ? <p>Cumulative PEET and task history · all school years</p> : <label className={styles.yearPicker}>Academic year<select aria-label="Academic year" value={academicYear} onChange={event => setAcademicYear(event.target.value)}>{years.map(year => <option key={year}>{year}</option>)}</select></label>}</div>
       </header>
       {topic === "overview" && <div className={styles.metrics}>
@@ -319,13 +363,14 @@ export default function OfficerBoard({ profile, profiles, tasks, evaluations, tr
             </div>
           </div>
         </details>
-        {isOfficerTaskParticipant(task, profile.id) && <button className={styles.primary} disabled={busy} onClick={() => openAction({ kind: "submit", task })}>{clarificationTaskIds.includes(task.id) ? "Answer questions" : "Submit work"}<span className="sr-only"> for {task.title}</span></button>}
+        {admin && task.individual_peet && !isOfficerTaskParticipant(task, profile.id) && <button className={styles.secondary} disabled={busy} onClick={() => openAction({kind:"review",task})}>View contributions</button>}
+        {isOfficerTaskParticipant(task, profile.id) && <button className={styles.primary} disabled={busy} onClick={() => openAction({ kind: "submit", task })}>{needsTaskContribution(task, profile.id) ? "Add my reflection" : clarificationTaskIds.includes(task.id) ? "Answer questions" : "Submit work"}<span className="sr-only"> for {task.title}</span></button>}
       </div>)}
     </TaskSection>
     {waitingTasks.length > 0 && <TaskSection key={`waiting-${disclosureScope}`} title="Awaiting review" count={waitingTasks.length} defaultOpen={Boolean(taskQuery)}>{waitingTasks.map(task => <div className={styles.taskWorkRow} key={task.id}><div><strong>{task.title}</strong><p className={styles.rowMeta}>Submitted {dateLabel(task.submitted_at)}</p></div><button className={styles.secondary} disabled={busy} onClick={() => openAction({ kind: "submit", task })}>View submission<span className="sr-only"> for {task.title}</span></button></div>)}</TaskSection>}
     {pendingRequests.length > 0 && <TaskSection key={`pending-${disclosureScope}`} title="Cancellation requests" count={pendingRequests.length} hint="Pending">{pendingRequests.map(requestRow)}</TaskSection>}
     <div className={styles.taskSummary} aria-label="Task summary"><article><h3>PEET /100</h3><strong>{summary.score === null ? "—" : summary.score.toFixed(1)}</strong></article><article><h3>Active</h3><strong>{summary.active}</strong></article><article><h3>Completed</h3><strong>{summary.completed}</strong></article></div>
-    <OfficerTaskHistory key={`history-${disclosureScope}`} tasks={matchingTasks} evaluations={evaluations} peopleNames={peopleNames} defaultOpen={!!taskQuery} admin={admin} actorId={profile.id} busy={busy} canEvaluate={canEvaluate} onReview={task => openAction({kind:"review",task})} onCancel={task => openAction({kind:"cancel",task})} />
+    <OfficerTaskHistory key={`history-${disclosureScope}`} tasks={matchingTasks} evaluations={evaluations} peopleNames={peopleNames} defaultOpen={!!taskQuery} subjectId={overview ? undefined : selectedOfficer} admin={admin} actorId={profile.id} busy={busy} canEvaluate={canEvaluate} onReview={task => openAction({kind:"review",task})} onCancel={task => openAction({kind:"cancel",task})} />
     {pastRequests.length > 0 && <TaskSection key={`past-${disclosureScope}`} title="Past cancellation requests" count={pastRequests.length} defaultOpen={!!taskQuery}>{pastRequests.map(requestRow)}</TaskSection>}
     {cancelledTasks.length > 0 && <TaskSection key={`cancelled-${disclosureScope}`} title="Cancelled tasks" count={cancelledTasks.length} defaultOpen={!!taskQuery}>
       {cancelledTasks.map(task => <details className={styles.taskDisclosure} key={task.id}>
@@ -334,24 +379,24 @@ export default function OfficerBoard({ profile, profiles, tasks, evaluations, tr
       </details>)}
     </TaskSection>}
     </>}
-    {view === "dashboard" && !overview && topic !== "overview" && topic !== "tasks" && <section className={styles.dashboardSection} aria-labelledby="selected-topic-heading"><h2 id="selected-topic-heading">{topic === "attendance" ? "Attendance" : topic === "volunteer" ? "Volunteer service" : "Accountability & notes"}</h2><TrackingPanel key={`${selectedOfficer}-${topic}`} mode={topic} profile={profile} profiles={profiles} officerId={selectedOfficer} data={tracking} isSuperAdmin={isSuperAdmin} embedded academicYear={academicYear} showMetrics /></section>}
+    {view === "dashboard" && !overview && topic !== "overview" && topic !== "tasks" && <section className={styles.dashboardSection} aria-labelledby="selected-topic-heading"><h2 id="selected-topic-heading">{topic === "attendance" ? "Attendance" : topic === "volunteer" ? "Volunteer service" : "Concerns & strike history"}</h2><TrackingPanel key={`${selectedOfficer}-${topic}`} mode={topic} profile={profile} profiles={profiles} officerId={selectedOfficer} data={tracking} isSuperAdmin={isSuperAdmin} embedded academicYear={academicYear} showMetrics /></section>}
     </div></div>
 
     {explainer && <PeetExplainer onClose={closeExplainer} />}
-    {action && <Modal title={action.kind === "add" ? "Add task" : `${action.kind === "cancellationReview" ? "Review cancellation" : action.kind === "cancel" ? "Cancel" : action.kind} task: ${action.task.title}`} busy={busy} onClose={() => setAction(null)}>
+    {action && <Modal title={action.kind === "add" ? "Add task" : `${action.kind === "cancellationReview" ? "Review cancellation" : action.kind === "cancel" ? "Cancel" : action.kind} task: ${action.task.title}`} busy={busy} onClose={closeAction}>
       {error && <ActionError message={error} className={styles.error} />}
-      {(action.kind === "add" || action.kind === "edit") && <form onSubmit={saveTask} className={styles.form}>
+      {(action.kind === "add" || action.kind === "edit") && <form onSubmit={saveTask} onChange={captureTaskDraft} className={styles.form}>
         <h2 className={styles.modalTitle}>{action.kind === "add" ? "Start with an idea." : "Edit task."}</h2>
         <p>{editingSelfTask ? "You can update the description, add people, and move the deadline up to three days before or after its original date." : "Log the work, set your goal, and give it a deadline."}</p>
         <fieldset disabled={busy}>
-          <label>Task title<input name="title" readOnly={editingSelfTask} required maxLength={200} defaultValue={action.kind === "edit" ? action.task.title : ""} /></label>
-          <label>Description<textarea name="description" rows={4} maxLength={10000} defaultValue={action.kind === "edit" ? action.task.description : ""} /></label>
-          <label>Due date (optional)<input name="due_date" type="date" min={minimumDueDate} max={deadlineBounds?.max} required={editingSelfTask && !deadlineLocked} disabled={deadlineLocked} defaultValue={action.kind === "edit" ? action.task.due_date ?? "" : ""} /></label>
+          <label>Task title<input name="title" readOnly={editingSelfTask} required maxLength={200} defaultValue={action.kind === "edit" ? action.task.title : taskDraft.title} /></label>
+          <label>Description<textarea name="description" rows={4} maxLength={10000} defaultValue={action.kind === "edit" ? action.task.description : taskDraft.description} /></label>
+          <label>Due date (optional)<input name="due_date" type="date" min={minimumDueDate} max={deadlineBounds?.max} required={editingSelfTask && !deadlineLocked} disabled={deadlineLocked} defaultValue={action.kind === "edit" ? action.task.due_date ?? "" : taskDraft.dueDate} /></label>
           <p>Choose today or a future date (Pacific time).</p>
           {editingSelfTask && deadlineBounds && deadlineLocked && <p>The deadline adjustment window has passed. You can still update the description and people.</p>}
           {editingSelfTask && !deadlineBounds && <p>No original deadline was set. You can update the description and people.</p>}
-          {action.kind === "add" && admin && officers.some(person => person.id === profile.id) && <label className={styles.sharedTaskChoice}><input type="checkbox" checked={createSharedTask} onChange={event => setCreateSharedTask(event.target.checked)} />Create one shared task with me</label>}
-          {((action.kind === "add" && (!admin || createSharedTask)) || editingSelfTask) && <TaskPeoplePicker key={action.kind === "edit" ? action.task.id : "new"} people={teammates} selected={taskPeople} creatorId={profile.id} onChange={setTaskPeople} />}
+          {action.kind === "add" && admin && <label className={styles.sharedTaskChoice}><input type="checkbox" checked={createSharedTask} onChange={event => { setCreateSharedTask(event.target.checked); setTaskPeople([]); }} />Shared collaborative task</label>}
+          {((action.kind === "add" && (!admin || createSharedTask)) || editingSelfTask) && <TaskPeoplePicker key={action.kind === "edit" ? action.task.id : "new"} people={teammates} selected={taskPeople} creatorId={profile.id} includeCreator={!(admin && createSharedTask && action.kind === "add")} onChange={setTaskPeople} />}
           {admin && !editingSelfTask && !createSharedTask && <div><p>{action.kind === "add" ? "Assign to officers · choose one or several" : "Assigned officer"}</p><label>Find officers<input type="search" value={assignmentSearch} onChange={event => setAssignmentSearch(event.target.value)} /></label><p>{assignees.length} selected{action.kind === "add" ? " · A separate task will be created for each officer." : ""}</p>
             {action.kind === "add" && <div className={styles.actions}><button type="button" className={styles.secondary} onClick={() => setAssignees(Array.from(new Set([...assignees,...matchingOfficers(assignmentSearch).map(person => person.id)])))}>Select matching officers</button><button type="button" className={styles.secondary} onClick={() => setAssignees([])}>Clear selection</button></div>}
             <div className={styles.assignmentList}>{matchingOfficers(assignmentSearch).map(person => <label key={person.id} className={styles.assignmentPerson}><input type={action.kind === "add" ? "checkbox" : "radio"} name="officer-choice" checked={assignees.includes(person.id)} disabled={action.kind === "edit" && officerTaskPeople(action.task).length > 1} onChange={event => setAssignees(action.kind === "edit" ? [person.id] : event.target.checked ? [...assignees,person.id] : assignees.filter(id => id !== person.id))} /><span><strong>{person.name}</strong><small>{identity(person)} · {person.position || "Officer"}</small></span></label>)}</div>
@@ -359,15 +404,15 @@ export default function OfficerBoard({ profile, profiles, tasks, evaluations, tr
           </div>}
 
         </fieldset>
-        <div className={styles.modalActions}><button type="button" className={styles.secondary} disabled={busy} onClick={() => setAction(null)}>Cancel</button><button className={styles.primary} disabled={busy}>{busy ? "Saving…" : "Save task"}</button></div>
+        <div className={styles.modalActions}><button type="button" className={styles.secondary} disabled={busy} onClick={closeAction}>Cancel</button><button className={styles.primary} disabled={busy}>{busy ? "Saving…" : "Save task"}</button></div>
       </form>}
-      {action.kind === "submit" && <OfficerTaskPeet key={`submit-${action.task.id}`} officerTask={action.task} actorId={profile.id} mode="submit" onBusyChange={setAiBusy}
+      {action.kind === "submit" && <OfficerTaskPeet peopleNames={peopleNames} key={`submit-${action.task.id}`} officerTask={action.task} actorId={profile.id} mode="submit" onBusyChange={setAiBusy}
         onComplete={message => { setAction(null); setNotice(message); startTransition(() => router.refresh()); }}
         manualFallback={<form onSubmit={submitProduct} className={styles.form}>
         <h2 className={styles.modalTitle}>Ready to share your work?</h2><p>{action.task.title}</p>
         <label>Work description<textarea name="submission_description" rows={5} maxLength={10000} placeholder="Describe what you did, what you accomplished, and any details your reviewer should know." disabled={busy} /></label>
         <label>Supporting link (optional)<input type="url" name="url" maxLength={2048} placeholder="https://…" disabled={busy} /></label>
-        <p>Describe your completed work, add a supporting link, or both. {officerTaskPeople(action.task).length > 1 ? "This submission is shared by everyone on the task. After submission, its people and assignment details are locked." : "After submission, you can no longer edit this task."}</p>
+        <p>Describe your completed work, add a supporting link, or both. {officerTaskPeople(action.task).length > 1 ? "The deliverable is shared, but each participant must submit their own contribution reflection for an individual PEET score." : "After submission, you can no longer edit this task."}</p>
         <div className={styles.modalActions}><button type="button" className={styles.secondary} disabled={busy} onClick={() => setAction(null)}>Cancel</button><button className={styles.primary} disabled={busy}>{busy ? "Submitting…" : "Submit for review"}</button></div>
       </form>} />}
       {action.kind === "end" && admin && <form className={styles.form} onSubmit={event => {
@@ -379,11 +424,11 @@ export default function OfficerBoard({ profile, profiles, tasks, evaluations, tr
         }, endWithScore ? "Task completed and PEET scores saved." : "Task ended and moved to completed history. No PEET score was added.");
       }}>
         <h2 className={styles.modalTitle}>End this task</h2><p>{action.task.title} · {ownerName(action.task)}</p>
-        <p>Complete this task with or without a PEET score. A submission is optional; the task and your note stay in its history.</p>
+        <p>Complete this task with or without a PEET score. Collaborative tasks must be evaluated per participant through their contribution reviews; ending them here adds no shared score.</p>
         <fieldset disabled={busy}>
           <label>Completion option<select value={endWithScore ? "scored" : "unscored"} onChange={event => setEndWithScore(event.target.value === "scored")}>
             <option value="unscored">Complete without a PEET score</option>
-            <option value="scored" disabled={!canEvaluate(action.task)}>Complete with PEET scores</option>
+            <option value="scored" disabled={action.task.individual_peet || !canEvaluate(action.task)}>Complete with PEET scores</option>
           </select></label>
           {!canEvaluate(action.task) && <p>An advisor must enter PEET scores for this officer.</p>}
           {endWithScore && <fieldset><legend>PEET scores · 1.0–4.0 (3.0 = Meets Expectations)</legend>
@@ -401,7 +446,7 @@ export default function OfficerBoard({ profile, profiles, tasks, evaluations, tr
       {action.kind === "cancellationReview" && <form className={styles.form} onSubmit={event => { event.preventDefault(); const fields = new FormData(event.currentTarget); void mutate("review_officer_task_cancellation", {p_request_id: action.request.id, p_status: fields.get("decision"), p_notes: fields.get("notes")}, "Cancellation request reviewed."); }}>
         <h2 className={styles.modalTitle}>Review cancellation</h2><p>{ownerName(action.task)} · {action.task.title}</p><p>{action.request.reason}</p><label>Decision<select name="decision" disabled={busy}><option value="rejected">Keep task · decline request</option><option value="approved">Approve cancellation</option></select></label><label>Review notes<textarea name="notes" required minLength={10} maxLength={2000} rows={4} disabled={busy} /></label><button className={styles.primary} disabled={busy}>Save decision</button>
       </form>}
-      {action.kind === "review" && admin && (action.task.status === "completed" ? manualEvaluationForm(action.task) : <OfficerTaskPeet key={`review-${action.task.id}`} officerTask={action.task} actorId={profile.id} mode="review" onBusyChange={setAiBusy}
+      {action.kind === "review" && admin && (action.task.status === "completed" ? manualEvaluationForm(action.task) : <OfficerTaskPeet peopleNames={peopleNames} key={`review-${action.task.id}`} officerTask={action.task} actorId={profile.id} mode="review" onBusyChange={setAiBusy}
         onComplete={message => { setAction(null); setNotice(message); startTransition(() => router.refresh()); }}
         manualFallback={manualEvaluationForm(action.task)} />)}
     </Modal>}
