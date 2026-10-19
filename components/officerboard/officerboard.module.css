@@ -534,3 +534,33 @@
   .unified .taskWorkRow .taskRowSummary { padding-block: .4rem; }
   .modal { padding-bottom: max(16px,env(safe-area-inset-bottom)); scroll-padding-block: 16px; }
 }
+
+/* Personal records have one workspace navigator and a compact year filter. */
+.personalHint { color: #56655e; font-size: .9rem; line-height: 1.55; }
+.personalWorkspace .workToolbar { margin-bottom: 4px; }
+.personalWorkspace .personalContext { padding: 0 0 14px; }
+.personalWorkspace .personalContext .contextScope { margin-top: 12px; }
+.personalWorkspace .yearPicker { justify-content: space-between; }
+.personalWorkspace .sectionHeading { padding-inline: 0; }
+.personalWorkspace .taskRow { padding-inline: 0; }
+.personalWorkspace .taskCopy > p { overflow-wrap: anywhere; }
+@media (max-width: 760px) {
+  .personalWorkspace .workToolbar { align-items: flex-start; }
+  .personalWorkspace .workToolbar > div:first-child { flex: 1 1 100%; }
+  .personalWorkspace .workToolbar > .actions:not(:empty) { width: 100%; justify-content: space-between; }
+  .personalWorkspace .workToolbar h2 { font-size: 1.35rem; }
+  .personalWorkspace .trackingMetrics { display: flex; gap: 12px; margin-top: 8px; }
+  .personalWorkspace .trackingMetrics article { flex: 1; min-width: 0; padding: 12px 0; }
+  .personalWorkspace .trackingMetrics h2 { font-size: .75rem; line-height: 1.4; }
+  .personalWorkspace .trackingMetrics strong { font-size: 1.6rem; margin: 6px 0 0; }
+  .personalWorkspace .trackingMetrics p { display: none; }
+  .personalWorkspace .sectionHeading { display: block; padding: 18px 0 12px; }
+  .personalWorkspace .sectionHeading h2 { font-size: 1.05rem; }
+  .personalWorkspace .sectionHeading p { font-size: .85rem; }
+  .personalWorkspace .taskRow { display: grid; grid-template-columns: minmax(0,1fr); gap: 12px; padding-block: 16px; }
+  .personalWorkspace .taskRow > .actions { width: 100%; }
+  .personalWorkspace .taskRow > .actions > button { flex: 1; min-height: 48px; }
+  .personalWorkspace .taskCopy h3 { font-size: 1rem; }
+  .personalWorkspace .metrics { grid-template-columns: repeat(2,minmax(0,1fr)); gap: 12px; }
+  .personalWorkspace .scoreCard { grid-column: 1/-1; }
+}

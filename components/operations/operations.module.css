@@ -868,3 +868,6 @@
   .workRow p { font-size: .875rem; }
   .workHeading { align-items: flex-start; }
 }
+
+/* Separate the AI briefing from the personal work queue below. */
+.overviewColumns + .dashboard { margin-top: 1.5rem; }

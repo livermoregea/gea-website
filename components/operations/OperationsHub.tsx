@@ -19,7 +19,7 @@ import MeetingWorkspace from './MeetingWorkspace';
 import EventPlanning from './EventPlanning';
 import AccomplishmentsReport from './AccomplishmentsReport';
 import s from './operations.module.css';
-const recordViews = ['tasks', 'people', 'attendance', 'volunteer', 'accounts'];
+const recordViews = ['tasks', 'people', 'attendance', 'volunteer', 'accountability', 'accounts'];
 const views = [['overview', 'Overview'], ['tasks', 'Tasks'], ['attendance', 'Attendance'], ['volunteer', 'Volunteer'], ['people', 'Officers'], ['calendar', 'Calendar'], ['meetings', 'Meetings'], ['events', 'Events'], ['reports', 'Reports']] as const;
 export default function OperationsHub({ data, initialView = 'overview', initialEvent = '', initialTask = '', officerTools, officerOverview, canManageAccounts = false, embedded = false, clarificationTaskIds = [] }: {
     data: OperationsData;
@@ -90,13 +90,13 @@ export default function OperationsHub({ data, initialView = 'overview', initialE
             setSaving(false);
         }
     }
-    const available = [...views.filter(([key]) => data.membership.isOfficer ? !recordViews.includes(key) || Boolean(officerTools) : ['overview', 'calendar'].includes(key)), ...(canManageAccounts && officerTools ? [['accounts', 'Accounts'] as const] : [])];
+    const available = [...views.filter(([key]) => data.membership.isOfficer ? !recordViews.includes(key) || Boolean(officerTools) : ['overview', 'calendar'].includes(key)), ...(!data.reviewer && officerTools ? [['accountability', 'Concerns & notes'] as const] : []), ...(canManageAccounts && officerTools ? [['accounts', 'Accounts'] as const] : [])];
     const primarySections = available.filter(([key]) => ['overview', 'tasks', 'meetings', 'events'].includes(key));
     const moreSections = available.filter(([key]) => !primarySections.some(([primary]) => primary === key));
     const mobileScheduleSections = primarySections.filter(([key]) => ['meetings', 'events'].includes(key));
     const taskCount = data.tasks.filter(task => !task.cancelled_at && (data.reviewer ? task.status === 'submitted' && !isOfficerTaskParticipant(task, data.userId)
       : isOfficerTaskParticipant(task, data.userId) && (task.status === 'in_progress' || clarificationTaskIds.includes(task.id)))).length;
-    const sectionLabel = (key: string, label: string) => key === 'people' && !data.reviewer ? 'My record' : key === 'tasks' && !data.reviewer ? 'My tasks' : label;
+    const sectionLabel = (key: string, label: string) => !data.reviewer ? ({ people: 'My progress', tasks: 'My tasks', attendance: 'My attendance', volunteer: 'My service hours', reports: 'My report' } as Record<string, string>)[key] || label : label;
     const selectedEvent = data.events.find(e => e.id === eventId);
     const events = data.events.filter(e => view === 'meetings' ? e.kind === 'meeting' : e.kind !== 'meeting');
     const calendar = data.calendar.filter(e => (kind === 'all' || e.kind === kind) && (!from || (e.allDay ? e.start : schoolToday(new Date(e.start))) >= from) && (!to || (e.allDay ? e.start : schoolToday(new Date(e.start))) <= to));
@@ -129,7 +129,7 @@ export default function OperationsHub({ data, initialView = 'overview', initialE
  <WorkspaceActivity saving={saving} refreshing={refreshing || backgroundRefreshing} background={!busy} />
  {!embedded && <header className={`${s.header} ${s.noPrint}`}><div><GreetingClock name={data.membership.displayName} initialGreeting={workspaceGreeting()} /><p className={s.muted}>{data.membership.isOfficer ? 'Officer workspace' : 'Academy updates'}</p></div><div className={s.actions}><Link className={s.button} href="/account">Home</Link>{staff && <Link className={s.button} href="/admin-portal-x7k9">Academy administration</Link>}</div></header>}
  <nav aria-label="Officer workspace sections" className={`${s.nav} ${s.noPrint}`}>{primarySections.map(([key, label]) => <button key={key} className={["meetings", "events"].includes(key) ? s.desktopDestination : undefined} disabled={busy} aria-pressed={view === key} onClick={() => changeView(key)}>{sectionLabel(key,label)}{key === 'tasks' && taskCount > 0 && <span className={s.navCount} aria-label={`${taskCount} ${data.reviewer ? 'tasks awaiting review' : 'tasks to complete'}`}>{taskCount}</span>}</button>)}
-   {moreSections.length > 0 && <details className={s.moreSections} data-schedule-active={["meetings", "events"].includes(view) || undefined}><summary className={moreSections.some(([key]) => key === view) ? s.moreActive : undefined}>{moreSections.find(([key]) => key === view)?.[1] === 'Officers' && !data.reviewer ? 'My record' : moreSections.find(([key]) => key === view)?.[1] || 'More'} <span aria-hidden="true">⌄</span></summary><div aria-label="More workspace sections">{[...mobileScheduleSections, ...moreSections].map(([key,label]) => <button key={key} className={["meetings", "events"].includes(key) ? s.mobileDestination : undefined} disabled={busy} aria-pressed={view === key} onClick={event => { changeView(key); event?.currentTarget?.closest('details')?.removeAttribute('open'); }}>{sectionLabel(key,label)}</button>)}</div></details>}
+   {moreSections.length > 0 && <details className={s.moreSections} data-schedule-active={["meetings", "events"].includes(view) || undefined}><summary className={moreSections.some(([key]) => key === view) ? s.moreActive : undefined}>{data.reviewer ? moreSections.find(([key]) => key === view)?.[1] || 'More' : 'More'} <span aria-hidden="true">⌄</span></summary><div aria-label="More workspace sections">{[...mobileScheduleSections, ...moreSections].map(([key,label]) => <button key={key} className={["meetings", "events"].includes(key) ? s.mobileDestination : undefined} disabled={busy} aria-pressed={view === key} onClick={event => { changeView(key); event?.currentTarget?.closest('details')?.removeAttribute('open'); }}>{sectionLabel(key,label)}</button>)}</div></details>}
  </nav>
  <div className={s.noPrint}><p role="status" className={s.status}>{message}{dirty ? ' · Unsaved changes' : ''}</p>{dirty && <button disabled={busy} onClick={() => { if (discard()) {
         setDirty(false);

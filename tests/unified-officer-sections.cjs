@@ -66,3 +66,27 @@ test('Linked service verification selects the event school year before showing t
  const roster=nodes(h.render(),n=>n.type==='OfficerRoster')[0];
  assert.equal(roster.props.rosterMode,'volunteer');assert.equal(roster.props.initialEventId,'prior-event');assert.equal(roster.props.year,'2024-2025');
 });
+
+
+test('Personal records have no duplicate topic selector or task actions and stay scoped to the officer',()=>{
+ for(const section of ['attendance','volunteer','people','accountability']){
+  const h=harness(section,false),tree=h.render();
+  assert.equal(nodes(tree,n=>n.type==='select'&&n.props['aria-label']==='Officer record details').length,0);
+  assert.equal(nodes(tree,n=>n.type==='OfficerTopicNavigation').length,0);
+  assert.equal(nodes(tree,n=>n.type==='button'&&['Add task','What is PEET?','Assign task'].includes(n.props.children)).length,0);
+  assert.equal(nodes(tree,n=>n.props.className==='studentIdentity').length,0);
+  assert.equal(nodes(tree,n=>n.type==='select'&&n.props['aria-label']==='Academic year').length,1);
+  if(section!=='people'){
+   const panel=nodes(tree,n=>n.type==='TrackingPanel')[0];
+   assert.equal(panel.props.officerId,'a');assert.equal(panel.props.mode,section);
+  }
+ }
+ const tasks=harness('tasks',false).render();
+ assert.equal(nodes(tasks,n=>n.type==='button'&&n.props.children==='Add task').length,1);
+});
+
+test('A direct reviewer concern link opens their own record rather than a blank team summary',()=>{
+ const h=harness('accountability',true),tree=h.render();
+ const panel=nodes(tree,n=>n.type==='TrackingPanel')[0];
+ assert.equal(panel.props.mode,'accountability');assert.equal(panel.props.officerId,'a');
+});

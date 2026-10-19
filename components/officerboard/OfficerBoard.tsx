@@ -43,7 +43,7 @@ export default function OfficerBoard({ profile, profiles, tasks, evaluations, tr
   const section = workspace?.view;
   const [explainer, setExplainer] = useState(false);
   const [action, setAction] = useState<Action | null>(null);
-  const [selectedOfficer, setSelectedOfficer] = useState(isSuperAdmin || profile.role === "admin" ? "all" : profile.id);
+  const [selectedOfficer, setSelectedOfficer] = useState(section === "accountability" ? profile.id : isSuperAdmin || profile.role === "admin" ? "all" : profile.id);
   const [rosterSearch, setRosterSearch] = useState("");
   const [taskSearch, setTaskSearch] = useState("");
   const [assignmentSearch, setAssignmentSearch] = useState("");
@@ -66,8 +66,8 @@ export default function OfficerBoard({ profile, profiles, tasks, evaluations, tr
   const [siteSection, setSiteSection] = useState<AdminSectionKey>("website");
   const admin = isSuperAdmin || profile.role === "admin";
   const busy = saving || refreshing || aiBusy;
-  const view = admin && (section === "attendance" || section === "volunteer") ? "roster" : section === "accounts" ? "accounts" : section === "tasks" || section === "people" ? "dashboard" : localView;
-  const topic = section === "tasks" ? "tasks" : !admin && (section === "attendance" || section === "volunteer") ? section : section === "people" && localTopic === "tasks" ? "overview" : localTopic;
+  const view = admin && (section === "attendance" || section === "volunteer") ? "roster" : section === "accounts" ? "accounts" : section === "tasks" || section === "people" || section === "accountability" ? "dashboard" : localView;
+  const topic = section === "accountability" ? "accountability" : section === "tasks" ? "tasks" : !admin && (section === "attendance" || section === "volunteer") ? section : section === "people" && localTopic === "tasks" ? "overview" : localTopic;
   const editingSelfTask = action?.kind === "edit" && action.task.created_by === profile.id && action.task.assigned_to === profile.id;
   const deadlineBounds = editingSelfTask && action?.kind === "edit" ? selfTaskDeadlineBounds(action.task.original_due_date) : null;
   const today = schoolToday();
@@ -83,7 +83,12 @@ export default function OfficerBoard({ profile, profiles, tasks, evaluations, tr
   const years = [...new Set([CONTRACT_YEAR,...tracking.events.map(event => event.academic_year),...tracking.strikes.map(strike => strike.academic_year)])].sort().reverse();
   const selectedRequests = cancellationRequests.filter(request => tasks.some(task => task.id === request.task_id && (overview || isOfficerTaskParticipant(task, selectedOfficer))));
   function chooseOfficer(id: string) { if (workspace && section !== "tasks" && section !== "people") workspace.navigate("people"); setSelectedOfficer(id); setTaskSearch(""); if (id === "all" || section === "attendance" || section === "volunteer") setTopic("overview"); setView("dashboard"); setError(null); setNotice(""); }
-  function chooseTopic(next: OfficerTopic) { if (workspace && next === "tasks") workspace.navigate("tasks"); setTopic(next); setNotice(""); setError(null); studentHeading.current?.scrollIntoView({block:"start"}); }
+  function chooseTopic(next: OfficerTopic) { if (workspace && (!admin || next === "tasks")) workspace.navigate(next === "overview" ? "people" : next); setTopic(next); setNotice(""); setError(null); studentHeading.current?.scrollIntoView({block:"start"}); }
+  useEffect(() => {
+    // Returning through the main menu opens the summary; old concern links
+    // keep their explicit topic and still resolve to the officer's own record.
+    if (workspace && !admin && section === "people" && !new URLSearchParams(window.location.search).get("topic")) setTopic("overview");
+  }, [section, admin, workspace]);
   useEffect(() => { if (view === "dashboard" && selectedOfficer !== "all") studentHeading.current?.focus(); }, [selectedOfficer,view]);
   const summary = peetSummary(visibleTasks, evaluations);
   const evaluationFor = (task: OfficerTask) => evaluations.find(evaluation => evaluation.task_id === task.id);
@@ -232,21 +237,21 @@ export default function OfficerBoard({ profile, profiles, tasks, evaluations, tr
       </form>;
   }
 
-  return <div className={`${styles.board} ${embedded ? styles.embedded : ""} ${unified ? styles.unified : ""}`} data-workspace-dirty={rosterDirty ? "true" : undefined} data-workspace-busy={busy ? "true" : undefined}>
+  return <div className={`${styles.board} ${embedded ? styles.embedded : ""} ${unified ? styles.unified : ""} ${workspace && !admin ? styles.personalWorkspace : ""}`} data-workspace-dirty={rosterDirty ? "true" : undefined} data-workspace-busy={busy ? "true" : undefined}>
     <WorkspaceActivity saving={saving} refreshing={refreshing || backgroundRefreshing} background={!busy} />
     {(!workspace || (view !== "roster" && view !== "accounts")) && <header className={unified ? styles.workToolbar : styles.header}>
       {!embedded && !unified && <GEAOneBadge size="compact" />}
-      <div>{unified ? <h2>{section === "tasks" ? "Tasks & PEET" : section === "attendance" ? "Attendance" : section === "volunteer" ? "Volunteer service" : section === "accounts" ? "Accounts" : admin ? "Officer records" : "My assignments"}</h2> : <><p className={styles.eyebrow}>Tasks, progress &amp; participation</p>{embedded ? <h2 className={styles.boardTitle}>Officer workspace</h2> : <h1>Officer workspace</h1>}</>}</div>
+      <div>{unified ? <h2>{section === "tasks" ? admin ? "Tasks & PEET" : "My tasks" : section === "attendance" ? admin ? "Attendance" : "My attendance" : section === "volunteer" ? admin ? "Volunteer service" : "My service hours" : section === "accountability" ? "Concerns & notes" : section === "accounts" ? "Accounts" : admin ? "Officer records" : "My progress"}</h2> : <><p className={styles.eyebrow}>Tasks, progress &amp; participation</p>{embedded ? <h2 className={styles.boardTitle}>Officer workspace</h2> : <h1>Officer workspace</h1>}</>}</div>
       <div className={styles.actions}>
-        <button className={unified ? styles.link : styles.secondary} onClick={() => setExplainer(true)} disabled={busy}>What is PEET?</button>
-        {view === "dashboard" && section !== "people" && (section === "tasks" || overview || topic !== "tasks") && <button className={styles.primary} onClick={() => openAction({ kind: "add" })} disabled={busy}>{admin ? "Assign task" : "Add task"}</button>}
+        {(!workspace || section === "tasks") && <button className={unified ? styles.link : styles.secondary} onClick={() => setExplainer(true)} disabled={busy}>What is PEET?</button>}
+        {view === "dashboard" && (!workspace || section === "tasks") && (section === "tasks" || overview || topic !== "tasks") && <button className={styles.primary} onClick={() => openAction({ kind: "add" })} disabled={busy}>{admin ? "Assign task" : "Add task"}</button>}
       </div>
     </header>}
     {admin && !workspace && <div className={styles.workspaceTools} aria-label="Workspace navigation"><button className={styles.secondary} disabled={rosterDirty} aria-pressed={view === "dashboard"} onClick={() => chooseOfficer("all")}>Officer directory</button><button className={styles.secondary} aria-pressed={view === "roster"} onClick={()=>{setView("roster");setNotice("");setError(null);}}>Team roster</button>{isSuperAdmin && <details className={styles.adminTools}><summary>Administration</summary><div><button disabled={rosterDirty} onClick={event => {setView("accounts"); event.currentTarget.closest("details")?.removeAttribute("open");}}>Manage GEA One accounts</button>{!embedded && <button disabled={rosterDirty} onClick={event => {setView("site"); event.currentTarget.closest("details")?.removeAttribute("open");}}>Website admin</button>}</div></details>}</div>}
 
     <p role="status" className={styles.notice}>{notice || (refreshing ? "Updating your board…" : "")}</p>
     {error && !action && <ActionError message={error} className={styles.error} />}
-    {tracking.strikes.some(strike => strike.officer_id === profile.id && strike.status === "notified") && <p className={styles.warning} role="status">You have an accountability concern awaiting a response. <button className={styles.link} disabled={rosterDirty} onClick={() => { workspace?.navigate("people"); chooseOfficer(profile.id); setTopic("accountability"); }}>Review and explain your circumstances →</button></p>}
+    {tracking.strikes.some(strike => strike.officer_id === profile.id && strike.status === "notified") && <p className={styles.warning} role="status">You have an accountability concern awaiting a response. <button className={styles.link} disabled={rosterDirty} onClick={() => { chooseOfficer(profile.id); chooseTopic("accountability"); }}>Review and explain your circumstances →</button></p>}
     <div className={`${styles.studentWorkspace} ${!workspace && view === "dashboard" && !overview && admin ? styles.withStudent : ""}`}>
     {admin && view === "dashboard" && section !== "tasks" && (!workspace || overview) && <aside className={styles.roster} aria-label="Officer roster">
       <div className={styles.sectionHeading}><div><h2>Officers</h2><p>{overview ? "Choose a name, then choose a topic." : "Choose another officer."}</p></div><span className={styles.badge}>{isSuperAdmin ? "Super admin" : "PEET reviewer"}</span></div>
@@ -258,9 +263,10 @@ export default function OfficerBoard({ profile, profiles, tasks, evaluations, tr
     <div className={styles.studentContent}>
     {section === "tasks" && admin && <label className={styles.workspaceOfficerFilter}>Officer<select aria-label="Filter tasks by officer" value={selectedOfficer} onChange={event => chooseOfficer(event.target.value)}><option value="all">All officers</option>{officers.map(person => <option key={person.id} value={person.id}>{person.name} · {person.position || "Officer"}</option>)}</select></label>}
     {view === "dashboard" && !overview && section !== "tasks" && <>
-      <header className={styles.studentContext}>
+      <header className={`${styles.studentContext} ${workspace && !admin ? styles.personalContext : ""}`}>
+        {workspace && !admin && <p className={styles.personalHint}>{section === "attendance" ? "Your meeting record and absence notices." : section === "volunteer" ? "Join events, submit your hours, and track verification." : section === "accountability" ? "Read any concerns and send your response here." : "Your PEET score, participation, and completed work."}</p>}
         {admin && <label className={workspace ? styles.workspaceOfficerFilter : styles.mobileOfficerPicker}>Officer<select value={selectedOfficer} onChange={event => chooseOfficer(event.target.value)}>{officers.map(person => <option key={person.id} value={person.id}>{person.name} · {person.position || "Officer"}</option>)}</select></label>}
-        <div className={styles.profileBar}><div className={styles.studentIdentity}><h2 ref={studentHeading} tabIndex={-1}>{selectedPerson?.name ?? profile.name}</h2><p>{selectedPerson?.position || "Officer"}{selectedPerson?.email ? ` · ${selectedPerson.email}` : ""}</p></div>{workspace ? <label className={styles.workspaceOfficerFilter}>Record details<select aria-label="Officer record details" value={topic} onChange={event => chooseTopic(event.target.value as OfficerTopic)}><option value="overview">Summary</option><option value="tasks">Tasks & PEET</option><option value="attendance">Attendance</option><option value="volunteer">Volunteer service</option><option value="accountability">Concerns & notes</option></select></label> : <OfficerTopicNavigation topic={topic} onSelect={chooseTopic} pending={{tasks:reviewQueue.length + selectedRequests.filter(request => request.status === "pending").length,volunteer:tracking.volunteerLogs.filter(log => log.officer_id === selectedOfficer && log.status === "pending" && tracking.events.some(event => event.id === log.event_id && event.academic_year === academicYear)).length,accountability:tracking.strikes.filter(strike => strike.officer_id === selectedOfficer && strike.status === "notified" && strike.academic_year === academicYear).length}} />}{admin && <button className={`${styles.secondary} ${styles.changeOfficer}`} onClick={() => chooseOfficer("all")}>Change officer</button>}</div>
+        {(!workspace || admin) && <div className={styles.profileBar}><div className={styles.studentIdentity}><h2 ref={studentHeading} tabIndex={-1}>{selectedPerson?.name ?? profile.name}</h2><p>{selectedPerson?.position || "Officer"}{selectedPerson?.email ? ` · ${selectedPerson.email}` : ""}</p></div>{workspace ? <label className={styles.workspaceOfficerFilter}>Record details<select aria-label="Officer record details" value={topic} onChange={event => chooseTopic(event.target.value as OfficerTopic)}><option value="overview">Summary</option><option value="tasks">Tasks & PEET</option><option value="attendance">Attendance</option><option value="volunteer">Volunteer service</option><option value="accountability">Concerns & notes</option></select></label> : <OfficerTopicNavigation topic={topic} onSelect={chooseTopic} pending={{tasks:reviewQueue.length + selectedRequests.filter(request => request.status === "pending").length,volunteer:tracking.volunteerLogs.filter(log => log.officer_id === selectedOfficer && log.status === "pending" && tracking.events.some(event => event.id === log.event_id && event.academic_year === academicYear)).length,accountability:tracking.strikes.filter(strike => strike.officer_id === selectedOfficer && strike.status === "notified" && strike.academic_year === academicYear).length}} />}{admin && <button className={`${styles.secondary} ${styles.changeOfficer}`} onClick={() => chooseOfficer("all")}>Change officer</button>}</div>}
         <div className={styles.contextScope}>{topic === "tasks" ? <p>Cumulative PEET and task history · all school years</p> : <label className={styles.yearPicker}>Academic year<select aria-label="Academic year" value={academicYear} onChange={event => setAcademicYear(event.target.value)}>{years.map(year => <option key={year}>{year}</option>)}</select></label>}</div>
       </header>
       {topic === "overview" && <div className={styles.metrics}>
