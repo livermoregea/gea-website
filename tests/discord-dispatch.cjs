@@ -72,3 +72,41 @@ test('website delivery requests survive navigation and do not undo a save on net
   assert.equal(requests[0].init.credentials, 'same-origin');
   assert.equal(warnings.length, 1);
 });
+
+function rollCallWorker(batchDuration = 0) {
+  const positions = ['Treasurer', '10th Grade Rep.', 'Publicist', 'President', 'Publicist', 'Vice President', 'Secretary', '10th Grade Rep.', 'Secretary', '9th Grade Rep', 'Vice President'];
+  const queue = positions.flatMap((position, i) => [
+    { id: `receipt-${i}`, kind: 'notification', payload: { topic: 'attendance_receipt', officer_name: `Officer ${i}`, officer_position: position, status: 'present' } },
+    { id: `overview-${i}`, kind: 'notification', payload: { topic: 'attendance', title: `Officer ${i} attendance` } },
+  ]);
+  const receipts = [], overviews = [], finished = [];
+  let clock = 0;
+  class Clock extends Date { static now() { return clock; } }
+  const db = { rpc: async () => { clock += batchDuration; return { data: queue.splice(0, 5) }; }, from: () => ({ update: values => ({ eq: async (_key, id) => { finished.push({ id, values }); return {}; } }) }) };
+  class InputError extends Error {}
+  const worker = load('lib/discord/worker.ts', {
+    '@/lib/supabase/admin': { createAdminClient: () => db }, '@/lib/discord': { sendDiscordEmbed: async (_topic, message) => overviews.push(message) },
+    './protocol': load('lib/discord/protocol.ts', {}), './failures': load('lib/discord/failures.ts', {}), './task-routing': {},
+    './service': { DiscordInputError: InputError }, './attendance-routing': { sendAttendanceNotification: async message => receipts.push(message) },
+  }, { Date: Clock, process: { env: { DISCORD_ATTENDANCE_OVERVIEW: 'true' } } });
+  return { worker, queue, receipts, overviews, finished };
+}
+test('a complete 11-officer attendance save delivers all 22 jobs, including both VPs and secretaries', async () => {
+  const r = rollCallWorker();
+  const result = await r.worker.runDiscordJobs();
+  assert.equal(result.claimed, 22);
+  assert.equal(result.completed, 22);
+  assert.equal(r.queue.length, 0);
+  assert.equal(r.receipts.length, 11);
+  assert.equal(new Set(r.receipts.map(message => message.officer_name)).size, 11);
+  assert.equal(r.receipts.filter(message => message.officer_position === 'Vice President').length, 2);
+  assert.equal(r.receipts.filter(message => message.officer_position === 'Secretary').length, 2);
+  assert.equal(r.overviews.length, 11);
+});
+test('draining a large attendance queue still stops starting batches when its time budget is reached', async () => {
+  const r = rollCallWorker(15000);
+  const result = await r.worker.runDiscordJobs();
+  assert.equal(result.claimed, 10);
+  assert.equal(result.completed, 10);
+  assert.equal(r.queue.length, 12);
+});

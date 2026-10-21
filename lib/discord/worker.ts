@@ -22,12 +22,14 @@ export async function enqueueInteraction(i: Interaction) {
 export async function runDiscordJobs() {
   const started = Date.now();
   let claimed = 0, completed = 0;
-  // Pick up notifications enqueued by the commands in this invocation.
-  for (let batch = 0; batch < 3; batch++) {
+  // Drain every ready batch, including notifications created by commands.
+  // A full roll call generates two jobs per officer; a fixed batch count
+  // silently strands the end of the roster. Keep the time budget instead.
+  do {
     const result = await runDiscordBatch();
     claimed += result.claimed; completed += result.completed;
-    if (!result.claimed || Date.now() - started >= 30000) break;
-  }
+    if (!result.claimed) break;
+  } while (Date.now() - started < 30000);
   return { claimed, completed };
 }
 async function runDiscordBatch() {
