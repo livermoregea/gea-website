@@ -11,7 +11,7 @@ const commands = [
   { name: 'absence-notice', description: 'Give advance notice of absence or tardiness' },
   { name: 'assign-task', description: 'Create a task for an officer', ...admin, options: [option('officer', 'Linked officer to assign', 6), option('channel', 'Optional committee channel for notification', 7, false)] },
   { name: 'review-task', description: 'Review contributions and approve PEET scores', ...admin },
-  { name: 'mark-attendance', description: 'Record meeting or event attendance', ...admin, options: [option('event', 'Event UUID from GEA One or /events', 3), option('officer', 'Linked officer', 6), { ...option('status', 'Attendance status', 3), choices: [{name:'Present',value:'present'},{name:'Tardy',value:'late'},{name:'Unexcused',value:'unexcused'},{name:'Excused',value:'excused'}] }, option('notes', 'Reviewer notes', 3, false)] },
+  { name: 'mark-attendance', description: 'Record attendance (secretaries: meetings; reviewers: all events)', default_member_permissions: null, options: [option('event', 'Event UUID from GEA One or /events', 3), option('officer', 'Linked officer', 6), { ...option('status', 'Attendance status', 3), choices: [{name:'Present',value:'present'},{name:'Tardy',value:'late'},{name:'Unexcused',value:'unexcused'},{name:'Excused',value:'excused'}] }, option('notes', 'Reviewer notes', 3, false)] },
 ].map(command => ({ ...command, type: 1 }));
 // Create/update only these commands. Preserve unrelated application commands.
 for (const command of commands) {

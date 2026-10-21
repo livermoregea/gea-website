@@ -8,6 +8,7 @@ import WorkspaceGreeting from "@/components/WorkspaceGreeting";
 import { accountMemberships } from "@/lib/account-landing";
 import { createClient } from "@/lib/supabase/server";
 import { hasSupabaseConfig } from "@/lib/supabase/config";
+import { hasDiscordIdentity } from '@/lib/discord/account-link';
 
 export const metadata: Metadata = { title: "GEA One · Home", robots: { index: false, follow: false } };
 export const dynamic = "force-dynamic";
@@ -19,7 +20,13 @@ export default async function AccountHomePage({ searchParams }: { searchParams: 
   if (!user) redirect("/login");
   const membership = await accountMemberships(supabase, user.id);
   const { discord } = await searchParams;
-  if (discord !== 'link-required' && membership.isStudent && !membership.hasWorkspace) redirect("/dashboard#qa");
+  if (!discord && membership.isStudent && !membership.hasWorkspace) redirect("/dashboard#qa");
+  const identityLinked = hasDiscordIdentity(user);
+  const discordIdentity = user.identities?.find((identity: { provider: string }) => identity.provider === 'discord');
+  const { data: discordProfile } = membership.isOfficer
+    ? await supabase.from('officer_profiles').select('discord_id').eq('id', user.id).maybeSingle()
+    : { data: null };
+  const commandsReady = identityLinked && !!discordProfile?.discord_id && discordProfile.discord_id === discordIdentity?.identity_data?.sub;
 
   const staff = membership.isAdmin || membership.isTeacher;
   const destinations = [
@@ -45,7 +52,10 @@ export default async function AccountHomePage({ searchParams }: { searchParams: 
       </Link>)}
     </nav>
     {discord === 'link-required' && <p role="status">This Discord login is not linked to an active officer record. Sign out, sign in with your original school account, then choose Connect Discord. If you have not signed up yet, complete your officer signup first.</p>}
-    {membership.isOfficer && <DiscordConnect signedIn />}
+    {discord === 'already-linked' && commandsReady && <p role="status">Discord is already linked to your GEA One account. Your officer connection has been synced; try /score in Discord.</p>}
+    {discord === 'sync-failed' && <p role="status">Discord is linked to your login, but officer access could not be synced. Try checking the connection again, or contact an advisor.</p>}
+    {discord === 'linked-elsewhere' && <p role="status">That Discord identity is already linked, but it is not attached to your current GEA One login. Sign in to the GEA One account you originally linked, or ask an advisor to help resolve the account connection.</p>}
+    {membership.isOfficer && <DiscordConnect signedIn linked={identityLinked} commandsReady={commandsReady} />}
     <div className={styles.settings}>
       <div><p>Your account</p><span>Personal details &amp; profile changes</span></div>
       <Link href="/profile">Profile &amp; settings <span aria-hidden="true">→</span></Link>

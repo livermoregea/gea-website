@@ -3,6 +3,8 @@ import { discordReply, sendDiscordEmbed, type DiscordTopic } from '@/lib/discord
 import { DiscordInputError, handleInteraction } from './service';
 import type { Interaction } from './protocol';
 import { timingSafeEqual } from 'node:crypto';
+import { sendTaskNotification } from './task-routing';
+import { sendAttendanceNotification } from './attendance-routing';
 export function cronAuthorized(request: Request) {
   const secret = process.env.CRON_SECRET;
   const supplied = request.headers.get('authorization') || '';
@@ -26,7 +28,15 @@ export async function runDiscordJobs() {
     let terminal = false;
     try {
       if (job.kind === 'notification') {
-        await sendDiscordEmbed(job.payload.topic as DiscordTopic, { title: job.payload.title, description: job.payload.description || 'Open GEA One for the full record.' });
+        if (job.payload.topic === 'tasks') await sendTaskNotification(job.payload);
+        else if (job.payload.topic === 'attendance_receipt') {
+          // Retire older private-DM jobs; new receipts target position channels.
+          if (job.payload.officer_position) await sendAttendanceNotification(job.payload);
+        }
+        else if (job.payload.topic === 'attendance') {
+          if (process.env.DISCORD_ATTENDANCE_OVERVIEW === 'true') await sendDiscordEmbed('attendance', { title: job.payload.title, description: job.payload.description });
+        }
+        else await sendDiscordEmbed(job.payload.topic as DiscordTopic, { title: job.payload.title, description: job.payload.description || 'Open GEA One for the full record.' });
       } else {
         // Discord tokens expire in 15 minutes. Discard expired tokens, retain
         // durable drafts/actions; officers can safely start a fresh command.

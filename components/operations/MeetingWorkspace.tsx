@@ -12,7 +12,8 @@ type Roll = {
     position: string;
     status: string;
 };
-export default function MeetingWorkspace({ data, eventId, save, busy, markDirty, dirtyScope }: {
+export default function MeetingWorkspace({ data, eventId, save, busy, markDirty, dirtyScope, attendanceOnly = false }: {
+    attendanceOnly?: boolean;
     data: OperationsData;
     eventId: string;
     save: SaveAction;
@@ -36,7 +37,7 @@ export default function MeetingWorkspace({ data, eventId, save, busy, markDirty,
                 setRoll(rows ?? []);
         } }); return () => { active = false; }; }, [eventId, data.canMeetings, data]);
     if (!event)
-        return <p>Select a meeting to view its agenda and minutes.</p>;
+        return <p>{attendanceOnly ? 'Select a meeting to take roll.' : 'Select a meeting to view its agenda and minutes.'}</p>;
     const agenda = data.agenda.filter(a => a.event_id === eventId);
     const unmarkedCount = roll.filter(row => (draft[row.officer_id] ?? row.status) === 'unmarked').length;
     const changedCount = roll.filter(row => (draft[row.officer_id] ?? row.status) !== row.status).length;
@@ -55,8 +56,8 @@ export default function MeetingWorkspace({ data, eventId, save, busy, markDirty,
   <section className={s.panel}><h2>{event.title}</h2><p>{schoolDate(event.starts_at)} · {event.location || 'Location to be announced'}{event.cancelled ? ' · Cancelled' : ''}</p>
     <div className={s.eventDescription}><h3>Meeting description</h3>{event.notes?.trim() ? <p>{event.notes}</p> : <p className={s.muted}>{data.reviewer ? 'Add a short description using Edit schedule & description above.' : 'No meeting description has been added yet.'}</p>}</div>
   </section>
-  <div className={data.canMeetings ? s.meetingColumns : s.readingColumn}>
-  <section className={s.panel}>
+  <div className={!attendanceOnly && data.canMeetings ? s.meetingColumns : s.readingColumn}>
+  {!attendanceOnly && <section className={s.panel}>
     <h2>Meeting documents</h2>
     <div className={s.documentLinks}>
       {googleDocLink(note?.agenda_doc_url) ? <a className={s.button} href={googleDocLink(note?.agenda_doc_url)!} target="_blank" rel="noopener noreferrer">Open agenda ↗</a> : <p className={s.muted}>No agenda document linked yet.</p>}
@@ -86,7 +87,7 @@ export default function MeetingWorkspace({ data, eventId, save, busy, markDirty,
       {note?.minutes && <><h3>Notes</h3><p className={s.prose}>{note.minutes}</p></>}
       {note?.decisions && <><h3>Decisions</h3><p className={s.prose}>{note.decisions}</p></>}
     </details>}
-  </section>
+  </section>}
   {data.canMeetings && <section className={s.panel}><h2>Meeting attendance</h2><p className={s.muted}>Secretary and reviewers can record roll call. Private explanations and reviewer notes stay in the officer workspace.</p>{rollError && <p role="alert" className={s.error}>{rollError}</p>}{!roll.length && !rollError && <p role="status">Loading roll call…</p>}
    {!event.cancelled && <div className={s.actions}>
      <button type="button" disabled={busy || !meetingHasStarted || !unmarkedCount || Boolean(dirtyScope && dirtyScope !== 'attendance')} onClick={markAllPresent}>Mark all present</button>

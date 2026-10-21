@@ -20,6 +20,8 @@ select public.test_denied('update public.officer_profiles set discord_id=''33333
 set request.jwt.claim.sub='33333333-3333-4333-8333-333333333333';
 select public.test_assert(public.bind_officer_discord(),'advisor binds verified identity');
 reset role;
+update public.officer_profiles set position='Secretary' where id='11111111-1111-4111-8111-111111111111';
+update public.officer_profiles set position='Treasurer' where id='22222222-2222-4222-8222-222222222222';
 set role service_role;
 select public.test_assert(public.discord_action('111111111111111111','me')->>'name'='Submitter','bridge uses linked officer');
 select public.test_denied('select public.discord_action(''999999999999999999'',''me'')');
@@ -27,6 +29,16 @@ select public.test_denied('select public.discord_action(''111111111111111111'','
 select public.discord_action('333333333333333333','assign','{"officer":"111111111111111111","title":"Discord task","description":"Create reusable workshop materials"}','assignment-1') assigned \gset
 select public.test_assert(public.discord_action('333333333333333333','assign','{"officer":"111111111111111111","title":"Duplicate"}','assignment-1')=:'assigned'::jsonb,'retry returns original assignment');
 select public.test_assert((select count(*)=1 from public.tasks where title='Discord task'),'retry does not duplicate tasks');
+select public.test_assert((select count(*)=1 from public.discord_jobs where payload->>'task_id'=(:'assigned'::jsonb#>>'{}') and payload->>'assignee_position'='Secretary' and payload->>'assignee_name'='Submitter'),'assignment queues the receiving officer position and name once');
+select public.discord_action('333333333333333333','assign','{"officer":"111111111111111111","title":"Committee task","channel":"777777777777777777"}','assignment-channel') committee \gset
+select public.test_assert((select count(*)=1 from public.discord_jobs where payload->>'task_id'=(:'committee'::jsonb#>>'{}') and payload->>'channel_id'='777777777777777777'),'explicit channel overrides the same durable receipt');
+select public.test_denied('select public.discord_action(''333333333333333333'',''assign'',''{"officer":"111111111111111111","title":"Invalid channel task","channel":"bad"}'',''assignment-bad'')');
+select public.test_assert(not exists(select 1 from public.tasks where title='Invalid channel task'),'invalid channel rolls back the assignment and receipt');
+reset role;
+update public.tasks set assigned_to='22222222-2222-4222-8222-222222222222' where id=(:'assigned'::jsonb#>>'{}')::uuid;
+select public.test_assert((select count(*)=1 from public.discord_jobs where payload->>'task_id'=(:'assigned'::jsonb#>>'{}') and payload->>'assignee_position'='Treasurer'),'website reassignment queues the new recipient even without status change');
+set role service_role;
+
 select public.test_denied('select public.save_discord_submission(''111111111111111111'',''aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'',''work'',''javascript:alert(1)'')');
 select public.save_discord_submission('111111111111111111','aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa','Completed slides by the deadline with advisor guidance','https://example.com/slides');
 select public.test_assert((select count(*)=1 from public.discord_submission_drafts),'evidence durable before AI');

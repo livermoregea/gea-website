@@ -138,3 +138,18 @@ test('Meeting and event descriptions are visible beside document links without g
  const reviewer=eventFixture({reviewer:true});reviewer.events[0].notes='Brief instructions';
  assert.ok(render(reviewer,'events','event').includes('name="notes"'));
 });
+
+test('Secretary Attendance tab opens meeting roll call without reviewer tools or document editing',()=>{
+ const data=fixture();data.canMeetings=true;
+ const html=render(data,'attendance');
+ assert.ok(html.includes('Choose meeting'));
+ assert.ok(html.includes('Meeting attendance'));
+ assert.ok(html.includes('Mark all present'));
+ assert.ok(html.includes('Save attendance'));
+ assert.ok(!html.includes('Meeting documents'));
+ assert.ok(!html.includes('Create or edit events'));
+ assert.ok(!html.includes('My attendance'));
+ const ordinary=render(fixture(),'attendance');
+ assert.ok(!ordinary.includes('Save attendance'));
+ assert.ok(!ordinary.includes('Choose meeting'));
+});

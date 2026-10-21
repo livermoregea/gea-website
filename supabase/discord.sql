@@ -48,7 +48,7 @@ $$;
 -- Service-role only: no client may supply another officer's Discord ID.
 create or replace function public.discord_action(p_discord_id text,p_action text,p_args jsonb default '{}',p_key text default null)
 returns jsonb language plpgsql security definer set search_path='' as $$
-declare v_actor uuid; v_result jsonb; v_id uuid; v_task public.gea_peet_tasks; begin
+declare v_actor uuid; v_result jsonb; v_id uuid; v_task public.gea_peet_tasks; v_status text; begin
  select id into v_actor from public.officer_profiles where discord_id=p_discord_id and access_enabled;
  if v_actor is null then raise exception 'Sign in to GEA One and connect Discord before using this command.'; end if;
  perform set_config('request.jwt.claim.sub',v_actor::text,true);
@@ -77,6 +77,13 @@ declare v_actor uuid; v_result jsonb; v_id uuid; v_task public.gea_peet_tasks; b
   select id into v_id from public.officer_profiles where discord_id=p_args->>'officer' and access_enabled;
   if v_id is null then raise exception 'The selected officer must connect Discord first.'; end if;
   v_result:=to_jsonb(public.save_officer_task(p_args->>'title',coalesce(p_args->>'description',''),nullif(p_args->>'due','')::date,v_id));
+  if nullif(p_args->>'channel','') is not null then
+   if p_args->>'channel' !~ '^[0-9]{17,20}$' then raise exception 'Choose a valid Discord channel.'; end if;
+   -- The insert trigger has queued this assignment in the same transaction.
+   -- An explicitly selected channel overrides only this assignment receipt.
+   update public.discord_jobs set payload=payload||jsonb_build_object('channel_id',p_args->>'channel')
+    where kind='notification' and payload->>'task_id'=v_result#>>'{}' and finished_at is null;
+  end if;
  when 'absence' then
   if not exists(select 1 from public.officer_events where id=(p_args->>'event')::uuid and starts_at>now() and not cancelled) then raise exception 'Choose an upcoming event.'; end if;
   insert into public.officer_attendance(event_id,officer_id,absence_notice,notice_at)
@@ -85,7 +92,15 @@ declare v_actor uuid; v_result jsonb; v_id uuid; v_task public.gea_peet_tasks; b
  when 'attendance' then
   select id into v_id from public.officer_profiles where discord_id=p_args->>'officer' and access_enabled;
   if v_id is null then raise exception 'Officer must connect Discord first.'; end if;
-  perform public.record_officer_attendance((p_args->>'event')::uuid,v_id,p_args->>'status',coalesce(p_args->>'notes',''));
+  if public.is_peet_admin() then
+   perform public.record_officer_attendance((p_args->>'event')::uuid,v_id,p_args->>'status',coalesce(p_args->>'notes',''));
+  elsif public.can_manage_meetings() then
+   if nullif(btrim(p_args->>'notes'),'') is not null then raise exception 'Private reviewer notes require reviewer access.'; end if;
+   select status into v_status from public.officer_attendance where event_id=(p_args->>'event')::uuid and officer_id=v_id;
+   perform public.save_meeting_attendance((p_args->>'event')::uuid,jsonb_build_array(jsonb_build_object(
+    'officer_id',v_id,'status',p_args->>'status','original_status',coalesce(v_status,'unmarked'))));
+  else raise exception 'Secretary or reviewer access is required.';
+  end if;
  when 'revision','reject' then
   select * into v_task from public.gea_peet_tasks where id=(p_args->>'id')::uuid for update;
   if not found or not public.gea_peet_can_review(v_task.task_id) or v_task.status<>'pending' or v_task.version<>(p_args->>'version')::integer then raise exception 'Review changed or access denied.'; end if;
@@ -106,16 +121,30 @@ end $$;
 -- Outbox captures website AND Discord changes; no network calls in transactions.
 create or replace function public.enqueue_discord_notification()
 returns trigger language plpgsql security definer set search_path='' as $$
-declare v_topic text; v_title text; v_description text; v_count integer; begin
+declare v_topic text; v_title text; v_description text; v_count integer;
+ v_extra jsonb:='{}'; v_name text; v_position text; v_event text; begin
  if tg_table_name='tasks' then
-  if tg_op='UPDATE' and new.status=old.status then return new; end if;
+  if tg_op='UPDATE' and new.status=old.status and new.assigned_to=old.assigned_to then return new; end if;
   v_topic:='tasks'; v_title:='Task: '||new.title||' · '||new.status;
   v_description:='Due: '||coalesce(new.due_date::text,'Not set');
+  select name,position into v_name,v_position from public.officer_profiles where id=new.assigned_to;
+  v_extra:=jsonb_build_object('task_id',new.id,'assignee_name',v_name,'assignee_position',v_position);
  elsif tg_table_name='officer_attendance' then
   if tg_op='UPDATE' and new.status=old.status and new.absence_notice=old.absence_notice then return new; end if;
   v_topic:='attendance'; v_title:='Attendance record updated';
   select e.title||E'\n'||p.name||' · '||new.status into v_description
    from public.officer_events e,public.officer_profiles p where e.id=new.event_id and p.id=new.officer_id;
+  -- Position-channel receipts and the optional secretary/reviewer overview
+  -- have separate jobs. Network delivery never blocks the attendance save.
+  if (tg_op='INSERT' and new.status<>'unmarked') or (tg_op='UPDATE' and new.status is distinct from old.status) then
+   select name,position into v_name,v_position from public.officer_profiles where id=new.officer_id and access_enabled;
+   select title into v_event from public.officer_events where id=new.event_id;
+   if nullif(btrim(v_position),'') is not null then
+    insert into public.discord_jobs(id,kind,payload) values(gen_random_uuid()::text,'notification',
+     jsonb_build_object('topic','attendance_receipt','officer_name',v_name,'officer_position',v_position,'event_title',v_event,
+      'event_id',new.event_id,'status',new.status));
+   end if;
+  end if;
  else
   v_topic:='announcements'; v_title:='PEET evaluation recorded';
   if tg_op='INSERT' then
@@ -128,7 +157,7 @@ declare v_topic text; v_title text; v_description text; v_count integer; begin
    end if;
   end if;
  end if;
- insert into public.discord_jobs(id,kind,payload) values(gen_random_uuid()::text,'notification',jsonb_build_object('topic',v_topic,'title',v_title,'description',v_description));
+ insert into public.discord_jobs(id,kind,payload) values(gen_random_uuid()::text,'notification',jsonb_build_object('topic',v_topic,'title',v_title,'description',v_description)||v_extra);
  return new;
 end $$;
 drop trigger if exists discord_task_notification on public.tasks;

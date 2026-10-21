@@ -84,8 +84,7 @@ export async function handleInteraction(i: Interaction) {
   }
   if (command === 'review-task') return menu('review', await action(discordId, 'reviews'), 'Choose a pending contribution:');
   if (verb === 'assign' && i.type === 5) {
-    const taskId = await action(discordId, 'assign', { officer: id, title: fields.title, description: fields.description, due: fields.due }, key('assign'));
-    if (versionText && /^\d{17,20}$/.test(versionText)) await discordFetch(`channels/${versionText}/messages`, safeMessage({ content: `New GEA One task: ${fields.title}\nTask ID: ${taskId}` }));
+    const taskId = await action(discordId, 'assign', { officer: id, title: fields.title, description: fields.description, due: fields.due, channel: versionText || '' }, key('assign'));
     return reply(`Task assigned. ID: ${taskId}`);
   }
   if (verb === 'absence' && i.type === 5) {

@@ -4,6 +4,12 @@ import { BUILDERS_ENABLED } from "@/lib/site-features";
 import { hasSupabaseConfig } from "@/lib/supabase/config";
 
 export async function middleware(request: NextRequest) {
+  // Supabase may send OAuth failures to its Site URL instead of redirect_to.
+  if (request.nextUrl.pathname === '/' && request.nextUrl.searchParams.get('error_code') === 'identity_already_exists') {
+    const callback = new URL('/auth/callback', request.url);
+    callback.searchParams.set('error_code', 'identity_already_exists');
+    return NextResponse.redirect(callback);
+  }
   // Discord authenticates with Ed25519 (or the worker bearer secret). Do not
   // spend its three-second ACK budget refreshing a browser session.
   if (request.nextUrl.pathname.startsWith('/api/discord/')) return NextResponse.next();

@@ -62,7 +62,7 @@ test('redirects reject cross-origin and backslash destinations', () => {
   assert.equal(protocol.safeNext('/operations?view=tasks'), '/operations?view=tasks');
 });
 test('cron secret is fail-closed and uses an exact bearer token', () => {
-  const dependencies = { '@/lib/supabase/admin': {}, '@/lib/discord': {}, './service': {}, './protocol': {} };
+  const dependencies = { '@/lib/supabase/admin': {}, '@/lib/discord': {}, './service': {}, './protocol': {}, './task-routing': {}, './attendance-routing': {} };
   const worker = load('lib/discord/worker.ts', dependencies, { CRON_SECRET: 'expected' });
   for (const value of ['', 'Bearer wrong', 'expected']) assert.equal(worker.cronAuthorized(new Request('https://gea.test', { headers: { authorization: value } })), false);
   assert.equal(worker.cronAuthorized(new Request('https://gea.test', { headers: { authorization: 'Bearer expected' } })), true);
@@ -121,4 +121,109 @@ test('submission persists evidence before an AI outage and never awards scores',
   assert.ok(calls.indexOf('save_discord_submission') < calls.indexOf('model'));
   assert.equal(calls.includes('approve'), false);
   assert.equal(calls.includes('save_gea_peet_assessment'), false);
+});
+function routingFixture(env = {}) {
+  const deliveries = [];
+  const routing = load('lib/discord/task-routing.ts', {
+    '@/lib/discord': {
+      discordFetch: async (path, message) => deliveries.push({ path, message }),
+      safeMessage: message => ({ ...message, allowed_mentions: { parse: [] } }),
+      sendDiscordEmbed: async (topic, embed) => deliveries.push({ topic, embed }),
+    },
+  }, env);
+  return { ...routing, deliveries };
+}
+test('officer positions map to role channels and grade reps fall back to shared reps', () => {
+  const routing = routingFixture({
+    DISCORD_CHANNEL_VICE_PRESIDENT: '111111111111111111', DISCORD_CHANNEL_SECRETARY: '222222222222222222',
+    DISCORD_CHANNEL_PUBLICIST: '333333333333333333', DISCORD_CHANNEL_TREASURER: '444444444444444444',
+    DISCORD_CHANNEL_REPS: '555555555555555555', DISCORD_CHANNEL_REP_9: '666666666666666666',
+  });
+  for (const label of ['Vice President', 'vice-president', 'VP', 'Vice President of Operations']) assert.equal(routing.officerChannelId(label), '111111111111111111');
+  assert.equal(routing.officerChannelId('Secretary'), '222222222222222222');
+  assert.equal(routing.officerChannelId('Publicist'), '333333333333333333');
+  assert.equal(routing.officerChannelId('Treasurer'), '444444444444444444');
+  for (const label of ['9th Grade Representative', 'rep-9', 'Freshman Representative']) assert.equal(routing.officerChannelId(label), '666666666666666666');
+  for (const label of ['10th Grade Representative', 'rep-10', 'Reps']) assert.equal(routing.officerChannelId(label), '555555555555555555');
+  for (const label of [null, '', 'Unrecognized position', 'President']) assert.equal(routing.officerChannelId(label), undefined);
+});
+test('role delivery contains assignee and task details; explicit destination takes precedence', async () => {
+  const routing = routingFixture({ DISCORD_CHANNEL_SECRETARY: '222222222222222222' });
+  const notification = { title: 'Task: Prepare minutes · in_progress', description: 'Due: 2026-11-01', task_id: 'task-uuid', assignee_name: 'Officer One', assignee_position: 'Secretary' };
+  await routing.sendTaskNotification(notification);
+  assert.equal(routing.deliveries[0].path, 'channels/222222222222222222/messages');
+  assert.equal(routing.deliveries[0].message.embeds[0].fields[0].value, 'Officer One');
+  assert.equal(routing.deliveries[0].message.embeds[0].description, notification.description);
+  assert.equal(routing.deliveries[0].message.allowed_mentions.parse.length, 0);
+  await routing.sendTaskNotification({ ...notification, channel_id: '777777777777777777' });
+  assert.equal(routing.deliveries[1].path, 'channels/777777777777777777/messages');
+  assert.equal(routing.deliveries.length, 2);
+});
+test('unmapped and legacy jobs fall back to the tasks webhook; invalid channels fail closed', async () => {
+  const routing = routingFixture();
+  await routing.sendTaskNotification({ title: 'Legacy task update' });
+  assert.equal(routing.deliveries[0].topic, 'tasks');
+  assert.throws(() => routingFixture({ DISCORD_CHANNEL_SECRETARY: '../other' }).officerChannelId('Secretary'), /Invalid/);
+  await assert.rejects(routing.sendTaskNotification({ title: 'Task', channel_id: 'https://evil.test' }), /Invalid/);
+  assert.equal(routing.deliveries.length, 1);
+});
+test('a private officer channel delivery failure is retried without posting to the general webhook', async () => {
+  let fallback = false;
+  const routing = load('lib/discord/task-routing.ts', { '@/lib/discord': {
+    discordFetch: async () => { throw new Error('Discord delivery failed (403).'); }, safeMessage: x => x,
+    sendDiscordEmbed: async () => { fallback = true; },
+  } }, { DISCORD_CHANNEL_TREASURER: '444444444444444444' });
+  await assert.rejects(routing.sendTaskNotification({ title: 'Task: Budget', assignee_position: 'Treasurer' }), /403/);
+  assert.equal(fallback, false);
+});
+function attendanceFixture(env = {}) {
+  const deliveries = [];
+  const transport = { discordFetch: async (path, message) => deliveries.push({ path, message }), safeMessage: message => ({ ...message, allowed_mentions: { parse: [] } }) };
+  const routing = load('lib/discord/task-routing.ts', { '@/lib/discord': transport }, env);
+  const attendance = load('lib/discord/attendance-routing.ts', { '@/lib/discord': transport, './task-routing': routing });
+  return { deliveries, ...attendance, ...routing };
+}
+test('attendance posts to the officer channel and permits only the matching role ping', async () => {
+  const f = attendanceFixture({ DISCORD_CHANNEL_VICE_PRESIDENT: '111111111111111111', DISCORD_ROLE_VICE_PRESIDENT: '222222222222222222' });
+  for (const [status, label] of [['present', 'Present'], ['late', 'Tardy'], ['excused', 'Excused'], ['unexcused', 'Unexcused'], ['unmarked', 'Not recorded']]) {
+    await f.sendAttendanceNotification({ officer_name: 'VP @everyone', officer_position: 'VP', event_title: 'Officer meeting', status });
+    const { path, message } = f.deliveries.at(-1);
+    assert.equal(path, 'channels/111111111111111111/messages');
+    assert.equal(message.content, '<@&222222222222222222>');
+    assert.equal(JSON.stringify(message.allowed_mentions), JSON.stringify({ parse: [], roles: ['222222222222222222'], users: [] }));
+    assert.equal(message.embeds[0].fields[2].value, label);
+    assert.match(message.embeds[0].title, status === 'unmarked' ? /cleared/ : /recorded/);
+  }
+  await assert.rejects(f.sendAttendanceNotification({ officer_position: 'Unknown', status: 'present' }), /Configure a channel/);
+  await assert.rejects(f.sendAttendanceNotification({ officer_position: 'VP', status: 'toString' }), /Invalid/);
+});
+test('task notifications also restrict pings to the configured officer role', async () => {
+  const f = attendanceFixture({ DISCORD_CHANNEL_SECRETARY: '111111111111111111', DISCORD_ROLE_SECRETARY: '333333333333333333' });
+  await f.sendTaskNotification({ title: 'Prepare minutes', assignee_position: 'Secretary' });
+  assert.equal(f.deliveries[0].message.content, '<@&333333333333333333>');
+  assert.deepEqual([...f.deliveries[0].message.allowed_mentions.roles], ['333333333333333333']);
+  assert.throws(() => attendanceFixture({ DISCORD_ROLE_SECRETARY: '@everyone' }).officerRoleId('Secretary'), /Invalid/);
+  assert.equal(attendanceFixture({ DISCORD_ROLE_REPS: '444444444444444444' }).officerRoleId('10th Grade Representative'), '444444444444444444');
+});
+test('secretary overview is opt-in, role receipts are independent, and legacy DM jobs are retired', async () => {
+  for (const enabled of [false, true]) {
+    const sent = [], updates = [];
+    const jobs = [
+      { id: 'officer', kind: 'notification', attempts: 1, payload: { topic: 'attendance_receipt', officer_position: 'VP', status: 'present' } },
+      { id: 'overview', kind: 'notification', attempts: 1, payload: { topic: 'attendance', title: 'Attendance saved' } },
+      { id: 'legacy', kind: 'notification', attempts: 1, payload: { topic: 'attendance_receipt', discord_id: '273656451862495233', status: 'present' } },
+    ];
+    const db = { rpc: async () => ({ data: jobs, error: null }), from: () => ({ update: values => ({ eq: async (_key, id) => { updates.push({ id, values }); return { error: null }; } }) }) };
+    class InputError extends Error {}
+    const worker = load('lib/discord/worker.ts', {
+      '@/lib/supabase/admin': { createAdminClient: () => db }, '@/lib/discord': { sendDiscordEmbed: async topic => sent.push(topic) },
+      './service': { DiscordInputError: InputError }, './protocol': {}, './task-routing': {},
+      './attendance-routing': { sendAttendanceNotification: async () => { sent.push('officer'); throw new Error('Role channel blocked'); } },
+    }, { DISCORD_ATTENDANCE_OVERVIEW: String(enabled) });
+    const result = await worker.runDiscordJobs();
+    assert.equal(result.completed, 2);
+    assert.deepEqual(sent.sort(), enabled ? ['attendance', 'officer'] : ['officer']);
+    assert.equal(updates.find(update => update.id === 'officer').values.failed, false);
+    assert.ok(updates.find(update => update.id === 'legacy').values.finished_at);
+  }
 });
