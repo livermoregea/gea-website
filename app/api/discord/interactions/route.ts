@@ -43,5 +43,6 @@ export async function POST(request: Request) {
     try { await enqueueInteraction(i); await runDiscordJobs(); }
     catch { console.error('Discord background processing failed; inspect discord_jobs.'); }
   });
+  if (i.type === 3 && i.data?.custom_id?.startsWith('roll:')) return NextResponse.json({ type: 6 });
   return NextResponse.json({ type: 5, data: { flags: 64 } });
 }

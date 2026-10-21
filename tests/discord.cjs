@@ -93,7 +93,7 @@ function serviceFixture(rpc, generate = async () => { throw new Error('unexpecte
   const service = load('lib/discord/service.ts', {
     '@/lib/supabase/admin': { createAdminClient: () => ({ rpc }) },
     '@/lib/discord': { discordReply: async (_token, message) => replies.push(message), discordDM: async () => {}, discordFetch: async () => {}, safeMessage: x => x },
-    './protocol': protocol, '@/lib/peet-ai': schemas, '@/lib/peet': peet, '@/lib/cage': cage, '@/lib/officer-tracking': { CONTRACT_YEAR: '2026-2027' },
+    './protocol': protocol, './roll-call': {}, '@/lib/peet-ai': schemas, '@/lib/peet': peet, '@/lib/cage': cage, '@/lib/officer-tracking': { CONTRACT_YEAR: '2026-2027' },
     ai: { generateObject: generate },
   }, { GROQ_API_KEY: 'fake' });
   return { service, replies };
@@ -226,4 +226,11 @@ test('secretary overview is opt-in, role receipts are independent, and legacy DM
     assert.equal(updates.find(update => update.id === 'officer').values.failed, false);
     assert.ok(updates.find(update => update.id === 'legacy').values.finished_at);
   }
+});
+test('roll-call component interactions update the existing private roster in place', async () => {
+  const {handler,calls}=route();
+  const response=await handler.POST(signed({...interaction,type:3,data:{custom_id:'roll:all:session:1'}}));
+  assert.deepEqual(await response.json(),{type:6});
+  assert.equal(calls.after.length,1);
+  assert.equal(calls.queued.length,0);
 });

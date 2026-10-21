@@ -8,6 +8,7 @@ import { productLink, peetSummary } from '@/lib/peet';
 import { calculateCageScore, CAGE_MAX_SCORE } from '@/lib/cage';
 import { CONTRACT_YEAR } from '@/lib/officer-tracking';
 import { z } from 'zod';
+import { rollCallResponse } from './roll-call';
 
 export class DiscordInputError extends Error {}
 export async function action(discordId: string, name: string, args = {}, key?: string): Promise<any> {
@@ -51,6 +52,15 @@ export async function handleInteraction(i: Interaction) {
   const options = Object.fromEntries((i.data?.options || []).map(o => [o.name, o.value]));
   const fields = Object.fromEntries((i.data?.components || []).flatMap(r => r.components || []).map(c => [c.custom_id, c.value.trim()]));
   const command = i.data?.name;
+  if ((command === 'mark-attendance' && !options.event) || i.data?.custom_id?.startsWith('roll:')) {
+    const message = await rollCallResponse(i, async (name, args, interactionKey) => {
+      const { data, error } = await createAdminClient().rpc('discord_roll_call', { p_discord_id: discordId, p_action: name, p_args: args, p_key: interactionKey || null });
+      if (error?.code === 'P0001') throw new DiscordInputError(error.message);
+      if (error) throw new DiscordInputError('Roll call could not load. Apply the latest Discord SQL migration, then reopen /mark-attendance.');
+      return data;
+    });
+    return discordReply(i.token, message);
+  }
   let custom = i.data?.custom_id || '';
   if (custom.startsWith('pick:')) custom = `${custom.slice(5)}:${i.data?.values?.[0] || ''}`;
   const [verb, id, versionText] = custom.split(':');

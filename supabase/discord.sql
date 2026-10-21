@@ -200,3 +200,102 @@ end $$;
 revoke all on function public.save_discord_submission(text,uuid,text,text) from public,anon,authenticated;
 grant execute on function public.save_discord_submission(text,uuid,text,text) to service_role;
 commit;
+
+-- Private, versioned Discord roll-call drafts. Actual attendance changes only on Save.
+begin;
+create table if not exists public.discord_roll_calls (
+ id uuid primary key default gen_random_uuid(), officer_id uuid not null references public.officer_profiles(id),
+ event_id uuid not null references public.officer_events(id), rows jsonb not null,
+ selected uuid[] not null default '{}', page integer not null default 0,
+ version integer not null default 1, closed boolean not null default false,
+ expires_at timestamptz not null default now()+interval '1 hour'
+);
+alter table public.discord_roll_calls enable row level security;
+revoke all on public.discord_roll_calls from public,anon,authenticated;
+grant all on public.discord_roll_calls to service_role;
+create or replace function public.discord_roll_call(p_discord_id text,p_action text,p_args jsonb default '{}',p_key text default null)
+returns jsonb language plpgsql security definer set search_path='' as $$
+declare actor uuid; session public.discord_roll_calls; event public.officer_events;
+ result jsonb; roster jsonb; changes jsonb; item jsonb; current_status text; chosen uuid[]; next_status text; page_number integer;
+begin
+ select id into actor from public.officer_profiles where discord_id=p_discord_id and access_enabled;
+ if actor is null then raise exception 'Connect Discord to your active GEA One officer account first.'; end if;
+ perform set_config('request.jwt.claim.sub',actor::text,true);
+ perform set_config('request.jwt.claims',jsonb_build_object('sub',actor,'role','authenticated')::text,true);
+ if not public.has_officer_access() or not public.can_manage_meetings() then raise exception 'Secretary or reviewer access is required to take roll.'; end if;
+ if p_key is not null then
+  perform pg_advisory_xact_lock(hashtextextended('roll:'||p_key,0));
+  select a.result into result from public.discord_actions a where a.id='roll:'||p_key;
+  if found then return result; end if;
+ end if;
+ if p_action='events' then
+  page_number:=greatest(0,least(100,coalesce((p_args->>'page')::integer,0)));
+  select jsonb_build_object('events',coalesce(jsonb_agg(e),'[]'),'page',page_number,'has_more',
+   (select count(*)>(page_number+1)*25 from public.officer_events where not cancelled and (kind='meeting' or public.is_peet_admin())))
+  into result from (select id,title,starts_at,kind from public.officer_events where not cancelled and (kind='meeting' or public.is_peet_admin())
+   order by abs(extract(epoch from(starts_at-now()))),id limit 25 offset page_number*25) e;
+ elsif p_action='open' then
+  select * into event from public.officer_events where id=(p_args->>'event')::uuid for update;
+  if not found or event.cancelled or (event.kind<>'meeting' and not public.is_peet_admin()) then raise exception 'Choose an available meeting.'; end if;
+  select coalesce(jsonb_agg(jsonb_build_object('officer_id',p.id,'name',p.name,'position',p.position,
+   'status',coalesce(a.status,'unmarked'),'original_status',coalesce(a.status,'unmarked')) order by p.name,p.id),'[]') into roster
+   from public.officer_profiles p left join public.officer_attendance a on a.officer_id=p.id and a.event_id=event.id where public.is_task_officer(p.id);
+  insert into public.discord_roll_calls(officer_id,event_id,rows) values(actor,event.id,roster) returning * into session;
+ else
+  select * into session from public.discord_roll_calls where id=(p_args->>'session')::uuid for update;
+  if not found or session.officer_id<>actor then raise exception 'Open your own roll call with /mark-attendance.'; end if;
+  if session.closed or session.expires_at<now() then raise exception 'This roll call has ended. Open /mark-attendance again.'; end if;
+  if session.version is distinct from (p_args->>'version')::integer then raise exception 'This roll call changed. Use the latest roster message or reopen /mark-attendance.'; end if;
+  select * into event from public.officer_events where id=session.event_id for update;
+  if not found or event.cancelled or (event.kind<>'meeting' and not public.is_peet_admin()) then raise exception 'This event is unavailable.'; end if;
+  case p_action
+  when 'select' then
+   if jsonb_typeof(p_args->'officers') is distinct from 'array' or jsonb_array_length(p_args->'officers') not between 1 and 25 then raise exception 'Choose 1–25 officers from the roster.'; end if;
+   select array_agg(distinct value::uuid) into chosen from jsonb_array_elements_text(p_args->'officers');
+   if exists(select 1 from unnest(chosen) id where not exists(select 1 from jsonb_array_elements(session.rows) r where (r->>'officer_id')::uuid=id)) then raise exception 'Choose officers from this roster.'; end if;
+   session.selected:=chosen;
+  when 'status' then
+   next_status:=p_args->>'status';
+   if next_status is null or next_status not in ('present','late','excused','unexcused','unmarked') or cardinality(session.selected)=0 then raise exception 'Select officers, then choose their attendance status.'; end if;
+   if event.starts_at>now() and next_status in ('present','late','unexcused') then raise exception 'Record actual attendance after the event begins.'; end if;
+   select jsonb_agg(case when (r->>'officer_id')::uuid=any(session.selected) then r||jsonb_build_object('status',next_status) else r end order by n)
+    into session.rows from jsonb_array_elements(session.rows) with ordinality entries(r,n);
+  when 'all' then
+   if event.starts_at>now() then raise exception 'Record actual attendance after the event begins.'; end if;
+   select jsonb_agg(case when r->>'status'='unmarked' then r||'{"status":"present"}'::jsonb else r end order by n)
+    into session.rows from jsonb_array_elements(session.rows) with ordinality entries(r,n);
+   session.rows:=coalesce(session.rows,'[]');
+  when 'page' then
+   session.page:=greatest(0,least(greatest(0,(jsonb_array_length(session.rows)-1)/25),(p_args->>'page')::integer));
+   session.selected:='{}';
+  when 'discard' then session.closed:=true;
+  when 'save' then
+   select coalesce(jsonb_agg(r),'[]') into changes from jsonb_array_elements(session.rows) r where r->>'status' is distinct from r->>'original_status';
+   if event.kind='meeting' then
+    perform public.save_meeting_attendance(event.id,changes);
+   else
+    -- Same optimistic-concurrency check as meeting roll call; preserve private notes.
+    for item in select value from jsonb_array_elements(changes) loop
+     if not public.is_task_officer((item->>'officer_id')::uuid) then raise exception 'An officer is no longer active. Reopen roll call.'; end if;
+     select status into current_status from public.officer_attendance where event_id=event.id and officer_id=(item->>'officer_id')::uuid for update;
+     if coalesce(current_status,'unmarked') is distinct from item->>'original_status' then raise exception 'Attendance changed in another session. Reopen roll call.'; end if;
+     perform public.record_officer_attendance(event.id,(item->>'officer_id')::uuid,item->>'status',
+      coalesce((select reviewer_notes from public.officer_attendance where event_id=event.id and officer_id=(item->>'officer_id')::uuid),''));
+    end loop;
+   end if;
+   session.closed:=true;
+  else raise exception 'Unsupported roll-call action.';
+  end case;
+  update public.discord_roll_calls set rows=session.rows,selected=session.selected,page=session.page,closed=session.closed,version=version+1
+   where id=session.id returning * into session;
+ end if;
+ if p_action<>'events' then
+  result:=to_jsonb(session)||jsonb_build_object('event_title',event.title,'starts_at',event.starts_at,'started',event.starts_at<=now(),
+   'saved',p_action='save','discarded',p_action='discard');
+ end if;
+ if p_key is not null then insert into public.discord_actions(id,result) values('roll:'||p_key,result); end if;
+ return result;
+end $$;
+revoke all on function public.discord_roll_call(text,text,jsonb,text) from public,anon,authenticated;
+grant execute on function public.discord_roll_call(text,text,jsonb,text) to service_role;
+commit;
