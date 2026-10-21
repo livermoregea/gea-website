@@ -9,19 +9,20 @@ import { calculateCageScore, CAGE_MAX_SCORE } from '@/lib/cage';
 import { CONTRACT_YEAR } from '@/lib/officer-tracking';
 import { z } from 'zod';
 import { rollCallResponse } from './roll-call';
+import { saveDiscordForm } from './form-drafts';
 
 export class DiscordInputError extends Error {}
 export async function action(discordId: string, name: string, args = {}, key?: string): Promise<any> {
   const { data, error } = await createAdminClient().rpc('discord_action', { p_discord_id: discordId, p_action: name, p_args: args, p_key: key || null });
   if (error) {
     if (error.code === 'P0001') throw new DiscordInputError(error.message);
-    throw new Error('Discord database operation failed.');
+    throw Object.assign(new Error('Discord database operation failed.'), { code: error.code, operation: name });
   }
   return data;
 }
 async function rpc(name: string, args: Record<string, unknown>) {
   const { data, error } = await createAdminClient().rpc(name, args);
-  if (error) throw new Error('Could not save the assessment.');
+  if (error) throw Object.assign(new Error('Could not save the assessment.'), { code: error.code, operation: name });
   return data;
 }
 async function ai<T>(userId: string, schema: z.ZodType<T>, system: string, evidence: unknown): Promise<T> {
@@ -47,6 +48,7 @@ async function notifyReviewers(task: PeetTask) {
   if (channel) await discordFetch(`channels/${channel}/messages`, safeMessage({ content: `A contribution is ready for independent review: ${task.title}`, components: [row(button('Start review', `review:${task.id}`))] }));
 }
 export async function handleInteraction(i: Interaction) {
+  if (!await saveDiscordForm(i)) throw new DiscordInputError('A newer form was submitted. Reopen it to continue with your latest text.');
   const discordId = actorId(i);
   const me = await action(discordId, 'me');
   const options = Object.fromEntries((i.data?.options || []).map(o => [o.name, o.value]));
@@ -81,7 +83,16 @@ export async function handleInteraction(i: Interaction) {
     return reply(`Your PEET: ${peet.score === null ? 'N/A' : peet.score.toFixed(1) + ' /100'} (${peet.evaluated} evaluations)\nYour CAGE: ${cage === null ? 'N/A' : cage.toFixed(1) + ' /' + CAGE_MAX_SCORE}\n${CONTRACT_YEAR}: ${attendance} attendance strikes · ${conduct} conduct strikes`);
   }
   if (command === 'submit-task' || command === 'tasks') return menu('task', await action(discordId, 'tasks'), 'Choose your task:');
-  if (verb === 'task') return reply('Submit your personal contribution and supporting document.', [row(button('Submit task', `submit:${id}`))]);
+  if (verb === 'task') {
+    z.uuid().parse(id);
+    const existing = await action(discordId, 'existing', { id }) as PeetTask | null;
+    if (existing) return existing.status === 'clarification' ? privateQuestions(i, existing) : reply('Your contribution is already submitted for review.');
+    const { data: draft, error } = await createAdminClient().from('discord_submission_drafts').select('task_id').eq('task_id', id).eq('officer_id', me.id).maybeSingle();
+    if (error) throw Object.assign(new Error('Could not load the saved submission.'), { code: error.code });
+    return draft
+      ? reply('Your work notes and document link are saved. Resume processing or edit your submission.', [row(button('Resume submission', `resume:${id}`), button('Edit submission', `submit:${id}`, 2))])
+      : reply('Submit your personal contribution and supporting document.', [row(button('Submit task', `submit:${id}`))]);
+  }
   if (command === 'absence-notice' || command === 'events') return menu('event', await action(discordId, 'events'), 'Choose a meeting or event:');
   if (verb === 'event') return reply(`Event ID: ${id}\nRecord advance notice:`, [row(button('Absence / tardiness notice', `absence:${id}`))]);
   if (command === 'assign-task') {
@@ -102,19 +113,27 @@ export async function handleInteraction(i: Interaction) {
     await action(discordId, 'absence', { event: z.uuid().parse(id), notice: fields.notice }, key('absence'));
     return reply('Advance notice saved. A reviewer determines whether the absence is excused.');
   }
-  if (verb === 'submit' && i.type === 5) {
-    if (!productLink(fields.link) || !fields.notes) throw new DiscordInputError('Provide work notes and a valid HTTP(S) project or document link.');
+  if ((verb === 'submit' && i.type === 5) || verb === 'resume') {
+    if (verb === 'submit' && !fields.notes) throw new DiscordInputError('Describe the work you completed in the work notes field.');
+    if (verb === 'submit' && fields.link && !productLink(fields.link)) throw new DiscordInputError('Use a full http:// or https:// supporting link, or leave the optional link blank.');
     const source = await action(discordId, 'source', { id: z.uuid().parse(id) });
     if (!source.participant_ids?.includes(me.id)) throw new DiscordInputError('Choose one of your own tasks.');
     let task = await action(discordId, 'existing', { id }) as PeetTask | null;
     if (!task) {
+      let submission: Record<string, string> = { ...fields, link: fields.link || '' };
+      if (verb === 'resume') {
+        const { data: draft, error } = await createAdminClient().from('discord_submission_drafts').select('notes,project_url').eq('task_id', id).eq('officer_id', me.id).maybeSingle();
+        if (error) throw Object.assign(new Error('Could not load the saved submission.'), { code: error.code, operation: 'load_discord_submission' });
+        if (!draft) throw new DiscordInputError('No saved work was found for this task. Open /submit-task and enter your work notes and document link.');
+        submission = { notes: draft.notes, link: draft.project_url };
+      }
       // Save evidence before the external model call so a provider outage loses no work.
-      await rpc('save_discord_submission', { p_discord_id: discordId, p_task_id: id, p_notes: fields.notes, p_url: fields.link });
+      await rpc('save_discord_submission', { p_discord_id: discordId, p_task_id: id, p_notes: submission.notes, p_url: submission.link });
       const fresh = await action(discordId, 'source', { id });
-      const assessment = await ai(me.id, assessmentSchema, clarificationPrompt, { originalTask: fresh, contribution: fields.notes, submissionUrl: fields.link });
+      const assessment = await ai(me.id, assessmentSchema, clarificationPrompt, { originalTask: fresh, contribution: submission.notes, submissionUrl: submission.link });
       task = await rpc(source.individual_peet ? 'save_gea_peet_contribution_assessment' : 'save_gea_peet_assessment', {
-        p_task_id: id, p_student_id: me.id, p_description: fields.notes, p_category: 'Event Support', p_source_context: fresh,
-        p_assessment: assessment, p_model: process.env.GROQ_PEET_MODEL || 'llama-3.3-70b-versatile', p_submission_url: fields.link,
+        p_task_id: id, p_student_id: me.id, p_description: submission.notes, p_category: 'Event Support', p_source_context: fresh,
+        p_assessment: assessment, p_model: process.env.GROQ_PEET_MODEL || 'llama-3.3-70b-versatile', p_submission_url: submission.link || null,
         ...(source.individual_peet ? { p_deliverable_description: fresh.submission_description } : {}),
       });
     }

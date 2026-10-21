@@ -14,12 +14,13 @@ const protocol = load('lib/discord/protocol.ts');
 const { publicKey, privateKey } = crypto.generateKeyPairSync('ed25519');
 const publicHex = publicKey.export({ type: 'spki', format: 'der' }).subarray(-32).toString('hex');
 const env = { DISCORD_PUBLIC_KEY: publicHex, DISCORD_APPLICATION_ID: 'app', DISCORD_GUILD_ID: 'guild' };
-function route() {
+function route(loadDraft = async () => ({})) {
   const calls = { after: [], queued: [], runs: 0 };
   const handler = load('app/api/discord/interactions/route.ts', {
     'next/server': { after: fn => calls.after.push(fn), NextResponse: { json: value => Response.json(value) } },
     '@/lib/discord/protocol': protocol,
     '@/lib/discord/worker': { enqueueInteraction: async i => calls.queued.push(i), runDiscordJobs: async () => calls.runs++ },
+    '@/lib/discord/form-drafts': { loadDiscordForm: loadDraft },
   }, env);
   return { handler, calls };
 }
@@ -51,7 +52,8 @@ test('modals open immediately; wrong guild/application never queues', async () =
   const { handler, calls } = route();
   const result = await (await handler.POST(signed({ ...interaction, type: 3, data: { custom_id: 'submit:task' } }))).json();
   assert.equal(result.type, 9);
-  assert.equal(result.data.components[1].components[0].label, 'Project / Doc Link (https://...)');
+  assert.equal(result.data.components[1].components[0].label, 'Supporting link (optional)');
+  assert.equal(result.data.components[1].components[0].required, false);
   for (const bad of [{ guild_id: 'other' }, { application_id: 'other' }]) {
     assert.equal((await (await handler.POST(signed({ ...interaction, ...bad }))).json()).type, 4);
   }
@@ -61,8 +63,33 @@ test('redirects reject cross-origin and backslash destinations', () => {
   for (const bad of ['//evil.test', '/\\evil.test', 'https://evil.test', '/\n/evil']) assert.equal(protocol.safeNext(bad), '/operations');
   assert.equal(protocol.safeNext('/operations?view=tasks'), '/operations?view=tasks');
 });
+test('reopening a modal restores invalid text; a failed draft read never opens an empty form', async () => {
+  const click = { ...interaction, type: 3, data: { custom_id: 'submit:task' } };
+  const { handler } = route(async i => { assert.equal(protocol.actorId(i), 'officer'); return { notes: 'Long explanation\nwith original formatting', link: 'not a URL' }; });
+  const result = await (await handler.POST(signed(click))).json();
+  assert.equal(result.data.components[0].components[0].value, 'Long explanation\nwith original formatting');
+  assert.equal(result.data.components[1].components[0].value, 'not a URL');
+  const failing = route(async () => { throw new Error('database unavailable'); });
+  const failure = await (await failing.handler.POST(signed(click))).json();
+  assert.equal(failure.type, 4);
+  assert.match(failure.data.content, /saved form/);
+});
+test('draft reads are scoped to the signed Discord user and exact form; stale saves stop processing', async () => {
+  const filters = [];
+  const query = { select: () => query, eq: (name, value) => { filters.push([name, value]); return query; }, abortSignal: signal => { assert.ok(signal); return query; }, maybeSingle: async () => ({ data: { fields: { notes: 'Saved text' } } }) };
+  const drafts = load('lib/discord/form-drafts.ts', { './protocol': protocol, '@/lib/supabase/admin': { createAdminClient: () => ({ from: table => { assert.equal(table, 'discord_form_drafts'); return query; }, rpc: async () => ({ data: false }) }) } });
+  const form = { ...interaction, type: 5, data: { custom_id: 'submit:task', components: [] } };
+  assert.equal((await drafts.loadDiscordForm(form)).notes, 'Saved text');
+  assert.deepEqual(filters, [['discord_id', 'officer'], ['custom_id', 'submit:task']]);
+  assert.equal(await drafts.saveDiscordForm(form), false);
+  const service = load('lib/discord/service.ts', { './form-drafts': drafts,
+    '@/lib/supabase/admin': { createAdminClient() { throw new Error('stale submission must not reach business operations'); } },
+    '@/lib/discord': {}, './protocol': protocol, './roll-call': {}, '@/lib/peet-ai': schemas, '@/lib/peet': peet, '@/lib/cage': cage, '@/lib/officer-tracking': { CONTRACT_YEAR: '2026-2027' },
+  });
+  await assert.rejects(service.handleInteraction(form), /newer form was submitted/);
+});
 test('cron secret is fail-closed and uses an exact bearer token', () => {
-  const dependencies = { '@/lib/supabase/admin': {}, '@/lib/discord': {}, './service': {}, './protocol': {}, './task-routing': {}, './attendance-routing': {} };
+  const dependencies = { '@/lib/supabase/admin': {}, '@/lib/discord': {}, './service': {}, './protocol': protocol, './failures': load('lib/discord/failures.ts'), './task-routing': {}, './attendance-routing': {} };
   const worker = load('lib/discord/worker.ts', dependencies, { CRON_SECRET: 'expected' });
   for (const value of ['', 'Bearer wrong', 'expected']) assert.equal(worker.cronAuthorized(new Request('https://gea.test', { headers: { authorization: value } })), false);
   assert.equal(worker.cronAuthorized(new Request('https://gea.test', { headers: { authorization: 'Bearer expected' } })), true);
@@ -88,15 +115,21 @@ test('middleware skips session refresh for Discord ingress', () => {
 const peet = load('lib/peet.ts');
 const schemas = load('lib/peet-ai.ts', { './peet': peet });
 const cage = load('lib/cage.ts');
-function serviceFixture(rpc, generate = async () => { throw new Error('unexpected AI'); }) {
+function serviceFixture(rpc, generate = async () => { throw new Error('unexpected AI'); }, from) {
   const replies = [];
+  const forms = [];
+  const admin = { createAdminClient: () => ({ rpc: async (name, args) => {
+    if (name === 'save_discord_form') { forms.push({ fields: args.p_fields, discord_id: args.p_discord_id }); return { data: true }; }
+    return rpc(name, args);
+  }, from }) };
   const service = load('lib/discord/service.ts', {
-    '@/lib/supabase/admin': { createAdminClient: () => ({ rpc }) },
+    '@/lib/supabase/admin': admin,
+    './form-drafts': load('lib/discord/form-drafts.ts', { '@/lib/supabase/admin': admin, './protocol': protocol }),
     '@/lib/discord': { discordReply: async (_token, message) => replies.push(message), discordDM: async () => {}, discordFetch: async () => {}, safeMessage: x => x },
     './protocol': protocol, './roll-call': {}, '@/lib/peet-ai': schemas, '@/lib/peet': peet, '@/lib/cage': cage, '@/lib/officer-tracking': { CONTRACT_YEAR: '2026-2027' },
     ai: { generateObject: generate },
   }, { GROQ_API_KEY: 'fake' });
-  return { service, replies };
+  return { service, replies, forms };
 }
 test('/score uses canonical PEET conversion and current-year confirmed strikes', async () => {
   const { service, replies } = serviceFixture(async (_name, args) => ({ data: args.p_action === 'me' ? { id: 'officer' } : {
@@ -121,6 +154,67 @@ test('submission persists evidence before an AI outage and never awards scores',
   assert.ok(calls.indexOf('save_discord_submission') < calls.indexOf('model'));
   assert.equal(calls.includes('approve'), false);
   assert.equal(calls.includes('save_gea_peet_assessment'), false);
+});
+test('invalid task links preserve the original modal before validation, without submitting or invoking AI', async () => {
+  const calls = [];
+  const { service, forms } = serviceFixture(async (_name, args) => { calls.push(args.p_action); return { data: { id: 'officer' } }; });
+  const notes = '  A detailed explanation\nwith line breaks  ';
+  const submit = { ...interaction, type: 5, data: { custom_id: 'submit:11111111-1111-4111-8111-111111111111', components: [{ components: [{ custom_id: 'notes', value: notes }, { custom_id: 'link', value: 'not a URL' }] }] } };
+  await assert.rejects(service.handleInteraction(submit), /optional link blank/);
+  assert.equal(forms[0].fields.notes, notes);
+  assert.equal(forms[0].fields.link, 'not a URL');
+  assert.equal(forms[0].discord_id, 'officer');
+  assert.deepEqual(calls, ['me']);
+});
+test('Discord accepts an explanation without a link and saves it before an AI outage', async () => {
+  let evidence;
+  const { service } = serviceFixture(async (name, args) => {
+    if (name === 'save_discord_submission') evidence = args;
+    return { data: name === 'reserve_gea_peet_ai_request' ? true : args.p_action === 'me' ? { id: 'officer' } : args.p_action === 'source' ? { participant_ids: ['officer'] } : null };
+  }, async () => { throw new Error('AI outage'); });
+  await assert.rejects(service.handleInteraction({ ...interaction, type: 5, data: { custom_id: 'submit:11111111-1111-4111-8111-111111111111', components: [{ components: [{ custom_id: 'notes', value: 'Completed the work; no document needed.' }, { custom_id: 'link', value: '' }] }] } }), /AI outage/);
+  assert.equal(evidence.p_url, '');
+  assert.equal(evidence.p_notes, 'Completed the work; no document needed.');
+});
+test('resume uses only the authenticated officer’s saved evidence and never approves scores', async () => {
+  const taskId = '11111111-1111-4111-8111-111111111111';
+  const filters = [];
+  const saved = [];
+  const source = { id: taskId, participant_ids: ['officer'] };
+  const draft = { notes: 'My saved contribution', project_url: 'https://example.com/project' };
+  const query = { select: () => query, eq: (key, value) => { filters.push([key, value]); return query; }, maybeSingle: async () => ({ data: draft }) };
+  const { service, replies } = serviceFixture(async (name, args) => {
+    if (name === 'save_discord_submission') saved.push(args);
+    return { data: name === 'reserve_gea_peet_ai_request' ? true : name === 'save_gea_peet_assessment' ? { status: 'pending' } : args.p_action === 'me' ? { id: 'officer' } : args.p_action === 'source' ? source : null };
+  }, async request => {
+    assert.match(request.prompt, /My saved contribution/);
+    return { object: { needsMoreInfo: true, initialAssessmentSummary: 'Personal contribution needs clarification.', studentQuestions: ['What did you produce?', 'What was your role?', 'How did you verify it?'] } };
+  }, table => { assert.equal(table, 'discord_submission_drafts'); return query; });
+  await service.handleInteraction({ ...interaction, type: 3, data: { custom_id: `resume:${taskId}` } });
+  assert.deepEqual(filters, [['task_id', taskId], ['officer_id', 'officer']]);
+  assert.equal(saved[0].p_notes, draft.notes);
+  assert.equal(saved[0].p_url, draft.project_url);
+  assert.match(replies[0].content, /already submitted for review/);
+});
+test('reopening an existing clarification uses saved questions without another AI call', async () => {
+  const { service, replies } = serviceFixture(async (_name, args) => ({ data: args.p_action === 'me' ? { id: 'officer' } : {
+    id: 'assessment', title: 'Saved work', status: 'clarification', version: 1, assessment: { studentQuestions: ['What was your role?'] },
+  } }));
+  await service.handleInteraction({ ...interaction, type: 3, data: { custom_id: 'pick:task', values: ['11111111-1111-4111-8111-111111111111'] } });
+  assert.equal(replies[0].content, 'Questions sent to your DMs.');
+});
+test('failure categories preserve actionable causes without exposing raw provider details', () => {
+  const { discordFailureCode, discordFailureMessage } = load('lib/discord/failures.ts');
+  for (const [error, code] of [
+    [{ cause: { statusCode: 429, message: 'SECRET EVIDENCE' } }, 'ai_rate_limited'],
+    [{ code: 'PGRST202' }, 'database_setup'],
+    [{ name: 'TimeoutError' }, 'timeout'],
+    [{ name: 'AI_NoObjectGeneratedError', finishReason: 'length' }, 'ai_response_incomplete'],
+    [{ name: 'AI_NoObjectGeneratedError', cause: { name: 'ZodError' } }, 'ai_response_invalid'],
+  ]) {
+    assert.equal(discordFailureCode(error), code);
+    assert.doesNotMatch(discordFailureMessage(code), /SECRET EVIDENCE/);
+  }
 });
 function routingFixture(env = {}) {
   const deliveries = [];
@@ -213,11 +307,12 @@ test('secretary overview is opt-in, role receipts are independent, and legacy DM
       { id: 'overview', kind: 'notification', attempts: 1, payload: { topic: 'attendance', title: 'Attendance saved' } },
       { id: 'legacy', kind: 'notification', attempts: 1, payload: { topic: 'attendance_receipt', discord_id: '273656451862495233', status: 'present' } },
     ];
-    const db = { rpc: async () => ({ data: jobs, error: null }), from: () => ({ update: values => ({ eq: async (_key, id) => { updates.push({ id, values }); return { error: null }; } }) }) };
+    let claimed = false;
+    const db = { rpc: async () => { const data = claimed ? [] : jobs; claimed = true; return { data, error: null }; }, from: () => ({ update: values => ({ eq: async (_key, id) => { updates.push({ id, values }); return { error: null }; } }) }) };
     class InputError extends Error {}
     const worker = load('lib/discord/worker.ts', {
       '@/lib/supabase/admin': { createAdminClient: () => db }, '@/lib/discord': { sendDiscordEmbed: async topic => sent.push(topic) },
-      './service': { DiscordInputError: InputError }, './protocol': {}, './task-routing': {},
+      './service': { DiscordInputError: InputError }, './protocol': protocol, './failures': load('lib/discord/failures.ts'), './task-routing': {},
       './attendance-routing': { sendAttendanceNotification: async () => { sent.push('officer'); throw new Error('Role channel blocked'); } },
     }, { DISCORD_ATTENDANCE_OVERVIEW: String(enabled) });
     const result = await worker.runDiscordJobs();

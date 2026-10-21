@@ -149,7 +149,7 @@ test('provider failure leaves the assessment unsaved and hides private provider 
 });
 const React = require('react');
 const { renderToStaticMarkup } = require('react-dom/server');
-const ui = load('components/officerboard/OfficerTaskPeet.tsx', { '@/lib/peet-ai': schemas, '@/lib/peet': load('lib/peet.ts'), '@/lib/supabase/client': { createClient: () => ({}) }, './peet.module.css': { __esModule: true, default: new Proxy({}, { get: (_, key) => String(key) }) } });
+const ui = load('components/officerboard/OfficerTaskPeet.tsx', { '@/lib/use-form-draft': load('lib/use-form-draft.ts'), '@/lib/peet-ai': schemas, '@/lib/peet': load('lib/peet.ts'), '@/lib/supabase/client': { createClient: () => ({}) }, './peet.module.css': { __esModule: true, default: new Proxy({}, { get: (_, key) => String(key) }) } });
 test('student clarification renders saved questions and original goals without scoring controls', () => {
   const html = renderToStaticMarkup(React.createElement(ui.PeetTaskCard, { task: { ...task, status: 'clarification', recommendation: null, reviewer_assessment: null }, actorId: 'student', own: true, canReview: false, onSaved() {} }));
   assert.match(html, /Original task goals/); assert.match(html, /name="answer-0"/);

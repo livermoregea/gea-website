@@ -1,4 +1,5 @@
 "use client";
+import { dispatchDiscordNotifications } from '@/lib/discord-notifications';
 
 import WorkspaceActivity from "@/components/WorkspaceActivity";
 
@@ -77,6 +78,7 @@ export default function OfficerRoster({profiles,data,year,years,onYearChange,onO
     let saved=0;const failed:string[]=[];
     const client=createClient();
     for(const person of dirty){const draft=draftFor(event.id,person.id);try{const result=await client.rpc("record_officer_attendance",{p_event_id:event.id,p_officer_id:person.id,p_status:draft.status,p_notes:draft.notes});if(result.error)failed.push(`${identity(person)}: ${peetError(result.error)}`);else saved++;}catch{failed.push(`${identity(person)}: Check your connection and retry.`);}}
+    if(saved)dispatchDiscordNotifications();
     if(failed.length)setError(`${saved} of ${dirty.length} records saved. Unsaved choices are retained. ${failed.join(" ")}`);
     else setNotice(`Attendance saved for ${saved} ${saved===1?"officer":"officers"}.`);
     startTransition(()=>router.refresh());setSaving(false);

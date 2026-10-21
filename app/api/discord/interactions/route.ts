@@ -2,6 +2,7 @@ import { after, NextResponse } from 'next/server';
 import { verifyKey } from 'discord-interactions';
 import { actorId, modalResponse, type Interaction } from '@/lib/discord/protocol';
 import { enqueueInteraction, runDiscordJobs } from '@/lib/discord/worker';
+import { loadDiscordForm } from '@/lib/discord/form-drafts';
 export const runtime = 'nodejs';
 export const maxDuration = 60;
 export async function POST(request: Request) {
@@ -37,7 +38,10 @@ export async function POST(request: Request) {
   if (i.application_id !== process.env.DISCORD_APPLICATION_ID || (i.guild_id && i.guild_id !== process.env.DISCORD_GUILD_ID) || !actorId(i)) return NextResponse.json({ type: 4, data: { content: 'This GEA One server is not authorized.', flags: 64 } });
   if (![2, 3, 5].includes(i.type)) return NextResponse.json({ type: 4, data: { content: 'Unsupported interaction.', flags: 64 } });
   const modal = modalResponse(i);
-  if (modal) return NextResponse.json(modal);
+  if (modal) {
+    try { return NextResponse.json(modalResponse(i, await loadDiscordForm(i))); }
+    catch { return NextResponse.json({ type: 4, data: { content: 'Could not load your saved form. Please click the button again to retry.', flags: 64 } }); }
+  }
   // No AI, Discord network calls, or database mutations on the ACK path.
   after(async () => {
     try { await enqueueInteraction(i); await runDiscordJobs(); }

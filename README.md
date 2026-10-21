@@ -8,9 +8,7 @@ Collaborative tasks now share one deliverable while each officer submits a priva
 
 ## What's included
 
-GEAI provides cached AI dashboard descriptions with no Groq calls on page visits. `npm run dev` also runs the bounded local background worker; production uses the configured cron job.
-For existing installs, run `supabase/gea-geai.sql` and configure the scheduled job:
-see [GEAI setup and request limits](docs/geai.md).
+Dashboards show saved workspace updates without AI-generated summaries. Groq is used for task clarification and PEET reviews; no dashboard-summary worker runs locally or in production. See [retired summary endpoints](docs/geai.md).
 
 Officer Overview displays personal PEET and CAGE score cards. CAGE is pending the academy's formula; existing Supabase projects should run `supabase/officer-cage.sql` to add its storage. See [CAGE setup](docs/cage.md).
 

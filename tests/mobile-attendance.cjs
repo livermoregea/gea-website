@@ -24,7 +24,7 @@ function rosterHarness(fail=false){
   react:{useState(initial){const index=at++;if(!(index in values))values[index]=initial;return[values[index],next=>{values[index]=typeof next==='function'?next(values[index]):next;}];},useEffect(){},useTransition:()=>[false,fn=>fn()]},
   'react/jsx-runtime':jsx,'@/components/WorkspaceActivity':{default:'workspace-activity'},'next/navigation':{useRouter:()=>({refresh(){refreshes++;}})},
   '@/lib/use-unsaved-changes':{useUnsavedChanges(){}},'@/components/ActionError':{default:'action-error'},
-  '@/lib/supabase/client':{createClient:()=>({rpc:async(name,args)=>{calls.push({name,args});return{error:fail?{message:'Offline'}:null};}})},
+  '@/lib/discord-notifications':{dispatchDiscordNotifications(){}},'@/lib/supabase/client':{createClient:()=>({rpc:async(name,args)=>{calls.push({name,args});return{error:fail?{message:'Offline'}:null};}})},
   '@/lib/peet':load('lib/peet.ts'),'@/lib/officer-tracking':load('lib/officer-tracking.ts'),
   './VolunteerServiceRoster':{default:'volunteer-service-roster'},'./EventParticipation':{default:'event-participation'},'./OfficerAttendanceCards':{default:Cards},'./OfficerEventFields':{default:'event-fields'},'./Modal':{default:'modal'},'./officerboard.module.css':styles,
  }).default;

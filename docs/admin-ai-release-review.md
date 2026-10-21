@@ -48,7 +48,7 @@ Keep the existing quiet layout and use gold for selective emphasis. Additional d
 
 ## Remaining release gates
 
-- Verify the production Supabase project has all required officer/shared-task/submission migrations and `supabase/gea-peet-ai.sql`. GEAI briefings additionally require `supabase/gea-operations.sql`, `supabase/gea-geai.sql`, and the scheduler configuration documented in `docs/geai.md`. Local fixture success does not verify the hosted project.
+- Verify the production Supabase project has all required officer/shared-task/submission migrations and `supabase/gea-peet-ai.sql`. GEAI dashboard briefings have since been retired; see `docs/geai.md`. Local fixture success does not verify the hosted project.
 - Confirm production server-only keys and a supported Groq model. Local model configuration does not establish production configuration. The code’s Llama default is retired for free/developer accounts according to [Groq’s deprecation notice](https://console.groq.com/docs/deprecations); set an available production model explicitly and validate its grading with representative examples.
 - Complete an authenticated preview walkthrough as an officer, independent reviewer, and advisor/admin: submit clarification, answer reviewer questions, recalculate after edits, override with a reason, approve, and confirm the task and overall score update. Verify manual fallback when the provider is unavailable.
 - Complete actual browser checks at narrow phone and desktop widths, 200% zoom, keyboard-only input, and VoiceOver, including focus restoration, error announcements, long evidence, loading, and retry. The in-app browser execution tool was unavailable in this session; no screenshot or real screen-reader inspection was performed.

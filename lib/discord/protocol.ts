@@ -9,12 +9,20 @@ export const row = (...components: unknown[]) => ({ type: 1, components });
 export function modal(custom_id: string, title: string, fields: { id: string; label: string; long?: boolean; required?: boolean; max?: number }[]) {
   return { type: 9, data: { custom_id, title, components: fields.map(field => row({ type: 4, custom_id: field.id, label: field.label, style: field.long ? 2 : 1, required: field.required !== false, max_length: field.max || 2000 })) } };
 }
-export function modalResponse(i: Interaction) {
+export function modalResponse(i: Interaction, saved?: Record<string, string>) {
+  const response = blankModalResponse(i);
+  if (response && saved) for (const row of response.data.components) for (const field of row.components) {
+    const input = field as { custom_id: string; value?: string };
+    if (typeof saved[input.custom_id] === 'string') input.value = saved[input.custom_id];
+  }
+  return response;
+}
+function blankModalResponse(i: Interaction) {
   const id = i.data?.custom_id || '';
   if (i.type !== 3) return null;
   if (id.startsWith('submit:')) return modal(id, 'Submit your contribution', [
     { id: 'notes', label: 'Your work, outcome, timing, and assistance', long: true },
-    { id: 'link', label: 'Project / Doc Link (https://...)', max: 2048 },
+    { id: 'link', label: 'Supporting link (optional)', required: false, max: 2048 },
   ]);
   if (id.startsWith('absence:')) return modal(id, 'Planned absence or tardiness', [{ id: 'notice', label: 'Absence or tardiness: timing and reason', long: true }]);
   if (id.startsWith('assign:')) return modal(id, 'Assign a task', [{ id: 'title', label: 'Task title', max: 200 }, { id: 'description', label: 'Goals, rubric expectations, and committee', long: true }, { id: 'due', label: 'Due date (YYYY-MM-DD)', required: false, max: 10 }]);

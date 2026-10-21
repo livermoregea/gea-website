@@ -13,7 +13,8 @@ test('One workspace embeds officer records and has no separate Inbox or Need hel
  const data=fixture();
  const tools=React.createElement('div',null,'Embedded officer records');
  const overview=renderToStaticMarkup(React.createElement(Hub,{data,officerTools:tools,initialView:'overview'}));
- assert.ok(overview.includes('GEAI'));
+ assert.ok(!overview.includes('GEAI'));
+ assert.ok(overview.includes('Workspace updates'));
  assert.ok(overview.includes('My tasks'));
  assert.ok(!overview.includes('>Inbox<'));
  assert.ok(!overview.includes('>Need help<'));
@@ -55,9 +56,10 @@ test('Overview shows the progress dashboard while Officers keeps the detailed to
  const props={data:fixture(true),officerOverview:React.createElement('section',null,'Score and attendance dashboard'),officerTools:React.createElement('section',null,'Detailed officer editor')};
  const overview=renderToStaticMarkup(React.createElement(Hub,{...props,initialView:'overview'}));
  assert.ok(overview.includes('Score and attendance dashboard'));
- assert.ok(overview.includes('GEAI'));
- assert.ok(overview.includes('All workspace updates'));
- assert.ok(overview.indexOf('GEAI') < overview.indexOf('Score and attendance dashboard'));
+ assert.ok(!overview.includes('GEAI'));
+ assert.ok(overview.includes('Workspace updates'));
+ assert.ok(overview.includes('Workspace updates'));
+ assert.ok(overview.indexOf('Workspace updates') < overview.indexOf('Score and attendance dashboard'));
  assert.ok(!overview.includes('Detailed officer editor'));
  const details=renderToStaticMarkup(React.createElement(Hub,{...props,initialView:'tasks'}));
  assert.ok(details.includes('Detailed officer editor'));

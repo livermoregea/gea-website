@@ -6,6 +6,7 @@ import type { OfficerTask } from "@/lib/peet";
 import type { ReactNode } from "react";
 import { peetCategories, pillars, peetScorePercent, type PeetTask, type PeetSourceTask, type PeetScores } from "@/lib/peet-ai";
 import { productLink } from "@/lib/peet";
+import { useFormDraft } from "@/lib/use-form-draft";
 import styles from "./peet.module.css";
 
 async function saveTask(endpoint: string, body: unknown): Promise<PeetTask> {
@@ -60,7 +61,7 @@ export default function OfficerTaskPeet({ officerTask, actorId, mode, manualFall
     {loadError && <><h2>{officerTask.title}</h2><p role="alert" className={styles.error}>{loadError}</p><button className={styles.secondary} onClick={() => setRetry(value => value + 1)}>Retry</button></>}
     {!loading && !loadError && officerTask.individual_peet && task && mode === "review" && task.status !== "clarification" && <ContributionManualReview task={task} onComplete={onComplete} onBusyChange={onBusyChange} />}
     {!loading && !loadError && (task ? <PeetTaskCard key={`${task.id}:${task.version}`} task={task} actorId={actorId} own={task.student_id === actorId} canReview={mode === "review"} onSaved={update} onBusyChange={onBusyChange} />
-      : mode === "submit" ? <PeetSubmissionForm sourceTask={officerTask as PeetSourceTask} onSaved={update} onBusyChange={onBusyChange} />
+      : mode === "submit" ? <PeetSubmissionForm sourceTask={officerTask as PeetSourceTask} actorId={actorId} onSaved={update} onBusyChange={onBusyChange} />
       : officerTask.individual_peet ? <p>Participants must submit their own contribution reflections before they can receive a score.</p> : <PeetLegacyClarification officerTask={officerTask} onSaved={update} onBusyChange={onBusyChange} />)}
     {!loading && !officerTask.individual_peet && <details className={styles.manual}><summary>{mode === "submit" ? "Submit manually" : "Enter PEET scores manually"}</summary>{manualFallback}</details>}
   </div>;
@@ -87,15 +88,20 @@ export function PeetLegacyClarification({ officerTask, onSaved, onBusyChange }: 
   </section>;
 }
 
-export function PeetSubmissionForm({ sourceTask, onSaved, onBusyChange }: { sourceTask: PeetSourceTask; onSaved: (task: PeetTask) => void; onBusyChange?: (busy: boolean) => void }) {
+export function PeetSubmissionForm({ sourceTask, actorId, onSaved, onBusyChange }: { sourceTask: PeetSourceTask; actorId?: string; onSaved: (task: PeetTask) => void; onBusyChange?: (busy: boolean) => void }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const locked = useRef(false);
+  const draft = useFormDraft(`gea:submission:${actorId || sourceTask.assigned_to}:${sourceTask.id}`);
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault(); if (locked.current) return;
+    draft.persist();
     locked.current = true; setBusy(true); onBusyChange?.(true); setError("");
     const data = new FormData(event.currentTarget);
-    try { onSaved(await saveTask("evaluate-submission", { officerTaskId: sourceTask.id, description: data.get("description"), category: data.get("category"), submissionUrl: data.get("url"), deliverableDescription: data.get("deliverableDescription") || "" })); }
+    try {
+      const saved = await saveTask("evaluate-submission", { officerTaskId: sourceTask.id, description: data.get("description"), category: data.get("category"), submissionUrl: data.get("url"), deliverableDescription: data.get("deliverableDescription") || "" });
+      draft.clear(); onSaved(saved);
+    }
     catch (error) { setError(error instanceof Error ? error.message : "Could not submit your work."); }
     finally { locked.current = false; setBusy(false); onBusyChange?.(false); }
   }
@@ -104,14 +110,14 @@ export function PeetSubmissionForm({ sourceTask, onSaved, onBusyChange }: { sour
     <p className={styles.eyebrow}>1 · {sourceTask.individual_peet ? 'Your contribution & reflection' : 'Submitter clarification'}</p><h2 id="peet-submit-heading">{sourceTask.title}</h2>
     <p className={styles.copy}>Task goals: {sourceTask.description || "No written goals recorded."}</p>
     <p className={styles.hint}>Due: {sourceTask.due_date || "No deadline recorded"}. The AI will ask a few questions about your work before the reviewer begins.</p>
-    <form onSubmit={submit} className={styles.form}><fieldset disabled={busy}>
+    <form ref={draft.ref} onInput={draft.persist} onChange={draft.persist} onSubmit={submit} className={styles.form}><fieldset disabled={busy}>
       {sourceTask.individual_peet && sourceTask.status === "in_progress" && <label>Shared deliverable description<textarea name="deliverableDescription" required maxLength={5000} rows={3} placeholder="What did your team deliver together? This description is shared with your teammates." /></label>}
       <label>{sourceTask.individual_peet ? 'Your contribution and reflection' : 'Completed work and deliverables'}<textarea name="description" required maxLength={5000} rows={4} defaultValue={sourceTask.individual_peet ? "" : sourceTask.submission_description} placeholder="What did you deliver? How did you use your time and resources? When was the work finished?" /></label>
       <label>Supporting link (optional)<input type="url" name="url" maxLength={2048} readOnly={sourceTask.status === "submitted"} defaultValue={sourceTask.final_product_url || ""} placeholder="https://…" /></label>
       <label>Category<select name="category" required>{peetCategories.map(category => <option key={category}>{category}</option>)}</select></label>
       <p className={styles.hint}>Task details and clarification answers are sent to Groq, our AI provider, for this review. Avoid sensitive personal information.</p>
       <button type="submit" className={styles.primary}>{busy ? "Preparing your questions…" : "Get clarification questions"}</button>
-    </fieldset>{error && <p role="alert" className={styles.error}>{error}</p>}</form>
+    </fieldset>{draft.saved && <p className={styles.hint} role="status">Draft saved in this browser.</p>}{draft.unavailable && <p role="alert">Browser draft saving is unavailable. Keep this page open or copy your text before leaving.</p>}{error && <p role="alert" className={styles.error}>{error}</p>}</form>
   </section>;
 }
 
@@ -143,18 +149,23 @@ export function PeetClarificationForm({ task, onSaved, onBusyChange }: { task: P
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const locked = useRef(false);
+  const draft = useFormDraft(`gea:clarification:${task.student_id}:${task.id}:${task.version}`);
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault(); if (locked.current) return;
+    draft.persist();
     locked.current = true; setBusy(true); onBusyChange?.(true); setError("");
     const data = new FormData(event.currentTarget);
-    try { onSaved(await saveTask("finalize-submission", { taskId: task.id, version: task.version, answers: task.assessment.studentQuestions.map((_, i) => data.get(`answer-${i}`)) })); }
+    try {
+      const saved = await saveTask("finalize-submission", { taskId: task.id, version: task.version, answers: task.assessment.studentQuestions.map((_, i) => data.get(`answer-${i}`)) });
+      draft.clear(); onSaved(saved);
+    }
     catch (error) { setError(error instanceof Error ? error.message : "Could not save your answers."); }
     finally { locked.current = false; setBusy(false); onBusyChange?.(false); }
   }
-  return <form onSubmit={submit} className={styles.form}><h3>Clarify your work</h3><fieldset disabled={busy}>
+  return <form ref={draft.ref} onInput={draft.persist} onChange={draft.persist} onSubmit={submit} className={styles.form}><h3>Clarify your work</h3><fieldset disabled={busy}>
     {task.assessment.studentQuestions.map((question, i) => <label key={i}>{question}<textarea name={`answer-${i}`} required maxLength={2000} rows={3} defaultValue={task.answers[i] || ""} /></label>)}
     <button className={styles.primary} type="submit">{busy ? "Saving answers…" : "Send for reviewer clarification"}</button>
-  </fieldset>{error && <p role="alert" className={styles.error}>{error}</p>}</form>;
+  </fieldset>{draft.saved && <p className={styles.hint} role="status">Answers saved in this browser.</p>}{draft.unavailable && <p role="alert">Browser draft saving is unavailable. Keep this page open or copy your answers before leaving.</p>}{error && <p role="alert" className={styles.error}>{error}</p>}</form>;
 }
 export function PeetScoreBreakdown({ task }: { task: PeetTask }) {
   const score = task.recommendation;

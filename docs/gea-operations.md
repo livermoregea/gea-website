@@ -87,7 +87,7 @@ This layout update requires no new migration. Clarification labels use a read of
 
 On phones, task actions sit beneath the title and due date with a 48px minimum touch height. Task dialogs use single-column score inputs, 16px form text, and safe-area padding. The More menu stays within the workspace width and scrolls on short screens. Automated responsive-style and interaction checks cover these rules; live phone/browser rendering remains to be verified.
 
-Meetings and events also have a short description directly in GEA One. Reviewers can add it when scheduling or through **Edit schedule & description**. Officers see it above the document links, and GEAI uses a bounded excerpt for cached descriptions. Google Docs remain optional supporting links. This reuses the existing event-notes field and does not require another database migration.
+Meetings and events also have a short description directly in GEA One. Reviewers can add it when scheduling or through **Edit schedule & description**. Officers see it above the document links. Google Docs remain optional supporting links. This reuses the existing event-notes field and does not require another database migration.
 
 
 ### Professionalism and conduct logging

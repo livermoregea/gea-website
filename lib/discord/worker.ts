@@ -1,7 +1,8 @@
 import { createAdminClient } from '@/lib/supabase/admin';
 import { discordReply, sendDiscordEmbed, type DiscordTopic } from '@/lib/discord';
 import { DiscordInputError, handleInteraction } from './service';
-import type { Interaction } from './protocol';
+import { button, row, type Interaction } from './protocol';
+import { discordFailureCode, discordFailureMessage } from './failures';
 import { timingSafeEqual } from 'node:crypto';
 import { sendTaskNotification } from './task-routing';
 import { sendAttendanceNotification } from './attendance-routing';
@@ -19,6 +20,17 @@ export async function enqueueInteraction(i: Interaction) {
   if (error) throw new Error('Could not queue Discord interaction.');
 }
 export async function runDiscordJobs() {
+  const started = Date.now();
+  let claimed = 0, completed = 0;
+  // Pick up notifications enqueued by the commands in this invocation.
+  for (let batch = 0; batch < 3; batch++) {
+    const result = await runDiscordBatch();
+    claimed += result.claimed; completed += result.completed;
+    if (!result.claimed || Date.now() - started >= 30000) break;
+  }
+  return { claimed, completed };
+}
+async function runDiscordBatch() {
   const db = createAdminClient();
   const { data: jobs, error } = await db.rpc('claim_discord_jobs');
   if (error) throw new Error('Could not claim Discord jobs.');
@@ -48,9 +60,21 @@ export async function runDiscordJobs() {
       if (finishError) throw new Error('Could not finish job.');
       completed++;
     } catch (error) {
+      const failureCode = discordFailureCode(error);
+      console.error('[Discord] Job failed', { jobId: job.id, kind: job.kind, code: failureCode });
       terminal = error instanceof DiscordInputError || job.attempts >= 5;
       if (job.kind === 'interaction') {
-        try { await discordReply(job.payload.token, { content: error instanceof DiscordInputError ? error.message : 'Processing could not finish. Saved work is retained. Please retry the command; no score was automatically approved.', components: [] }); } catch { /* Token or delivery unavailable; retain queue state. */ }
+        const component = job.payload.data?.custom_id || '';
+        const submissionId = /^(?:submit|resume):([0-9a-f-]{36})$/i.exec(component)?.[1];
+        const edit = job.payload.type === 5 && /^(submit|clarify|reviewanswers|assign|absence|manual|revision|reject):/.test(component);
+        const controls = [
+          ...(submissionId && !(error instanceof DiscordInputError) ? [button('Resume submission', `resume:${submissionId}`)] : []),
+          ...(edit ? [button('Edit submitted form', component, 2)] : []),
+        ];
+        try { await discordReply(job.payload.token, {
+          content: error instanceof DiscordInputError ? error.message : `${discordFailureMessage(failureCode)} No score was automatically approved.`,
+          components: controls.length ? [row(...controls)] : [],
+        }); } catch { /* Token or delivery unavailable; retain queue state. */ }
       }
       const { error: retryError } = await db.from('discord_jobs').update({ leased_until: null, failed: terminal,
         available_at: new Date(Date.now() + Math.min(600, 15 * 2 ** job.attempts) * 1000).toISOString(),

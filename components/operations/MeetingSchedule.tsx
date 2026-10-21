@@ -35,7 +35,7 @@ export default function MeetingSchedule({ event, kind, save, busy, dirtyScope, m
       <fieldset disabled={busy || Boolean(dirtyScope && dirtyScope !== scope)}>
         <label>{kind === 'meeting' ? 'Meeting title' : 'Event title'}<input name="title" defaultValue={event?.title} required maxLength={200} /></label>
         <label>{kind === 'meeting' ? 'Meeting description' : 'Event description'}<textarea name="notes" rows={3} maxLength={10000} defaultValue={event?.notes ?? ''} placeholder={kind === 'meeting' ? 'What will this meeting cover? What should officers prepare?' : 'What is the event for, and what will officers be doing?'} /></label>
-        <p className={s.muted}>Visible to officers. GEAI uses this description for its short summaries; keep the full agenda or plan in Google Docs.</p>
+        <p className={s.muted}>Visible to officers. Keep the full agenda or plan in Google Docs.</p>
         <div className={s.grid}>
           {kind !== 'meeting' && <label>Event type<select name="kind" defaultValue={event?.kind ?? 'volunteer'}><option value="volunteer">Volunteer</option><option value="outreach">Outreach</option></select></label>}
           <label>Academic year<input name="year" defaultValue={event?.academic_year ?? CONTRACT_YEAR} required pattern="[0-9]{4}-[0-9]{4}" /></label>

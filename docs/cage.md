@@ -15,7 +15,7 @@ Revoked, dismissed, pending, prior-year, and other officers’ strikes do not co
 Unexcused attendance creates a confirmed attendance strike through
 `supabase/officer-strike-notifications.sql`; CAGE uses that strike record once.
 
-The officer Overview shows personal PEET and CAGE cards first, followed by GEAI
+The officer Overview shows personal PEET and CAGE cards first, followed by workspace updates
 and the task list. Both cards use the signed-in officer’s PEET, including for
 Presidents and reviewers. The separate team summary retains its team average.
 The CAGE card shows the score out of the maximum **90** and its percentage

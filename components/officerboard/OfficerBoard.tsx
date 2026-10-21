@@ -1,4 +1,5 @@
 "use client";
+import { dispatchDiscordNotifications } from '@/lib/discord-notifications';
 
 import WorkspaceActivity from "@/components/WorkspaceActivity";
 import ActionError from "@/components/ActionError";
@@ -194,6 +195,7 @@ export default function OfficerBoard({ profile, profiles, tasks, evaluations, tr
     try {
       const { error: rpcError } = await createClient().rpc(name, args);
       if (rpcError) { setError(peetError(rpcError)); return; }
+      dispatchDiscordNotifications();
       if (action?.kind === "add") discardTaskDraft();
       setAction(null); setNotice(message);
       startTransition(() => router.refresh());

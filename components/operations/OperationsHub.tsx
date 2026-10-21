@@ -1,4 +1,5 @@
 'use client';
+import { dispatchDiscordNotifications } from '@/lib/discord-notifications';
 import { useEffect, useState, useTransition, type ReactNode, type MouseEvent } from 'react';
 import Link from 'next/link';
 import WorkspaceActivity from '@/components/WorkspaceActivity';
@@ -75,6 +76,7 @@ export default function OperationsHub({ data, initialView = 'overview', initialE
             const { error } = await createClient().rpc(rpc, args);
             if (error)
                 throw error;
+            dispatchDiscordNotifications();
             setMessage(success);
             setDirty(false);
             setDirtyScope(null);

@@ -8,6 +8,7 @@ alter table public.officer_task_members add constraint discord_fixture_members_k
 \ir ../supabase/officer-individual-contributions.sql
 \ir ../supabase/discord.sql
 \ir ../supabase/discord.sql
+\ir ../supabase/discord-draft-recovery.sql
 begin;
 insert into auth.identities values ('11111111-1111-4111-8111-111111111111','discord','{"sub":"111111111111111111"}'),('33333333-3333-4333-8333-333333333333','discord','{"sub":"333333333333333333"}');
 set role authenticated;
@@ -16,6 +17,8 @@ select public.test_assert(public.bind_officer_discord(),'verified Discord identi
 select public.test_denied('select public.discord_action(''333333333333333333'',''me'')');
 select public.test_denied('select public.claim_discord_jobs()');
 select public.test_denied('insert into public.discord_jobs(id,kind,payload) values(''forged'',''interaction'',''{}'')');
+select public.test_denied('select * from public.discord_form_drafts');
+select public.test_denied('insert into public.discord_form_drafts(discord_id,custom_id,fields) values(''forged'',''submit:task'',''{}'')');
 select public.test_denied('update public.officer_profiles set discord_id=''333333333333333333''');
 set request.jwt.claim.sub='33333333-3333-4333-8333-333333333333';
 select public.test_assert(public.bind_officer_discord(),'advisor binds verified identity');
@@ -40,8 +43,15 @@ select public.test_assert((select count(*)=1 from public.discord_jobs where payl
 set role service_role;
 
 select public.test_denied('select public.save_discord_submission(''111111111111111111'',''aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'',''work'',''javascript:alert(1)'')');
+select public.save_discord_form('111111111111111111','submit:aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa','{"notes":"An extensive explanation","link":"invalid URL"}','10');
+select public.test_assert((select fields->>'link'='invalid URL' from public.discord_form_drafts where discord_id='111111111111111111'),'invalid raw input stays separate from submitted evidence');
+select public.test_assert(public.save_discord_form('111111111111111111','submit:aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa','{"notes":"Newer explanation","link":""}','11'),'newer edits are saved');
+select public.test_assert(not public.save_discord_form('111111111111111111','submit:aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa','{"notes":"Old retry"}','10'),'old retries cannot overwrite newer text');
+select public.test_assert((select fields->>'notes'='Newer explanation' from public.discord_form_drafts where discord_id='111111111111111111'),'latest explanation is retained');
+select public.save_discord_submission('111111111111111111',(:'committee'::jsonb#>>'{}')::uuid,'A written explanation without a document','');
+select public.test_assert((select final_product_url is null and status='submitted' from public.tasks where id=(:'committee'::jsonb#>>'{}')::uuid),'written explanation is accepted without a link');
 select public.save_discord_submission('111111111111111111','aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa','Completed slides by the deadline with advisor guidance','https://example.com/slides');
-select public.test_assert((select count(*)=1 from public.discord_submission_drafts),'evidence durable before AI');
+select public.test_assert((select count(*)=2 from public.discord_submission_drafts),'evidence durable before AI');
 select public.test_assert((select status='submitted' from public.tasks where id='aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'),'existing submission workflow is used');
 select public.test_assert((select count(*)>0 from public.discord_jobs where kind='notification'),'website mutations enqueue webhook outbox');
 select public.test_denied('select public.discord_action(''111111111111111111'',''assessment'',''{"id":"ffffffff-ffff-4fff-8fff-ffffffffffff"}'')');

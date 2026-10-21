@@ -3,14 +3,14 @@ function load(file,deps,globals={}){const exports={};vm.runInNewContext(ts.trans
 function nodes(tree,predicate){const result=[];function walk(n){if(Array.isArray(n)){n.forEach(walk);return;}if(!n?.props)return;if(predicate(n))result.push(n);walk(n.props.children);}walk(tree);return result;}
 function harness(section='tasks',reviewer=true,storage=new Map()){
  const sessionStorage={getItem:key=>storage.get(key)||null,setItem:(key,value)=>storage.set(key,value),removeItem:key=>storage.delete(key)};
- const values=[],effects=[];let at=0;const window={sessionStorage,location:{href:'https://gea.test/officerboard',get search(){return new URL(this.href).search;}},history:{state:{},replaceState(_state,_title,url){window.location.href=String(url);}},addEventListener(){},removeEventListener(){}};const workspace={view:section,eventId:'chosen-event',navigate(view){workspace.view=view;}};
+ const saves=[];let dispatches=0,saveError=null;const values=[],effects=[];let at=0;const window={sessionStorage,location:{href:'https://gea.test/officerboard',get search(){return new URL(this.href).search;}},history:{state:{},replaceState(_state,_title,url){window.location.href=String(url);}},addEventListener(){},removeEventListener(){}};const workspace={view:section,eventId:'chosen-event',navigate(view){workspace.view=view;}};
  const peet=load('lib/peet.ts',{}),tracking=load('lib/officer-tracking.ts',{});
- const deps={react:{useState(initial){const i=at++;if(!(i in values))values[i]=initial;return[values[i],next=>{values[i]=typeof next==='function'?next(values[i]):next;}];},useRef:()=>({current:null}),useEffect(fn){effects.push(fn);},useContext:()=>workspace,useTransition:()=>[false,fn=>fn()]},'react/jsx-runtime':jsx,'next/link':{default:'link'},'next/navigation':{useRouter:()=>({refresh(){}})},'@/components/WorkspaceActivity':{default:'activity'},'@/components/ActionError':{default:'error'},'@/components/GEAOneBadge':{default:'badge'},'@/lib/supabase/client':{createClient:()=>({})},'@/lib/peet':peet,'@/lib/officer-task-draft':load('lib/officer-task-draft.ts',{}),'@/lib/officer-dashboard':load('lib/officer-dashboard.ts',{'./peet':peet,'./officer-tracking':tracking}),'@/lib/officer-tracking':tracking,'@/lib/officer-workspace-navigation':{officerRecordTarget:()=>null},'@/lib/workspace-navigation-context':{WorkspaceNavigationContext:{}},'@/components/admin/AdminTabs':{default:'admin-tabs'},'./officerboard.module.css':{default:new Proxy({},{get:(_,key)=>String(key)})}};
+ const deps={react:{useState(initial){const i=at++;if(!(i in values))values[i]=initial;return[values[i],next=>{values[i]=typeof next==='function'?next(values[i]):next;}];},useRef:()=>({current:null}),useEffect(fn){effects.push(fn);},useContext:()=>workspace,useTransition:()=>[false,fn=>fn()]},'react/jsx-runtime':jsx,'next/link':{default:'link'},'next/navigation':{useRouter:()=>({refresh(){}})},'@/components/WorkspaceActivity':{default:'activity'},'@/components/ActionError':{default:'error'},'@/components/GEAOneBadge':{default:'badge'},'@/lib/discord-notifications':{dispatchDiscordNotifications(){dispatches++;}},'@/lib/supabase/client':{createClient:()=>({rpc:async(name,args)=>{saves.push({name,args});return{error:saveError};}})},'@/lib/peet':peet,'@/lib/officer-task-draft':load('lib/officer-task-draft.ts',{}),'@/lib/officer-dashboard':load('lib/officer-dashboard.ts',{'./peet':peet,'./officer-tracking':tracking}),'@/lib/officer-tracking':tracking,'@/lib/officer-workspace-navigation':{officerRecordTarget:()=>null},'@/lib/workspace-navigation-context':{WorkspaceNavigationContext:{}},'@/components/admin/AdminTabs':{default:'admin-tabs'},'./officerboard.module.css':{default:new Proxy({},{get:(_,key)=>String(key)})}};
  for(const name of ['OfficerTaskPeet','Modal','PeetExplainer','TrackingPanel','OfficerRoster','OfficerTaskSubmission','OfficerTaskHistory','TaskSection','TaskPeoplePicker','OfficerTopicNavigation','AccountsPanel'])deps['./'+name]={default:name};
  const Component=load('components/officerboard/OfficerBoard.tsx',deps,{window,URL,FormData:class {constructor(fields){this.fields=fields;}get(key){return this.fields[key]??null;}}}).default;
  const profiles=[{id:'a',name:'A',role:reviewer?'admin':'officer',reviewer_kind:reviewer?'president':null},{id:'b',name:'B',role:'officer'}];
  const props={unified:true,embedded:true,profile:profiles[0],profiles,tasks:profiles.map(p=>({id:'task-'+p.id,title:'Task '+p.name,assigned_to:p.id,created_by:p.id,status:'in_progress',cancelled_at:null,due_date:null})),evaluations:[],tracking:{events:[],attendance:[],signups:[],volunteerLogs:[],strikes:[],reviews:[],generalNotes:[]}};
- return{workspace,props,window,storage,restoreDraft(){effects.find(fn=>fn.toString().includes("readTaskDraft"))();},persistDraft(){effects.find(fn=>fn.toString().includes("writeTaskDraft"))();},openLinkedTask(){effects.find(fn=>fn.toString().includes("openWorkspaceTarget"))();},render(){at=0;effects.length=0;return Component(props);}};
+ return{workspace,props,window,storage,saves,dispatches:()=>dispatches,failSaves(){saveError={message:"Save failed"};},restoreDraft(){effects.find(fn=>fn.toString().includes("readTaskDraft"))();},persistDraft(){effects.find(fn=>fn.toString().includes("writeTaskDraft"))();},openLinkedTask(){effects.find(fn=>fn.toString().includes("openWorkspaceTarget"))();},render(){at=0;effects.length=0;return Component(props);}};
 }
 test('Tasks opens a team task list directly with one officer filter and no nested workspace navigation',()=>{
  const h=harness(),tree=h.render();assert.equal(nodes(tree,n=>n.props['aria-label']==='Workspace navigation').length,0);assert.equal(nodes(tree,n=>n.type==='aside').length,0);assert.equal(nodes(tree,n=>n.type==='OfficerRoster').length,0);assert.equal(nodes(tree,n=>n.type==='OfficerTopicNavigation').length,0);
@@ -121,6 +121,18 @@ test('A partly written task survives remounting and explicit cancellation clears
  assert.equal(nodes(tree,n=>n.type==='input'&&n.props.name==='due_date')[0].props.defaultValue,'2026-11-01');
  nodes(tree,n=>n.type==='Modal')[0].props.onClose();tree=remount.render();
  assert.equal(storage.size,0);assert.equal(nodes(tree,n=>n.type==='Modal').length,0);
+});
+test('Saving an assignment starts Discord delivery immediately; a failed save keeps the form and does not dispatch',async()=>{
+ for(const failure of [false,true]){
+  const h=harness();let tree=h.render();
+  nodes(tree,n=>n.type==='button'&&n.props.children==='Assign task')[0].props.onClick();tree=h.render();
+  nodes(tree,n=>n.type==='input'&&n.props.name==='officer-choice')[1].props.onChange({target:{checked:true}});tree=h.render();
+  if(failure)h.failSaves();
+  await nodes(tree,n=>n.type==='form'&&n.props.onChange)[0].props.onSubmit({preventDefault(){},currentTarget:{title:'Prepare outreach',description:'Bring the demo materials',due_date:''}});
+  assert.equal(h.saves.length,1);assert.equal(h.saves[0].name,'assign_officer_tasks');
+  assert.equal(h.dispatches(),failure?0:1);
+  assert.equal(nodes(h.render(),n=>n.type==='Modal').length,failure?1:0);
+ }
 });
 
 test('A stored creation draft does not interrupt a linked task submission',()=>{
