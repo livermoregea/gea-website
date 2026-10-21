@@ -15,7 +15,7 @@ function load(file, dependencies = {}, env = {}) {
 }
 const schemas = load('lib/peet-ai.ts', { './peet': load('lib/peet.ts') });
 const next = { NextResponse: { json: (body, init = {}) => ({ body, status: init.status || 200 }) } };
-const baseDeps = { 'next/server': next, '@/lib/supabase/server': { createClient: async () => ({}) }, '@/lib/supabase/admin': { createAdminClient: () => ({}) } };
+const baseDeps = { '@/lib/peet-model': load('lib/peet-model.ts'), 'next/server': next, '@/lib/supabase/server': { createClient: async () => ({}) }, '@/lib/supabase/admin': { createAdminClient: () => ({}) } };
 const server = load('lib/peet-ai-server.ts', baseDeps);
 const uuid = '11111111-1111-4111-8111-111111111111';
 const score = { efficiency: 3, effectiveness: 3.5, time: 3, justification: 'Efficient progress; deliverables exceeded expected quality; met the agreed deadline.' };
@@ -44,14 +44,14 @@ test('Groq transport uses JSON object chat completions while generateObject stri
   let sent, output = score;
   const mocked = load('lib/peet-ai-server.ts', { ...baseDeps, '@ai-sdk/openai': { createOpenAI: options => createOpenAI({ ...options, fetch: async (url, init) => {
     sent = { url: String(url), body: JSON.parse(init.body) };
-    return new Response(JSON.stringify({ id: 'test', created: 0, model: 'llama-3.3-70b-versatile', choices: [{ index: 0, message: { role: 'assistant', content: JSON.stringify(output) }, finish_reason: 'stop' }], usage: { prompt_tokens: 10, completion_tokens: 10, total_tokens: 20 } }), { headers: { 'content-type': 'application/json' } });
+    return new Response(JSON.stringify({ id: 'test', created: 0, model: 'openai/gpt-oss-120b', choices: [{ index: 0, message: { role: 'assistant', content: JSON.stringify(output) }, finish_reason: 'stop' }], usage: { prompt_tokens: 10, completion_tokens: 10, total_tokens: 20 } }), { headers: { 'content-type': 'application/json' } });
   } }) } }, { GROQ_API_KEY: 'test-key' });
   const { model } = mocked.peetModel();
   const result = await generateObject({ model, schema: schemas.recommendationSchema, system: `Return JSON: ${JSON.stringify(z.toJSONSchema(schemas.recommendationSchema))}`, prompt: 'Assess this work.' });
   assert.equal(result.object.effectiveness, 3.5);
   assert.equal(sent.url, 'https://api.groq.com/openai/v1/chat/completions');
   assert.deepEqual(sent.body.response_format, { type: 'json_object' });
-  assert.equal(sent.body.model, 'llama-3.3-70b-versatile');
+  assert.equal(sent.body.model, 'openai/gpt-oss-120b');
   output = { ...score, time: 5 };
   await assert.rejects(generateObject({ model, schema: schemas.recommendationSchema, prompt: 'Return JSON.' }), /schema|object|validation/i);
 });

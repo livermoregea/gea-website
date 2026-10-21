@@ -84,7 +84,7 @@ test('draft reads are scoped to the signed Discord user and exact form; stale sa
   assert.equal(await drafts.saveDiscordForm(form), false);
   const service = load('lib/discord/service.ts', { './form-drafts': drafts,
     '@/lib/supabase/admin': { createAdminClient() { throw new Error('stale submission must not reach business operations'); } },
-    '@/lib/discord': {}, './protocol': protocol, './roll-call': {}, '@/lib/peet-ai': schemas, '@/lib/peet': peet, '@/lib/cage': cage, '@/lib/officer-tracking': { CONTRACT_YEAR: '2026-2027' },
+    '@/lib/discord': {}, './protocol': protocol, './roll-call': {}, '@/lib/peet-ai': schemas, '@/lib/peet-model': load('lib/peet-model.ts'), '@/lib/peet': peet, '@/lib/cage': cage, '@/lib/officer-tracking': { CONTRACT_YEAR: '2026-2027' },
   });
   await assert.rejects(service.handleInteraction(form), /newer form was submitted/);
 });
@@ -126,7 +126,7 @@ function serviceFixture(rpc, generate = async () => { throw new Error('unexpecte
     '@/lib/supabase/admin': admin,
     './form-drafts': load('lib/discord/form-drafts.ts', { '@/lib/supabase/admin': admin, './protocol': protocol }),
     '@/lib/discord': { discordReply: async (_token, message) => replies.push(message), discordDM: async () => {}, discordFetch: async () => {}, safeMessage: x => x },
-    './protocol': protocol, './roll-call': {}, '@/lib/peet-ai': schemas, '@/lib/peet': peet, '@/lib/cage': cage, '@/lib/officer-tracking': { CONTRACT_YEAR: '2026-2027' },
+    './protocol': protocol, './roll-call': {}, '@/lib/peet-ai': schemas, '@/lib/peet-model': load('lib/peet-model.ts'), '@/lib/peet': peet, '@/lib/cage': cage, '@/lib/officer-tracking': { CONTRACT_YEAR: '2026-2027' },
     ai: { generateObject: generate },
   }, { GROQ_API_KEY: 'fake' });
   return { service, replies, forms };
@@ -207,6 +207,9 @@ test('failure categories preserve actionable causes without exposing raw provide
   const { discordFailureCode, discordFailureMessage } = load('lib/discord/failures.ts');
   for (const [error, code] of [
     [{ cause: { statusCode: 429, message: 'SECRET EVIDENCE' } }, 'ai_rate_limited'],
+    [{ statusCode: 404, url: 'https://api.groq.com/openai/v1/chat/completions' }, 'ai_model_unavailable'],
+    [{ statusCode: 404, url: 'https://discord.com/api/v10/channels/123/messages' }, 'service_not_found'],
+    [{ statusCode: 404 }, 'service_not_found'],
     [{ code: 'PGRST202' }, 'database_setup'],
     [{ name: 'TimeoutError' }, 'timeout'],
     [{ name: 'AI_NoObjectGeneratedError', finishReason: 'length' }, 'ai_response_incomplete'],
@@ -214,6 +217,11 @@ test('failure categories preserve actionable causes without exposing raw provide
   ]) {
     assert.equal(discordFailureCode(error), code);
     assert.doesNotMatch(discordFailureMessage(code), /SECRET EVIDENCE/);
+  }
+});
+test('task review model defaults to supported GPT-OSS, trims settings, and honors explicit models', () => {
+  for (const [env, expected] of [[{}, 'openai/gpt-oss-120b'], [{ GROQ_PEET_MODEL: '  ' }, 'openai/gpt-oss-120b'], [{ GROQ_PEET_MODEL: ' openai/gpt-oss-20b\n' }, 'openai/gpt-oss-20b']]) {
+    assert.equal(load('lib/peet-model.ts', {}, env).peetModelId(), expected);
   }
 });
 function routingFixture(env = {}) {

@@ -10,6 +10,7 @@ import { CONTRACT_YEAR } from '@/lib/officer-tracking';
 import { z } from 'zod';
 import { rollCallResponse } from './roll-call';
 import { saveDiscordForm } from './form-drafts';
+import { peetModelId } from '@/lib/peet-model';
 
 export class DiscordInputError extends Error {}
 export async function action(discordId: string, name: string, args = {}, key?: string): Promise<any> {
@@ -29,7 +30,7 @@ async function ai<T>(userId: string, schema: z.ZodType<T>, system: string, evide
   if (!process.env.GROQ_API_KEY) throw new Error('Groq is not configured.');
   const allowed = await rpc('reserve_gea_peet_ai_request', { p_user_id: userId });
   if (!allowed) throw new DiscordInputError('AI rate limit reached. Please try again in ten minutes.');
-  const model = createGroq({ apiKey: process.env.GROQ_API_KEY })(process.env.GROQ_PEET_MODEL || 'llama-3.3-70b-versatile');
+  const model = createGroq({ apiKey: process.env.GROQ_API_KEY })(peetModelId());
   const { object } = await generateObject({ model, schema, providerOptions: { groq: { structuredOutputs: false } }, system: `${system}\nComplexity, impact, and autonomy are context for the existing PEET rubric, never additional scoring dimensions. You cannot open document links.\nJSON schema: ${JSON.stringify(z.toJSONSchema(schema))}`, prompt: JSON.stringify(evidence), temperature: 0, maxRetries: 0, maxOutputTokens: 2000, abortSignal: AbortSignal.timeout(25000) });
   return schema.parse(object);
 }
@@ -133,7 +134,7 @@ export async function handleInteraction(i: Interaction) {
       const assessment = await ai(me.id, assessmentSchema, clarificationPrompt, { originalTask: fresh, contribution: submission.notes, submissionUrl: submission.link });
       task = await rpc(source.individual_peet ? 'save_gea_peet_contribution_assessment' : 'save_gea_peet_assessment', {
         p_task_id: id, p_student_id: me.id, p_description: submission.notes, p_category: 'Event Support', p_source_context: fresh,
-        p_assessment: assessment, p_model: process.env.GROQ_PEET_MODEL || 'llama-3.3-70b-versatile', p_submission_url: submission.link || null,
+        p_assessment: assessment, p_model: peetModelId(), p_submission_url: submission.link || null,
         ...(source.individual_peet ? { p_deliverable_description: fresh.submission_description } : {}),
       });
     }
@@ -155,7 +156,7 @@ export async function handleInteraction(i: Interaction) {
     // The database save rechecks independent reviewer permissions.
     if (task.questions_by !== me.id || !task.reviewer_assessment) {
       const assessment = await ai(me.id, reviewerAssessmentSchema, reviewerClarificationPrompt, { task, source });
-      task = await rpc('save_gea_peet_review', { p_task_id: task.id, p_version: task.version, p_actor: me.id, p_source_context: source, p_stage: 'questions', p_result: assessment, p_notes: '', p_answers: [], p_model: process.env.GROQ_PEET_MODEL || 'llama-3.3-70b-versatile' });
+      task = await rpc('save_gea_peet_review', { p_task_id: task.id, p_version: task.version, p_actor: me.id, p_source_context: source, p_stage: 'questions', p_result: assessment, p_notes: '', p_answers: [], p_model: peetModelId() });
     }
     return reply(`${task.title}\n${task.reviewer_assessment!.reviewerQuestions.map((q, n) => `${n + 1}. ${q}`).join('\n')}`, [row(button('Answer reviewer questions', `reviewanswers:${task.id}:${task.version}:${task.reviewer_assessment!.reviewerQuestions.length}`)), row(button('Request revision', `revision:${task.id}:${task.version}`, 2), button('Reject', `reject:${task.id}:${task.version}`, 4))]);
   }
@@ -165,7 +166,7 @@ export async function handleInteraction(i: Interaction) {
     const answers = task.reviewer_assessment.reviewerQuestions.map((_, n) => z.string().trim().min(1).max(2000).parse(fields[`answer${n}`]));
     const source = await action(discordId, 'source', { id: task.task_id });
     const recommendation = await ai(me.id, recommendationSchema, scoringPrompt, { originalTask: source, submission: task.description, studentQuestions: task.assessment.studentQuestions, studentAnswers: task.answers, reviewerQuestions: task.reviewer_assessment.reviewerQuestions, reviewerAnswers: answers });
-    const saved = await rpc('save_gea_peet_review', { p_task_id: id, p_version: version, p_actor: me.id, p_source_context: source, p_stage: 'score', p_result: recommendation, p_notes: '', p_answers: answers, p_model: process.env.GROQ_PEET_MODEL || 'llama-3.3-70b-versatile' });
+    const saved = await rpc('save_gea_peet_review', { p_task_id: id, p_version: version, p_actor: me.id, p_source_context: source, p_stage: 'score', p_result: recommendation, p_notes: '', p_answers: answers, p_model: peetModelId() });
     return reply(`${task.title}\nEfficiency ${recommendation.efficiency} · Effectiveness ${recommendation.effectiveness} · Time ${recommendation.time}\n${recommendation.justification}`, [row(button('Approve recommendation', `approve:${id}:${saved.version}`, 3), button('Adjust scores', `manual:${id}:${saved.version}`, 2)), row(button('Request revision', `revision:${id}:${saved.version}`, 2), button('Reject', `reject:${id}:${saved.version}`, 4))]);
   }
   if (verb === 'approve' || (verb === 'manual' && i.type === 5)) {

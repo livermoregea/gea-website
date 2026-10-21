@@ -18,13 +18,13 @@ Configure these server variables in `.env.local` and your deployment:
 
 ```dotenv
 GROQ_API_KEY=your-groq-key
-GROQ_PEET_MODEL=llama-3.3-70b-versatile
+GROQ_PEET_MODEL=openai/gpt-oss-120b
 SUPABASE_SERVICE_ROLE_KEY=your-existing-service-role-key
 ```
 
 Keep the existing `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY`. Never expose either server key with a `NEXT_PUBLIC_` prefix.
 
-Groq [deprecated the requested Llama model for free/developer accounts on August 16, 2026](https://console.groq.com/docs/deprecations); enterprise committed-spend accounts are exempt. The requested default is retained. Other accounts must set `GROQ_PEET_MODEL` to an available replacement, such as `openai/gpt-oss-120b`, and validate its recommendations before production use.
+Groq [deprecated the requested Llama model for free/developer accounts on August 16, 2026](https://console.groq.com/docs/deprecations); enterprise committed-spend accounts are exempt. The default is now `openai/gpt-oss-120b` for both website and Discord reviews. Existing explicit environment settings override the default: set `GROQ_PEET_MODEL=openai/gpt-oss-120b` in the hosting provider’s Production environment and redeploy. Validate recommendations before approving scores.
 
 ## Workflow
 

@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { NextResponse } from "next/server";
 import { z } from "zod";
+import { peetModelId } from "@/lib/peet-model";
 import type { PeetTask, PeetSourceTask } from "@/lib/peet-ai";
 
 export class PeetHttpError extends Error {
@@ -21,7 +22,7 @@ export async function peetActor() {
 }
 export function peetModel() {
   if (!process.env.GROQ_API_KEY) throw new PeetHttpError(503, "AI scoring is not configured. Contact an advisor.");
-  const modelId = process.env.GROQ_PEET_MODEL || "llama-3.3-70b-versatile";
+  const modelId = peetModelId();
   const provider = createOpenAI({ baseURL: "https://api.groq.com/openai/v1", apiKey: process.env.GROQ_API_KEY });
   // Llama supports JSON object mode, rather than OpenAI's strict JSON Schema mode.
   const model = wrapLanguageModel({ model: provider.chat(modelId), middleware: {
