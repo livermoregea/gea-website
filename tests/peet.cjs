@@ -11,16 +11,16 @@ const { peetSummary, taskAverage, productLink, peetError } = exported;
 const task = (id, status = 'completed') => ({ id, status });
 const evaluation = (task_id, efficiency, effectiveness, time) => ({ task_id, efficiency, effectiveness, time });
 
-test('A 3.0 task average is exactly 75; decimal scores retain precision until presentation', () => {
-  assert.equal(peetSummary([task('a')], [evaluation('a', 3, 3, 3)]).score, 75);
+test('A 3.0 task average is exactly 85; decimal scores retain precision until presentation', () => {
+  assert.equal(peetSummary([task('a')], [evaluation('a', 3, 3, 3)]).score, 85);
   assert.equal(taskAverage(evaluation('a', '2.5', '3.5', '3')), 3);
-  assert.equal(peetSummary([task('a')], [evaluation('a', 1, 1, 1)]).score, 25);
+  assert.equal(peetSummary([task('a')], [evaluation('a', 1, 1, 1)]).score, 45);
   assert.equal(peetSummary([task('a')], [evaluation('a', 4, 4, 4)]).score, 100);
 });
 test('Tasks carry equal weight; unreviewed and other officers’ tasks do not affect totals', () => {
   const tasks = [task('a'), task('b'), task('c', 'submitted'), task('d', 'in_progress')];
   const result = peetSummary(tasks, [evaluation('a', 4, 4, 4), evaluation('b', 2, 2, 2), evaluation('other', 1, 1, 1)]);
-  assert.equal(result.score, 75);
+  assert.equal(result.score, 85);
   assert.equal(result.active, 2);
   assert.equal(result.completed, 2);
   assert.equal(result.evaluated, 2);
@@ -44,7 +44,7 @@ test('Setup and connection errors are actionable without exposing database detai
 test('Cancelled tasks preserve history without counting toward active work or PEET', () => {
   const tasks = [task('keep'), {...task('cancelled'),cancelled_at:'2026-10-13'}, {...task('open','in_progress'),cancelled_at:'2026-10-13'}];
   const result = peetSummary(tasks, [evaluation('keep',3,3,3),evaluation('cancelled',1,1,1)]);
-  assert.equal(result.score,75); assert.equal(result.active,0); assert.equal(result.completed,1);
+  assert.equal(result.score,85); assert.equal(result.active,0); assert.equal(result.completed,1);
 });
 test('Task eligibility excludes teacher accounts even when their profile says officer', () => {
   const people = [{id:'officer',role:'officer'},{id:'teacher',role:'officer',is_teacher:true},{id:'advisor',reviewer_kind:'advisor'},{id:'disabled',access_enabled:false},{id:'president',reviewer_kind:'president'}];
@@ -89,7 +89,7 @@ test('Reviewer-ended tasks count as completed without changing the PEET average'
   assert.equal(result.completed,2);
   assert.equal(result.active,0);
   assert.equal(result.evaluated,1);
-  assert.equal(result.score,75);
+  assert.equal(result.score,85);
 });
 
 test('Shared tasks belong to all participants, with one evaluation counting in each officer’s totals', () => {
@@ -100,7 +100,7 @@ test('Shared tasks belong to all participants, with one evaluation counting in e
   assert.equal(isOfficerTaskParticipant(shared,'outsider'),false);
   for(const officer of ['creator','teammate']){
     const result=peetSummary([shared].filter(row=>isOfficerTaskParticipant(row,officer)),[evaluation('shared',3,3,3)]);
-    assert.equal(result.completed,1);assert.equal(result.evaluated,1);assert.equal(result.score,75);
+    assert.equal(result.completed,1);assert.equal(result.evaluated,1);assert.equal(result.score,85);
   }
   assert.equal(canEditOfficerTask({...shared,status:'in_progress'},'teammate',true),false);
   assert.equal(canEditOfficerTask({...shared,status:'in_progress'},'reviewer',true),true);
@@ -120,8 +120,18 @@ test('Shared contributions have independent completion, scores, and reflection r
  shared.contributions.push({student_id:'b',status:'pending'});
  assert.equal(exported.needsTaskContribution(shared,'b'),false);
  scores.push({...evaluation('collaboration',2,2,2),officer_id:'b'});
- assert.equal(peetSummary([shared],scores,'b').score,50);
+ assert.equal(peetSummary([shared],scores,'b').score,65);
  assert.equal(peetSummary([shared],scores,'a').score,100);
  assert.equal(exported.evaluationForOfficer(scores,'collaboration','b').officer_id,'b');
  assert.equal(exported.evaluationForOfficer(scores,'collaboration'),undefined);
+});
+
+test('PEET averages raw ratings before conversion across the breakpoint and retains decimals', () => {
+ const { peetPercentage } = exported;
+ for (const [rating, percent] of [[1,45],[2,65],[2.5,75],[3,85],[3.2,88],[3.5,92.5],[3.7,95.5],[4,100]]) {
+  assert.equal(peetPercentage(rating), percent);
+ }
+ // Averaging converted scores would produce 82.5; converting the raw average gives 85.
+ assert.equal(peetSummary([task('a'),task('b')],[evaluation('a',2,2,2),evaluation('b',4,4,4)]).score,85);
+ assert.ok(Math.abs(peetSummary([task('a')],[evaluation('a',3.1,3.2,3.3)]).score-88)<1e-10);
 });

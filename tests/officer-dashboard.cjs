@@ -33,7 +33,7 @@ function summary(reviewer) { return officerDashboard(profiles[0], profiles, task
 test('Reviewer dashboard uses existing scores, counts shared work once, and scopes participation to the school year', () => {
   const result = summary(true);
   assert.equal(result.officers.length, 2);
-  assert.equal(result.score, 75);
+  assert.equal(result.score, 85);
   assert.equal(result.scoredOfficers, 2);
   assert.equal(result.work.completed, 1);
   assert.equal(result.work.active, 1);
@@ -65,28 +65,60 @@ test('Personal scores are visible without opening progress and reviewers see the
   const start = html.indexOf('aria-labelledby="personal-scores-heading"');
   const end = html.indexOf('</section>', start);
   const personal = html.slice(start, end);
-  assert.ok(personal.includes('75.0'));
-  assert.ok(!personal.includes('81.3'));
-  assert.ok(html.includes('81.3')); // Team average remains separate below.
+  assert.ok(personal.includes('85.0'));
+  assert.ok(!personal.includes('88.8'));
+  assert.ok(html.includes('88.8')); // Team average remains separate below.
   assert.ok(personal.includes('CAGE score'));
-  assert.ok(personal.includes('N/A'));
+  assert.ok(personal.includes('84.0'));
   assert.ok(!personal.includes('Pending formula'));
-  assert.ok(!personal.includes('0.0'));
   assert.ok(start < html.indexOf('class="workOverview"'));
 });
-test('CAGE only displays a complete result for the signed-in officer and current year', () => {
-  const { currentCageScore } = load('lib/cage.ts');
-  const record = { officer_id: 'a', academic_year: '2026-2027', score: 0, formula_version: 'future-approved-v1', calculated_at: '2026-10-18T12:00:00Z' };
-  assert.equal(currentCageScore(record, 'a', '2026-2027'), record);
-  for (const candidate of [null, { ...record, officer_id: 'b' }, { ...record, academic_year: '2025-2026' },
-    { ...record, score: null }, { ...record, score: NaN }, { ...record, formula_version: null }, { ...record, calculated_at: null }]) {
-    assert.equal(currentCageScore(candidate, 'a', '2026-2027'), null);
+test('CAGE matches the supplied formula, preserves zero, and does not cap strikes or results', () => {
+  const { calculateCageScore } = load('lib/cage.ts');
+  assert.equal(calculateCageScore(70, 1, 2), 48);
+  assert.equal(calculateCageScore(100, 0, 0), 90);
+  assert.equal(calculateCageScore(0, 0, 0), 50);
+  assert.equal(calculateCageScore(75, 4, 4), 0);
+  assert.equal(calculateCageScore(0, 4, 4), -30);
+  assert.equal(calculateCageScore(72.5, 1, 0), 69);
+  for (const peet of [null, NaN, Infinity, -1, 101]) assert.equal(calculateCageScore(peet, 0, 0), null);
+  for (const count of [-1, 1.5, NaN, Infinity]) {
+    assert.equal(calculateCageScore(70, count, 0), null);
+    assert.equal(calculateCageScore(70, 0, count), null);
   }
+});
+function renderScores(scoreTracking, scoreTasks = tasks, scoreEvaluations = evaluations) {
+  const Scores = load('components/operations/OfficerScores.tsx').default;
+  return renderToStaticMarkup(React.createElement(Scores, { profile: profiles[0], tasks: scoreTasks, evaluations: scoreEvaluations, tracking: scoreTracking, data: { reviewer: true, workspaceHref: '/officerboard' } }));
+}
+test('CAGE uses only the current officer’s confirmed strikes for the contract year and updates with its inputs', () => {
+  const strike = { officer_id: 'a', academic_year: '2026-2027', status: 'confirmed' };
+  const records = [
+    { ...strike, category: 'attendance' },
+    { ...strike, category: 'conduct' }, { ...strike, category: 'conduct' },
+    { ...strike, category: 'conduct', officer_id: 'b' },
+    { ...strike, category: 'attendance', academic_year: '2025-2026' },
+    ...['notified', 'revoked', 'dismissed'].map(status => ({ ...strike, category: 'attendance', status })),
+  ];
+  const html = renderScores({ ...tracking, strikes: records });
+  assert.match(html, /scoreValue">54\.0<span> \/90<\/span><\/p>/);
+  assert.ok(html.includes('1 attendance strike · 2 conduct strikes'));
+  const corrected = renderScores({ ...tracking, strikes: records.map((row, i) => i === 0 ? { ...row, status: 'revoked' } : row) });
+  assert.match(corrected, /scoreValue">64\.0<span> \/90<\/span><\/p>/);
+  const revised = renderScores({ ...tracking, strikes: records }, tasks, [{ task_id: 'shared', efficiency: 4, effectiveness: 4, time: 4 }]);
+  assert.match(revised, /scoreValue">60\.0<span> \/90<\/span><\/p>/);
+});
+test('CAGE shows missing PEET as N/A and renders a calculated zero', () => {
+  assert.ok(renderScores(tracking, [], []).includes('Available after your first PEET evaluation'));
+  const strikes = Array.from({ length: 8 }, (_, i) => ({ officer_id: 'a', academic_year: '2026-2027', status: 'confirmed', category: i < 4 ? 'attendance' : 'conduct' }));
+  const html = renderScores({ ...tracking, strikes }, tasks, [{ task_id: 'shared', efficiency: 2.5, effectiveness: 2.5, time: 2.5 }]);
+  assert.match(html, /scoreValue">0\.0<span> \/90<\/span><\/p>/);
+  assert.ok(!html.includes('N/A'));
 });
 test('Reviewer overview links each snapshot to a detailed record without exposing private notes', () => {
   const html = render(true);
   assert.ok(html.includes('Team PEET average'));
-  assert.ok(html.includes('75.0'));
+  assert.ok(html.includes('85.0'));
   assert.ok(html.includes('Meetings attended'));
   assert.ok(html.includes('1h 30m'));
   assert.ok(html.includes('topic=overview&amp;officer=a'));
@@ -131,4 +163,25 @@ test('Officer overview puts assignments before progress and opens the existing t
  assert.ok(html.includes('task=due&amp;action=submit'));assert.ok(html.includes('Answer questions'));
  assert.ok(html.indexOf('Your assigned tasks')<html.indexOf('My progress'));
  assert.ok(!html.includes('Other officer private task'));assert.ok(!html.includes('<details class="progressDetails" open'));
+});
+
+test('CAGE shows its maximum and percentage grade, including full marks, zero, and missing data', () => {
+  const full = renderScores(tracking, tasks, [{ task_id: 'shared', efficiency: 4, effectiveness: 4, time: 4 }]);
+  assert.ok(full.includes('90.0<span> /90</span>'));
+  assert.ok(full.includes('100.0% grade'));
+  const typical = renderScores(tracking);
+  assert.ok(typical.includes('84.0<span> /90</span>'));
+  const peetCard = typical.slice(typical.indexOf('<h3>PEET score</h3>'), typical.indexOf('<h3>CAGE score</h3>'));
+  assert.ok(peetCard.includes('85.0<span> /100</span>'));
+  assert.ok(peetCard.includes('85.0% grade'));
+  assert.ok(typical.includes('93.3% grade'));
+  const strike = { officer_id: 'a', academic_year: '2026-2027', status: 'confirmed', category: 'attendance' };
+  const example = renderScores({ ...tracking, strikes: [strike] }, tasks, [{ task_id: 'shared', efficiency: 2.7, effectiveness: 2.8, time: 2.75 }]);
+  assert.ok(example.includes('72.0<span> /90</span>'));
+  assert.ok(example.includes('80.0% grade'));
+  const zero = renderScores({ ...tracking, strikes: Array(8).fill(strike) }, tasks, [{ task_id: 'shared', efficiency: 2.5, effectiveness: 2.5, time: 2.5 }]);
+  assert.ok(zero.includes('0.0% grade'));
+  const missing = renderScores(tracking, [], []);
+  assert.ok(missing.includes('N/A'));
+  assert.ok(!missing.includes('% grade'));
 });

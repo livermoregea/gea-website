@@ -1,20 +1,35 @@
 # CAGE scores
 
-CAGE stands for **Competency Analysis of the Green Engineering Academy**. It will combine attendance, strikes, and PEET. The academy's formula, weights, and score scale are still pending; this change does not calculate a score or use AI to generate one.
+CAGE stands for **Competency Analysis of the Green Engineering Academy**.
 
-The officer Overview shows personal PEET and CAGE cards first, followed by GEAI and then the task list. PEET uses existing evaluated tasks across all academic years. It is the signed-in officer's score, including for Presidents and reviewers; the separate team summary retains its team average. Missing PEET and CAGE scores display **N/A** until evaluated or calculated results are available. An earned zero remains a zero.
+`CAGE = 50 + 0.4 × a − 10 × s₁ − 10 × s₂`
 
-## Existing Supabase projects
+- `a` is the officer’s PEET score on the adjusted 0–100 scale (3.0 → 85%, 3.5 → 92.5%, 4.0 → 100%), across all school years.
+- `s₁` counts confirmed attendance strikes in the current contract academic year.
+- `s₂` counts confirmed conduct/professionalism strikes in that same year.
 
-Run `supabase/officer-cage.sql` in the Supabase SQL editor after the existing officer/account migrations. The same migration is included at the end of `supabase/schema.sql` for new installs. The Overview still loads if this optional table has not been installed yet.
+For PEET 70, one attendance strike, and two conduct strikes, CAGE is **48**.
+The formula is applied exactly: PEET 100 with no strikes gives 90. Strike counts
+and results are not capped; additional strikes can produce negative results.
+Revoked, dismissed, pending, prior-year, and other officers’ strikes do not count.
+Unexcused attendance creates a confirmed attendance strike through
+`supabase/officer-strike-notifications.sql`; CAGE uses that strike record once.
 
-`officer_cage_scores` stores one result per officer and academic year:
+The officer Overview shows personal PEET and CAGE cards first, followed by GEAI
+and the task list. Both cards use the signed-in officer’s PEET, including for
+Presidents and reviewers. The separate team summary retains its team average.
+The CAGE card shows the score out of the maximum **90** and its percentage
+grade (`score ÷ 90 × 100`), rounded to one decimal place. For example, 72/90
+is 80.0%. CAGE displays **N/A** until the officer has a PEET evaluation. A calculated zero
+is displayed as zero.
 
-- `score`: nullable numeric result, with no assumed maximum or scale.
-- `formula_version`: identifies the formula used.
-- `input_snapshot`: the inputs actually used in that calculation.
-- `calculated_at`: when the result was calculated.
+CAGE is calculated on the server whenever the workspace loads or refreshes from
+the same PEET evaluations and strike records shown in the officer portal.
+Changes to either input are reflected on refresh. No additional CAGE migration,
+manual score entry, saved result, scheduled job, or AI calculation is required.
+The optional legacy `officer_cage_scores` table is preserved but no longer read
+by the Overview, so old saved results cannot override the current formula.
 
-A pending row has no score, formula version, or calculation timestamp; an absent row also displays as N/A. A completed result requires all three fields. Deleting an officer cascades to their CAGE records.
-
-Row-level security lets active officers read their own records and existing PEET reviewers read team records. Authenticated clients have no write permissions. There is no scoring RPC, manual score editor, trigger, or scheduled calculator until the formula is supplied. Once it is available, implement validated calculation, input snapshots, recalculation on source changes, and the agreed academic-year and missing-data rules together.
+The PEET conversion update does not change the CAGE formula or its maximum of 90.
+A 3.0 average with no strikes now yields PEET 85, CAGE 84/90, and a 93.3% CAGE
+grade. See [contract wording](peet-cage-contract.md).

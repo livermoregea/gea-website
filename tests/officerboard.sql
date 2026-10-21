@@ -87,7 +87,7 @@ begin
   select id into eval_id from public.peet_evaluations where task_id = task_a;
   select completed_at into completion from public.tasks where id = task_a;
   perform public.test_assert((select status = 'completed' and completed_at is not null from public.tasks where id = task_a), 'Evaluation completes task atomically');
-  perform public.test_assert((select (efficiency+effectiveness+time)/3/4*100 = 75 from public.peet_evaluations where task_id = task_a), 'Standard score equals 75');
+  perform public.test_assert((select case when (efficiency+effectiveness+time)/3 <= 3 then 85+20*((efficiency+effectiveness+time)/3-3) else 85+15*((efficiency+effectiveness+time)/3-3) end = 85 from public.peet_evaluations where task_id = task_a), 'Standard score equals 85');
   perform public.evaluate_officer_task(task_a,4,3.5,3.3,'Updated evaluation.');
   perform public.test_assert((select count(*) = 1 from public.peet_evaluations), 'Adjustment keeps one evaluation per task');
   perform public.test_assert((select id = eval_id and evaluated_by = auth.uid() and feedback_notes = 'Updated evaluation.' from public.peet_evaluations where task_id = task_a), 'Adjustment replaces scores and reviewer feedback');

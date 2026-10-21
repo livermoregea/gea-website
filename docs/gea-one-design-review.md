@@ -123,7 +123,7 @@ Calculated from source sRGB values, not sampled from screenshots:
 
 The listed text pairs exceed 4.5:1. This is a representative palette check, not
 an exhaustive audit of every alpha-blended, hover, disabled, or photographic state.
-PEET uses text as well as color: **75 is Meets Expectations**, not a warning.
+PEET uses text as well as color: **85 is Meets Expectations**, not a warning.
 
 Existing type hierarchy is appropriate: Space Grotesk for headings, Inter for
 body copy, and IBM Plex Mono for restrained utility labels. Typical form/body

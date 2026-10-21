@@ -4,6 +4,9 @@ import { BUILDERS_ENABLED } from "@/lib/site-features";
 import { hasSupabaseConfig } from "@/lib/supabase/config";
 
 export async function middleware(request: NextRequest) {
+  // Discord authenticates with Ed25519 (or the worker bearer secret). Do not
+  // spend its three-second ACK budget refreshing a browser session.
+  if (request.nextUrl.pathname.startsWith('/api/discord/')) return NextResponse.next();
   // Return an actual 404 before streaming or authentication begins.
   if (!BUILDERS_ENABLED && (request.nextUrl.pathname === "/builders" || request.nextUrl.pathname.startsWith("/builders/"))) {
     const unavailable = request.nextUrl.clone();

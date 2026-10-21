@@ -1,6 +1,6 @@
 # AI-assisted PEET review
 
-PEET evaluates **Efficiency, Effectiveness, and Time**, using the existing **1.0–4.0** scale in increments of 0.1. **3.0 = Meets Expectations.** The app averages the three dimensions and displays `(average ÷ 4) × 100`. This feature saves approved scores to the existing `peet_evaluations` table and completes the existing officer task through `evaluate_officer_task`. It uses the same overall PEET average as manual evaluations.
+PEET evaluates **Efficiency, Effectiveness, and Time**, using the existing **1.0–4.0** scale in increments of 0.1. **3.0 = Meets Expectations.** The app averages the three dimensions and converts the average `r` to `85 + 20 × (r − 3)` for `r ≤ 3`, or `85 + 15 × (r − 3)` for `r > 3` (3.0 = 85%, 3.5 = 92.5%, 4.0 = 100%). This feature saves approved scores to the existing `peet_evaluations` table and completes the existing officer task through `evaluate_officer_task`. It uses the same overall PEET average as manual evaluations.
 
 ## Setup
 

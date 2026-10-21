@@ -2,13 +2,12 @@ import type { OperationsData } from '@/lib/gea-operations-data';
 import { isOfficerTaskParticipant, needsTaskContribution, type OfficerProfile, type OfficerTask, type PeetEvaluation } from '@/lib/peet';
 import { officerDashboard, officerWorkQueue, sortOfficerTasks } from '@/lib/officer-dashboard';
 import { CONTRACT_YEAR, durationLabel, schoolDate, schoolToday, type TrackingData } from '@/lib/officer-tracking';
-import type { CageScore } from '@/lib/cage';
 import OfficerScores from './OfficerScores';
 import s from './operations.module.css';
 
-export default function OfficerDashboard({ profile, profiles, tasks, evaluations, tracking, data, clarificationTaskIds = [], cageScore = null, showScores = true }: {
+export default function OfficerDashboard({ profile, profiles, tasks, evaluations, tracking, data, clarificationTaskIds = [], showScores = true }: {
   profile: OfficerProfile; profiles: OfficerProfile[]; tasks: OfficerTask[]; evaluations: PeetEvaluation[];
-  tracking: TrackingData; data: OperationsData; clarificationTaskIds?: string[]; cageScore?: CageScore | null; showScores?: boolean;
+  tracking: TrackingData; data: OperationsData; clarificationTaskIds?: string[]; showScores?: boolean;
 }) {
   const summary = officerDashboard(profile, profiles, tasks, evaluations, tracking, data.reviewer, CONTRACT_YEAR);
   const own = officerWorkQueue(tasks, profile.id, clarificationTaskIds);
@@ -19,7 +18,7 @@ export default function OfficerDashboard({ profile, profiles, tasks, evaluations
   const overdue = own.toComplete.filter(task => task.status === 'in_progress' && task.due_date && task.due_date < today).length;
   const reviews = sortOfficerTasks(tasks.filter(task => !task.cancelled_at && task.status === 'submitted' && (!task.individual_peet || task.contributions?.some(row => row.status === 'pending')) && !isOfficerTaskParticipant(task, profile.id)));
   return <div className={s.dashboard}>
-    {showScores && <OfficerScores profile={profile} tasks={tasks} evaluations={evaluations} data={data} cageScore={cageScore} />}
+    {showScores && <OfficerScores profile={profile} tasks={tasks} evaluations={evaluations} data={data} tracking={tracking} />}
     <div className={s.workOverview}>
       <div className={s.workMain}>
         {(!data.reviewer || own.toComplete.length > 0 || own.awaitingReview.length > 0) && <section className={s.workCard} aria-label="Your assigned tasks">

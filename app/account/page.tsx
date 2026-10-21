@@ -3,6 +3,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import styles from "./home.module.css";
 import GEAOneBadge from "@/components/GEAOneBadge";
+import DiscordConnect from "@/components/DiscordConnect";
 import WorkspaceGreeting from "@/components/WorkspaceGreeting";
 import { accountMemberships } from "@/lib/account-landing";
 import { createClient } from "@/lib/supabase/server";
@@ -11,13 +12,14 @@ import { hasSupabaseConfig } from "@/lib/supabase/config";
 export const metadata: Metadata = { title: "GEA One · Home", robots: { index: false, follow: false } };
 export const dynamic = "force-dynamic";
 
-export default async function AccountHomePage() {
+export default async function AccountHomePage({ searchParams }: { searchParams: Promise<{ discord?: string }> }) {
   if (!hasSupabaseConfig()) redirect("/login");
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/login");
   const membership = await accountMemberships(supabase, user.id);
-  if (membership.isStudent && !membership.hasWorkspace) redirect("/dashboard#qa");
+  const { discord } = await searchParams;
+  if (discord !== 'link-required' && membership.isStudent && !membership.hasWorkspace) redirect("/dashboard#qa");
 
   const staff = membership.isAdmin || membership.isTeacher;
   const destinations = [
@@ -42,6 +44,8 @@ export default async function AccountHomePage() {
         <span className={styles.action}>{destination.action}<span aria-hidden="true">↗</span></span>
       </Link>)}
     </nav>
+    {discord === 'link-required' && <p role="status">This Discord login is not linked to an active officer record. Sign out, sign in with your original school account, then choose Connect Discord. If you have not signed up yet, complete your officer signup first.</p>}
+    {membership.isOfficer && <DiscordConnect signedIn />}
     <div className={styles.settings}>
       <div><p>Your account</p><span>Personal details &amp; profile changes</span></div>
       <Link href="/profile">Profile &amp; settings <span aria-hidden="true">→</span></Link>

@@ -275,6 +275,15 @@ returns void language plpgsql security definer set search_path='' as $$ begin
   if not found then raise exception 'Volunteer log not available.'; end if;
 end $$;
 
+-- PEET scale v2: average raw 1–4 ratings first, then convert without rounding.
+create or replace function public.peet_percentage(p_average numeric)
+returns numeric language sql immutable strict parallel safe set search_path='' as $$
+ select case when p_average <= 3 then 85 + 20 * (p_average - 3)
+             else 85 + 15 * (p_average - 3) end;
+$$;
+revoke all on function public.peet_percentage(numeric) from public,anon,authenticated;
+grant execute on function public.peet_percentage(numeric) to authenticated,service_role;
+
 create or replace function public.create_officer_strike(p_officer_id uuid,p_year text,p_category text,p_incident_date date,p_reason text,p_response_due_at timestamptz,p_attendance_id uuid default null)
 returns uuid language plpgsql security definer set search_path='' as $$ declare v_id uuid; begin
   if not public.is_peet_admin() then raise exception 'Reviewer access is required.'; end if;
@@ -320,7 +329,7 @@ declare v_strike public.officer_strikes; v_count integer; v_context jsonb; begin
   select count(*) into v_count from public.officer_strikes where officer_id=v_strike.officer_id and academic_year=v_strike.academic_year and category=v_strike.category and status='confirmed';
   if p_status='confirmed' and v_count>=3 then
     select jsonb_build_object('confirmed_strikes',(select jsonb_agg(s) from public.officer_strikes s where s.officer_id=v_strike.officer_id and s.academic_year=v_strike.academic_year and s.category=v_strike.category and s.status='confirmed'),
-      'peet_score',(select avg((e.efficiency+e.effectiveness+e.time)/3)/4*100 from public.peet_evaluations e join public.tasks t on t.id=e.task_id where t.assigned_to=v_strike.officer_id and t.status='completed')) into v_context;
+      'peet_score',(select public.peet_percentage(avg((e.efficiency+e.effectiveness+e.time)/3)) from public.peet_evaluations e join public.tasks t on t.id=e.task_id where t.assigned_to=v_strike.officer_id and t.status='completed')) into v_context;
     insert into public.officer_removal_reviews(officer_id,academic_year,category,context_snapshot)
       values(v_strike.officer_id,v_strike.academic_year,v_strike.category,v_context) on conflict(officer_id,academic_year,category)
       do update set status='pending',context_snapshot=excluded.context_snapshot,advisor_notes='',decided_by=null,decided_at=null;

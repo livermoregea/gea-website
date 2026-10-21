@@ -22,8 +22,8 @@ export default function PeetExplainer({ onClose }: { onClose: () => void }) {
       </div>}
       {step === 2 && <>
         <p className={styles.explainerCopy}>Each task receives a score from 1–4 for Efficiency, Effectiveness, and Time. The three scores are averaged per task; evaluated tasks carry equal weight in your overall score.</p>
-        <div className={styles.formula}>(Average PEET Score / 4) × 100</div>
-        <p className={styles.explainerCopy}><strong>75/100 = Meets Expectations.</strong> A 3.0 average represents solid standard compliance. Officers aren’t expected to score 4 on every task. Tasks awaiting review do not affect your score, and low scores do not automatically issue strikes.</p>
+        <div className={styles.formula}>Average r ≤ 3: 85 + 20 × (r − 3); average r &gt; 3: 85 + 15 × (r − 3)</div>
+        <p className={styles.explainerCopy}><strong>85/100 = Meets Expectations.</strong> A 3.0 average represents solid standard compliance; 3.5 earns 92.5/100 and 4.0 earns 100/100. Officers aren’t expected to score 4 on every task. Tasks awaiting review do not affect your score, and low scores do not automatically issue strikes.</p>
       </>}
       {step === 3 && <>
         <p className={styles.explainerCopy}>See something that needs doing? Add a self-initiated task, set a deadline, and submit a description of your completed work, a supporting link, or both.</p>

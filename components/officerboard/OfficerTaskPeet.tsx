@@ -161,7 +161,7 @@ export function PeetScoreBreakdown({ task }: { task: PeetTask }) {
   if (!score) return null;
   return <section className={styles.score} aria-label="AI PEET recommendation"><h3>AI PEET recommendation · {peetScorePercent(score).toFixed(1)}/100</h3>
     <dl className={styles.dimensions}>{pillars.map(pillar => <div key={pillar}><dt>{pillar[0].toUpperCase() + pillar.slice(1)}</dt><dd>{score[pillar].toFixed(1)}<span> / 4</span></dd></div>)}</dl>
-    <p className={styles.copy}>{score.justification}</p><p className={styles.hint}>3.0 = Meets Expectations. The three dimensions are averaged; the AI recommendation requires human approval.</p>
+    <p className={styles.copy}>{score.justification}</p><p className={styles.hint}>3.0 = Meets Expectations = 85%. A 3.5 average earns 92.5%. The three dimensions are averaged and converted to a percentage; the AI recommendation requires human approval.</p>
   </section>;
 }
 export function PeetReviewForm({ task, actorId, onSaved, onBusyChange }: { task: PeetTask; actorId: string; onSaved: (task: PeetTask) => void; onBusyChange?: (busy: boolean) => void }) {

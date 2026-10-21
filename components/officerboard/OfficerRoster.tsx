@@ -111,7 +111,7 @@ export default function OfficerRoster({profiles,data,year,years,onYearChange,onO
       {event&&!allEvents&&<p className={styles.rosterEvent}>{schoolDate(event.starts_at)} – {schoolDate(event.ends_at)} · {event.location||"No location specified"}{event.cancelled&&" · Cancelled"}{mode === "volunteer"&&` · ${event.gea_approved?"GEA-approved":"Not yet GEA-approved"}`}</p>}
       {event&&!allEvents&&<>
         <div className={styles.rosterSaveBar}>
-          <p>Mark each officer, then save. Attendance does not automatically issue strikes or award service hours.</p>
+          <p>Mark each officer, then save. Each unexcused absence automatically counts as a strike. Attendance does not award service hours.</p>
           <div className={styles.actions}>
             <label className={styles.bulkStatus}>Bulk status<select aria-label="Bulk attendance status" value={bulkStatus} disabled={busy || event.cancelled} onChange={e=>setBulkStatus(e.target.value as typeof bulkStatus)}>{statuses.map(([status,label])=><option value={status} key={status}>{label}</option>)}</select></label>
             <button type="button" className={styles.secondary} disabled={busy || event.cancelled || (bulkStatus !== "excused" && Date.parse(event.starts_at) > Date.now()) || !shown.some(person => draftFor(event.id, person.id).status === "unmarked")} onClick={markUnrecordedAttendance}>{`Mark unrecorded ${bulkStatus}`}</button>

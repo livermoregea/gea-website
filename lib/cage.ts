@@ -1,16 +1,10 @@
-/** CAGE's scale and calculation will be defined with the academy's formula. */
-export type CageScore = {
-  officer_id: string;
-  academic_year: string;
-  score: number | null;
-  formula_version: string | null;
-  calculated_at: string | null;
-};
-
 export const CAGE_NAME = 'Competency Analysis of the Green Engineering Academy';
+export const CAGE_MAX_SCORE = 50 + 0.4 * 100;
 
-export function currentCageScore(record: CageScore | null | undefined, officerId: string, year: string) {
-  if (!record || record.officer_id !== officerId || record.academic_year !== year
-    || record.score === null || !Number.isFinite(record.score) || !record.formula_version || !record.calculated_at) return null;
-  return record;
+/** Apply the academy's formula exactly, without capping strikes or the result. */
+export function calculateCageScore(peetScore: number | null, attendanceStrikes: number, conductStrikes: number): number | null {
+  if (peetScore === null || !Number.isFinite(peetScore) || peetScore < 0 || peetScore > 100
+    || !Number.isSafeInteger(attendanceStrikes) || attendanceStrikes < 0
+    || !Number.isSafeInteger(conductStrikes) || conductStrikes < 0) return null;
+  return 50 + 0.4 * peetScore - 10 * attendanceStrikes - 10 * conductStrikes;
 }

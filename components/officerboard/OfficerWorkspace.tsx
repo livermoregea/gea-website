@@ -10,8 +10,6 @@ import OfficerBoard from "@/components/officerboard/OfficerBoard";
 import { createClient } from "@/lib/supabase/server";
 import { hasSupabaseConfig } from "@/lib/supabase/config";
 import { peetError, type OfficerTask, type PeetEvaluation, type OfficerProfile, type TaskCancellationRequest, type TaskTeammate } from "@/lib/peet";
-import { CONTRACT_YEAR } from "@/lib/officer-tracking";
-import type { CageScore } from "@/lib/cage";
 import type { OfficerEvent, OfficerAttendance, EventSignup, VolunteerLog, OfficerStrike, RemovalReview, AccountabilityNotes } from "@/lib/officer-tracking";
 
 
@@ -64,11 +62,7 @@ export default async function OfficerWorkspace({ embedded = false, search = {} }
         if (digests) operations = { ...operations, digests };
       }
     }
-    // This optional migration must not prevent officers from opening their work.
-    const { data: cageRow, error: cageError } = await supabase.from("officer_cage_scores")
-      .select("officer_id,academic_year,score,formula_version,calculated_at").eq("officer_id", user.id).eq("academic_year", CONTRACT_YEAR).maybeSingle();
-    if (cageError && !["42P01", "PGRST205"].includes(cageError.code)) console.error("[CAGE] Could not load score", { code: cageError.code });
-    const scores = <OfficerScores cageScore={cageError ? null : cageRow as CageScore | null} data={operations} profile={profile} tasks={tasks.data ?? []} evaluations={evaluations.data ?? []} />;
+    const scores = <OfficerScores tracking={tracking} data={operations} profile={profile} tasks={tasks.data ?? []} evaluations={evaluations.data ?? []} />;
     const overview = <OfficerDashboard showScores={false} clarificationTaskIds={clarificationTaskIds} data={operations} profile={profile} profiles={profiles.data ?? []} tasks={tasks.data ?? []} evaluations={evaluations.data ?? []} tracking={tracking} />;
     return <OperationsHub data={operations} clarificationTaskIds={clarificationTaskIds} canManageAccounts={Boolean(superAdmin)} officerScores={scores} officerOverview={overview} officerTools={board} embedded={embedded} initialView={workspaceView(search.view, search.task, search.topic, search.officer)} initialEvent={search.event} initialTask={search.task} />;
   } catch (error) {

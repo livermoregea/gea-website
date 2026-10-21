@@ -19,6 +19,11 @@ export type PeetEvaluation = {
   effectiveness: number; time: number; feedback_notes: string; evaluated_at: string;
 };
 
+/** Convert the unrounded 1–4 average after averaging all eligible tasks. */
+export function peetPercentage(average: number): number {
+  return average <= 3 ? 85 + 20 * (average - 3) : 85 + 15 * (average - 3);
+}
+
 export function taskAverage(evaluation: PeetEvaluation) {
   return (Number(evaluation.efficiency) + Number(evaluation.effectiveness) + Number(evaluation.time)) / 3;
 }
@@ -44,7 +49,7 @@ export function peetSummary(tasks: OfficerTask[], evaluations: PeetEvaluation[],
   const scored = evaluations.filter(evaluation => ids.has(evaluation.task_id)
     && (!evaluation.officer_id ? completed.some(task => task.id === evaluation.task_id) : !officerId || evaluation.officer_id === officerId));
   return {
-    score: scored.length ? scored.reduce((sum, evaluation) => sum + taskAverage(evaluation), 0) / scored.length / 4 * 100 : null,
+    score: scored.length ? peetPercentage(scored.reduce((sum, evaluation) => sum + taskAverage(evaluation), 0) / scored.length) : null,
     active: open.filter(task => !taskCompleteFor(task, officerId)).length,
     completed: completed.length,
     evaluated: scored.length,

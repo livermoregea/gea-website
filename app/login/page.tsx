@@ -3,14 +3,15 @@ import type { Metadata } from "next";
 import GEAOneBadge from "@/components/GEAOneBadge";
 import { redirect } from "next/navigation";
 import StudentAuthForm from "@/components/StudentAuthForm";
+import DiscordConnect from "@/components/DiscordConnect";
 import { createClient } from "@/lib/supabase/server";
 import { hasSupabaseConfig } from "@/lib/supabase/config";
 import { accountLanding } from "@/lib/account-landing";
 
 export const metadata: Metadata = { title: "GEA One · Sign in", description: "One account for your GEA community, profile, and school tools." };
 
-export default async function LoginPage({ searchParams }: { searchParams: Promise<{ mode?: string; next?: string }> }) {
-  const { mode, next } = await searchParams;
+export default async function LoginPage({ searchParams }: { searchParams: Promise<{ mode?: string; next?: string; discord?: string }> }) {
+  const { mode, next, discord } = await searchParams;
   const destination = next === "/volunteer" ? "/volunteer" : null;
   const initialMode = mode === "signup" ? "signup" : "signin";
   const demoMode = !hasSupabaseConfig();
@@ -34,10 +35,12 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
           {demoMode ? "GEA One preview" : "Your GEA One account"}
         </h1>
         <div id="student-account" className="mt-6 scroll-mt-28">
+          {discord && <p role="status" className="mb-4 text-sm text-graphite">Discord sign-in could not finish. Sign in with your existing GEA One account and connect Discord from Account Home, or contact an advisor if Discord setup is incomplete.</p>}
           {demoMode
             ? <p className="text-center text-sm text-graphite/80">Sign-in is unavailable in this preview.</p>
             : <StudentAuthForm key={initialMode} redirectTo={destination ?? "/account/redirect"} initialMode={initialMode} />}
         </div>
+        {!demoMode && <DiscordConnect />}
         <div className="mt-5 text-center"><Link href="/contact" className="inline-flex min-h-11 items-center text-sm text-forest underline underline-offset-4">Need help signing in?</Link></div>
       </section>
     </div>

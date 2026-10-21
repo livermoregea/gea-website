@@ -1,6 +1,6 @@
 "use client";
 
-import { taskCompleteFor, evaluationForOfficer, officerTaskPeople, isOfficerTaskParticipant, taskAverage, type OfficerTask, type PeetEvaluation } from "@/lib/peet";
+import { taskCompleteFor, evaluationForOfficer, officerTaskPeople, isOfficerTaskParticipant, taskAverage, peetPercentage, type OfficerTask, type PeetEvaluation } from "@/lib/peet";
 import TaskSection from "./TaskSection";
 import OfficerTaskSubmission from "./OfficerTaskSubmission";
 import styles from "./officerboard.module.css";
@@ -25,7 +25,7 @@ export default function OfficerTaskHistory({ tasks, evaluations, admin, actorId,
         </div>
         {officerTaskPeople(task).length > 1 && <p>Shared with {officerTaskPeople(task).map(id => peopleNames[id] || "Former officer").join(", ")} · {task.individual_peet ? "Shared deliverable · Individual reflections and scores" : "Historical shared submission and evaluation"}</p>}
         {task.ended_by && <p>Ended by a reviewer{!evaluation ? " · No PEET score" : ""}. {task.end_notes}</p>}
-        {task.individual_peet && admin && !subjectId && <section><h4>Individual evaluations</h4>{evaluations.filter(row => row.task_id === task.id && row.officer_id).map(row => <p key={row.id}><strong>{peopleNames[row.officer_id!] || "Officer"}</strong> · {(taskAverage(row) / 4 * 100).toFixed(1)}/100 · {row.feedback_notes}</p>)}</section>}
+        {task.individual_peet && admin && !subjectId && <section><h4>Individual evaluations</h4>{evaluations.filter(row => row.task_id === task.id && row.officer_id).map(row => <p key={row.id}><strong>{peopleNames[row.officer_id!] || "Officer"}</strong> · {peetPercentage(taskAverage(row)).toFixed(1)}/100 · {row.feedback_notes}</p>)}</section>}
         <dl className={styles.historyScores}>{(["efficiency","effectiveness","time","average"] as const).map(pillar => <div key={pillar}><dt>{pillar[0].toUpperCase()+pillar.slice(1)}</dt><dd>{evaluation ? pillar === "average" ? taskAverage(evaluation).toFixed(2) : Number(evaluation[pillar]).toFixed(1) : "—"}</dd></div>)}</dl>
         <div className={styles.historyFeedback}><h4>Reviewer feedback</h4><p>{evaluation?.feedback_notes || "No written feedback."}</p>{evaluation && <small>Evaluated {date(evaluation.evaluated_at)}</small>}</div>
         <OfficerTaskSubmission task={task} />

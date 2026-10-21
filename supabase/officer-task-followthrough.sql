@@ -159,7 +159,7 @@ declare v_strike public.officer_strikes; v_count integer; v_context jsonb; begin
   select count(*) into v_count from public.officer_strikes where officer_id=v_strike.officer_id and academic_year=v_strike.academic_year and category=v_strike.category and status='confirmed';
   if p_status='confirmed' and v_count>=3 then
     select jsonb_build_object('confirmed_strikes',(select jsonb_agg(s) from public.officer_strikes s where s.officer_id=v_strike.officer_id and s.academic_year=v_strike.academic_year and s.category=v_strike.category and s.status='confirmed'),
-      'peet_score',(select avg((e.efficiency+e.effectiveness+e.time)/3)/4*100 from public.peet_evaluations e join public.tasks t on t.id=e.task_id where t.assigned_to=v_strike.officer_id and t.status='completed' and t.cancelled_at is null)) into v_context;
+      'peet_score',(select public.peet_percentage(avg((e.efficiency+e.effectiveness+e.time)/3)) from public.peet_evaluations e join public.tasks t on t.id=e.task_id where t.assigned_to=v_strike.officer_id and t.status='completed' and t.cancelled_at is null)) into v_context;
     insert into public.officer_removal_reviews(officer_id,academic_year,category,context_snapshot)
       values(v_strike.officer_id,v_strike.academic_year,v_strike.category,v_context) on conflict(officer_id,academic_year,category)
       do update set status='pending',context_snapshot=excluded.context_snapshot,advisor_notes='',decided_by=null,decided_at=null;

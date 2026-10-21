@@ -15,6 +15,7 @@ grant usage on schema public,auth to anon,authenticated,service_role;
 alter default privileges in schema public grant all on tables to anon,authenticated,service_role;
 alter default privileges in schema public grant execute on functions to anon,authenticated,service_role;
 \ir ../supabase/officerboard.sql
+\ir ../supabase/officer-peet-percentage.sql
 alter table public.officer_profiles add column access_enabled boolean default true, add column reviewer_kind text;
 alter table public.tasks add column original_due_date date, add column cancelled_at timestamptz;
 create table public.officer_task_members(task_id uuid references public.tasks(id),officer_id uuid references public.officer_profiles(id));
@@ -114,7 +115,7 @@ begin
  perform public.test_assert((select status='completed' from public.tasks where id=original),'Original task completed atomically');
  perform public.approve_gea_peet_task(flow.id,6,'{"efficiency":1,"effectiveness":1,"time":1}','Retry must not replace the evaluation');
  perform public.test_assert((select count(*)=1 and max(effectiveness)=4 from public.peet_evaluations where task_id=original),'Duplicate approval cannot replace or duplicate the evaluation');
- perform public.test_assert((select round(((efficiency+effectiveness+time)/3)/4*100,1)=83.3 from public.peet_evaluations where task_id=original),'Existing PEET average formula');
+ perform public.test_assert((select round(public.peet_percentage((efficiency+effectiveness+time)/3),1)=90.0 from public.peet_evaluations where task_id=original),'Updated PEET percentage formula');
  -- An older manually submitted task can request clarification in its evaluation dialog.
  execute 'reset role';
  insert into public.tasks(id,title,description,assigned_to,created_by,status,submission_description,submitted_at,final_product_url)

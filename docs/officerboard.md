@@ -6,7 +6,7 @@ an individual officer’s progress. Reviewers start with a searchable directory 
 
 ## Whole-roster tracking
 
-Reviewers have a **Team roster** tab alongside the officer directory. For attendance, choose the school year and meeting, then mark Present, Late, Excused, or Unexcused. Desktop uses a comparison table; phones use compact officer cards with a native status picker and notes action. A fixed mobile save bar shows the unsaved-officer count, Discard, and Save attendance. Both layouts share drafts, including notes, across viewport changes. Unmarked attendance stays unrecorded. **Mark unrecorded present** affects only displayed officers without a status; it preserves existing late or absence decisions and reviewer notes. **Save attendance** writes only changed rows through the existing Supabase attendance RPC. Each row is transactional; if a batch encounters errors, successful rows are kept and the message identifies unsaved rows for retry. Attendance never creates a strike automatically.
+Reviewers have a **Team roster** tab alongside the officer directory. For attendance, choose the school year and meeting, then mark Present, Late, Excused, or Unexcused. Desktop uses a comparison table; phones use compact officer cards with a native status picker and notes action. A fixed mobile save bar shows the unsaved-officer count, Discard, and Save attendance. Both layouts share drafts, including notes, across viewport changes. Unmarked attendance stays unrecorded. **Mark unrecorded present** affects only displayed officers without a status; it preserves existing late or absence decisions and reviewer notes. **Save attendance** writes only changed rows through the existing Supabase attendance RPC. Each row is transactional; if a batch encounters errors, successful rows are kept and the message identifies unsaved rows for retry. Each unexcused attendance record automatically creates a confirmed attendance strike and a portal notification. Repeated saves do not duplicate strikes.
 
 Attendance choices and notes remain while switching meetings, years, and roster topics. Pending changes block leaving the roster until saved or explicitly discarded; browser reloads also warn about unsaved changes. Teachers and advisor-only profiles are excluded from the roster.
 
@@ -70,10 +70,11 @@ are shown; re-evaluations update the evaluation time and preserve completion tim
 
 Evaluation and completion are a single database transaction. Adjustments update
 the single evaluation for the task, avoiding duplicate weighting. The score is
-`AVG((efficiency + effectiveness + time) / 3) / 4 * 100` for completed, evaluated
+`r = AVG((efficiency + effectiveness + time) / 3)` followed by
+`PEET = 85 + 20 × (r − 3)` for `r ≤ 3`, or `85 + 15 × (r − 3)` for `r > 3` for completed, evaluated
 tasks belonging to the selected officer. No evaluated work shows an em dash, not
 zero. In-progress and awaiting-review tasks do not lower the score. A 3.0 average
-is 75/100, Meets Expectations. Database numeric precision is preserved; displayed
+is 85/100, Meets Expectations. Database numeric precision is preserved; displayed
 overall scores round to one decimal. Approved cancellations preserve task details, products, prior evaluations, and audit history. Cancelled tasks are excluded from active/completed counters and PEET totals, including removal-review score snapshots. They appear in a separate history section and cannot be edited, submitted, or evaluated.
 
 Successful saves refresh the board immediately. Other open boards refresh on
@@ -134,12 +135,10 @@ The database requires an advisor to evaluate a President's PEET tasks.
   officer requirement. Rejected logs can be corrected and resubmitted; approved
   logs are locked until a reviewer returns them. There is one log per officer/event.
 - **Strikes:** attendance and conduct/professionalism are counted independently
-  per academic year. Documenting a concern creates an in-portal notice and future
-  response deadline, not a confirmed strike. Officers can explain circumstances.
-  Confirmation requires their response or expiration of the response opportunity,
-  plus documented human review. Neither an absence nor a low PEET score generates
-  a strike. Use official Signal/email channels to draw attention to the portal
-  notification; the app does not send messages to external channels.
+  per academic year. Strikes take effect immediately and appear as notifications
+  in the officer’s portal. Officers cannot submit responses. Every unexcused
+  attendance record counts as an attendance strike, including optional meetings
+  and service events. Low PEET scores alone do not issue strikes.
 - **Reviews:** one confirmed strike shows the peer-review stage, two show advisor
   review, and three in a single category open a formal removal review in the same
   transaction. The review keeps a snapshot of confirmed incidents and the PEET
@@ -162,7 +161,7 @@ annual volunteer and accountability totals separate from cumulative PEET totals.
 
 Run `tests/officer-accountability.sql` after `tests/officerboard.sql` in the **same
 disposable test database** to exercise the contract workflows, role isolation,
-volunteer verification/corrections, strike-response windows, three-strike review,
+volunteer verification/corrections, immediate strike notifications, three-strike review,
 advisor-only outcomes, President evaluation restrictions, audit immutability, and
 database-backed onboarding. No production database is changed by the local tests.
 
@@ -438,3 +437,19 @@ Officer creation, access, and position management are available in **Accounts**.
 ### Unfinished task drafts
 
 New-task forms keep a draft in browser `sessionStorage`, scoped to the signed-in officer and browser tab. Text, deadline, separate assignees, shared-task choice, and participants restore if the task screen remounts or reloads in that tab. Switching browser tabs does not trigger a workspace refresh while the form is open. Saving successfully or explicitly closing/cancelling the task clears its draft; failed saves retain it. A pending creation draft never takes over a linked task submission or review. This draft is not a submitted task and is not stored in Supabase or sent to GEAI.
+
+Apply `supabase/officer-strike-notifications.sql` after the existing officer and
+individual-contribution migrations, before deploying this conduct update. It is
+also included at the end of `schema.sql`. The migration confirms existing pending
+strike notices and backfills existing unexcused attendance that has no strike
+history. Corrected or revoked historical strikes are preserved. Reviewer
+corrections remain available; an officer cannot respond to or alter a strike.
+Run `tests/officer-strike-notifications.sql` after `tests/officerboard.sql` only
+in a disposable local PostgreSQL database.
+
+Apply `supabase/officer-peet-percentage.sql` after the existing officer migrations
+and `officer-strike-notifications.sql` to upgrade the PEET percentage scale.
+It preserves raw ratings and historical advisor-review snapshots, and updates
+the conversion used for future snapshots. Current website scores recalculate
+from raw ratings on refresh. New installations include the change in `schema.sql`.
+Contract wording and examples: [PEET and CAGE formulas](peet-cage-contract.md).

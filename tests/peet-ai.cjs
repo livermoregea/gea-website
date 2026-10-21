@@ -13,7 +13,7 @@ function load(file, dependencies = {}, env = {}) {
   }).outputText, { exports, require: name => dependencies[name] ?? require(name), process: { env }, Error, URL, AbortSignal, Request, Response, TextDecoder });
   return exports;
 }
-const schemas = load('lib/peet-ai.ts');
+const schemas = load('lib/peet-ai.ts', { './peet': load('lib/peet.ts') });
 const next = { NextResponse: { json: (body, init = {}) => ({ body, status: init.status || 200 }) } };
 const baseDeps = { 'next/server': next, '@/lib/supabase/server': { createClient: async () => ({}) }, '@/lib/supabase/admin': { createAdminClient: () => ({}) } };
 const server = load('lib/peet-ai-server.ts', baseDeps);
@@ -30,7 +30,7 @@ function route(file, overrides = {}, generate = async () => ({ object: score }))
     '@/lib/peet-ai-server': { ...server, peetActor: async () => actor, peetModel: () => ({ model: {}, modelId: 'test-model' }), limitPeetAI: async () => {}, ...overrides }, ai: { generateObject: generate } });
 }
 test('PEET uses the existing 1–4 Efficiency, Effectiveness, Time scale and average /100', () => {
-  assert.equal(schemas.peetScorePercent({ efficiency: 3, effectiveness: 3, time: 3 }), 75);
+  assert.equal(schemas.peetScorePercent({ efficiency: 3, effectiveness: 3, time: 3 }), 85);
   assert.equal(schemas.recommendationSchema.safeParse(score).success, true);
   for (const invalid of [{ ...score, time: 5 }, { ...score, efficiency: 0 }, { ...score, effectiveness: 3.55 }, { complexityScore: 3, impactScore: 3, autonomyScore: 3, recommendedPeetPoints: 9, justification: 'Wrong rubric' }]) assert.equal(schemas.recommendationSchema.safeParse(invalid).success, false);
 });
