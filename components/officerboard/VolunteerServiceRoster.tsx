@@ -1,4 +1,5 @@
 "use client";
+import { dispatchDiscordNotifications } from '@/lib/discord-notifications';
 
 import WorkspaceActivity from "@/components/WorkspaceActivity";
 
@@ -56,6 +57,7 @@ export default function VolunteerServiceRoster({ event, people, logs, signups, l
         setDrafts(current => { const next = { ...current }; delete next[id]; return next; });
       } catch (cause) { failed.push(`${people.find(person => person.id === id)?.name ?? "Officer"}: ${cause instanceof Error ? cause.message : "Check your connection and retry."}`); }
     }
+    if (saved) dispatchDiscordNotifications();
     setNotice(`${saved} service logs saved for verification.`);
     if (failed.length) setError(`Unsaved details are retained. ${failed.join(" ")}`);
     startTransition(() => router.refresh()); setSaving(false);
@@ -65,6 +67,7 @@ export default function VolunteerServiceRoster({ event, people, logs, signups, l
     try {
       const result = await createClient().rpc("verify_officer_event_service", { p_event_id: event.id, p_logs: selected });
       if (result.error) { setError(peetError(result.error)); return; }
+      dispatchDiscordNotifications();
       setNotice(`Verified service for ${selected.length} officers.`);
       setExcluded([]); startTransition(() => router.refresh());
     } catch { setError("Check your connection and retry."); }

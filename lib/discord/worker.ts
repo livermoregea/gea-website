@@ -6,6 +6,7 @@ import { discordFailureCode, discordFailureMessage } from './failures';
 import { timingSafeEqual } from 'node:crypto';
 import { sendTaskNotification } from './task-routing';
 import { sendAttendanceNotification } from './attendance-routing';
+import { sendServiceNotification } from './service-routing';
 export function cronAuthorized(request: Request) {
   const secret = process.env.CRON_SECRET;
   const supplied = request.headers.get('authorization') || '';
@@ -43,6 +44,7 @@ async function runDiscordBatch() {
     try {
       if (job.kind === 'notification') {
         if (job.payload.topic === 'tasks') await sendTaskNotification(job.payload);
+        else if (['service_receipt', 'service_review', 'event_request', 'event_assignment', 'workflow_review'].includes(job.payload.topic)) await sendServiceNotification(job.payload);
         else if (job.payload.topic === 'attendance_receipt') {
           // Retire older private-DM jobs; new receipts target position channels.
           if (job.payload.officer_position) await sendAttendanceNotification(job.payload);
@@ -50,7 +52,8 @@ async function runDiscordBatch() {
         else if (job.payload.topic === 'attendance') {
           if (process.env.DISCORD_ATTENDANCE_OVERVIEW === 'true') await sendDiscordEmbed('attendance', { title: job.payload.title, description: job.payload.description });
         }
-        else await sendDiscordEmbed(job.payload.topic as DiscordTopic, { title: job.payload.title, description: job.payload.description || 'Open GEA One for the full record.' });
+        else if (job.payload.topic === 'announcements') await sendDiscordEmbed(job.payload.topic as DiscordTopic, { title: job.payload.title, description: job.payload.description || 'Open GEA One for the full record.' });
+        else throw new Error('Unsupported Discord notification topic.');
       } else {
         // Discord tokens expire in 15 minutes. Discard expired tokens, retain
         // durable drafts/actions; officers can safely start a fresh command.
@@ -68,7 +71,7 @@ async function runDiscordBatch() {
       if (job.kind === 'interaction') {
         const component = job.payload.data?.custom_id || '';
         const submissionId = /^(?:submit|resume):([0-9a-f-]{36})$/i.exec(component)?.[1];
-        const edit = job.payload.type === 5 && /^(submit|clarify|reviewanswers|assign|absence|manual|revision|reject):/.test(component);
+        const edit = job.payload.type === 5 && /^(submit|clarify|reviewanswers|assign|absence|manual|revision|reject|officer:form):/.test(component);
         const controls = [
           ...(submissionId && !(error instanceof DiscordInputError) ? [button('Resume submission', `resume:${submissionId}`)] : []),
           ...(edit ? [button('Edit submitted form', component, 2)] : []),

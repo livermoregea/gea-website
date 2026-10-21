@@ -81,7 +81,7 @@ test('Staff save public attendance through its own RPC, preserving the signup ve
 });
 test('Volunteer sign-in returns to volunteering and accepts no external redirect',async()=>{
  const Login=load('app/login/page.tsx',{
-  'react/jsx-runtime':jsx,'next/link':{default:'a'},'@/components/GEAOneBadge':{default:'badge'},
+  'react/jsx-runtime':jsx,'next/link':{default:'a'},'@/components/DiscordConnect':{default:()=>null},'@/components/GEAOneBadge':{default:'badge'},
   'next/navigation':{redirect:destination=>{throw new Error('redirect:'+destination);}},
   '@/components/StudentAuthForm':{default:'student-auth'},'@/lib/supabase/config':{hasSupabaseConfig:()=>true},
   '@/lib/supabase/server':{createClient:async()=>({auth:{getUser:async()=>({data:{user:null}})}})},

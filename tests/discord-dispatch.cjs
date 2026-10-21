@@ -47,7 +47,7 @@ test('a Discord assignment sends the notification it creates without a second co
   class InputError extends Error {}
   const worker = load('lib/discord/worker.ts', {
     '@/lib/supabase/admin': { createAdminClient: () => db }, '@/lib/discord': {}, './protocol': protocol,
-    './failures': load('lib/discord/failures.ts', {}), './attendance-routing': {},
+    './failures': load('lib/discord/failures.ts', {}), './attendance-routing': {}, './service-routing': {},
     './service': { DiscordInputError: InputError, handleInteraction: async () => queue.push({ id: 'notification', kind: 'notification', payload: { topic: 'tasks', title: 'Assigned task' } }) },
     './task-routing': { sendTaskNotification: async payload => sent.push(payload) },
   });
@@ -86,7 +86,7 @@ function rollCallWorker(batchDuration = 0) {
   class InputError extends Error {}
   const worker = load('lib/discord/worker.ts', {
     '@/lib/supabase/admin': { createAdminClient: () => db }, '@/lib/discord': { sendDiscordEmbed: async (_topic, message) => overviews.push(message) },
-    './protocol': load('lib/discord/protocol.ts', {}), './failures': load('lib/discord/failures.ts', {}), './task-routing': {},
+    './protocol': load('lib/discord/protocol.ts', {}), './failures': load('lib/discord/failures.ts', {}), './task-routing': {}, './service-routing': {},
     './service': { DiscordInputError: InputError }, './attendance-routing': { sendAttendanceNotification: async message => receipts.push(message) },
   }, { Date: Clock, process: { env: { DISCORD_ATTENDANCE_OVERVIEW: 'true' } } });
   return { worker, queue, receipts, overviews, finished };

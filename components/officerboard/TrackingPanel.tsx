@@ -1,4 +1,5 @@
 "use client";
+import { dispatchDiscordNotifications } from '@/lib/discord-notifications';
 
 import WorkspaceActivity from "@/components/WorkspaceActivity";
 
@@ -54,6 +55,7 @@ export default function TrackingPanel({ mode, profile, profiles, officerId, data
     try {
       const { error: rpcError } = await createClient().rpc(name, args);
       if (rpcError) { setError(peetError(rpcError)); return; }
+      dispatchDiscordNotifications();
       setAction(null); setNotice(message); startTransition(() => router.refresh());
     } catch { setError(peetError(null)); } finally { setSaving(false); }
   }

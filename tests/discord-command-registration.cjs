@@ -28,3 +28,20 @@ test('registration reports persistent rate limits and other HTTP failures withou
   assert.equal(calls, 6);
   await assert.rejects(registerDiscordCommands({ ...base, fetchImpl: async () => new Response('', { status: 403 }) }), /HTTP 403/);
 });
+test('the officer workspace command catalog registers valid unique commands without network access', async () => {
+  const originalFetch = global.fetch;
+  const keys = ['DISCORD_APPLICATION_ID', 'DISCORD_GUILD_ID', 'DISCORD_BOT_TOKEN'];
+  const original = Object.fromEntries(keys.map(key => [key, process.env[key]]));
+  const commands = [];
+  try {
+    for (const key of keys) process.env[key] = 'synthetic';
+    global.fetch = async (_url, request) => { commands.push(JSON.parse(request.body)); return Response.json({}); };
+    await import('../scripts/register-discord.mjs?workspace-catalog-test');
+    assert.equal(new Set(commands.map(c => c.name)).size, commands.length);
+    for (const name of ['officer', 'create-task', 'service-hours', 'log-hours', 'request-event', 'my-attendance', 'my-records', 'verify-hours', 'event-requests', 'task-requests']) assert.ok(commands.some(c => c.name === name), name);
+    for (const command of commands) { assert.match(command.name, /^[a-z0-9-]{1,32}$/); assert.ok(command.description.length <= 100); assert.equal(command.type, 1); }
+  } finally {
+    global.fetch = originalFetch;
+    for (const key of keys) { if (original[key] === undefined) delete process.env[key]; else process.env[key] = original[key]; }
+  }
+});

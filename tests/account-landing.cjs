@@ -42,12 +42,12 @@ function accountHome(supabase){return load('app/account/page.tsx',{
  './home.module.css':{default:new Proxy({},{get:(_,key)=>String(key)})},
  'next/link':{default:({children,...props})=>React.createElement('a',props,children)},
  'next/navigation':{redirect:path=>{throw new Error('redirect:'+path);}},
- '@/components/GEAOneBadge':{default:()=>React.createElement('span',null,'GEA One')},
+ '@/components/DiscordConnect':{default:()=>null},'@/components/GEAOneBadge':{default:()=>React.createElement('span',null,'GEA One')},
  '@/components/WorkspaceGreeting':{default:({name})=>React.createElement('h1',null,`Good morning, ${name}.`)},
- '@/lib/account-landing':{accountMemberships},
+ '@/lib/discord/account-link':load('lib/discord/account-link.ts'),'@/lib/account-landing':{accountMemberships},
  '@/lib/supabase/server':{createClient:async()=>supabase},
  '@/lib/supabase/config':{hasSupabaseConfig:()=>true},
- }).default();}
+ }).default({searchParams:Promise.resolve({})});}
 for(const [name,roles,expected,hidden] of [
  ['officer',{officer_profiles:true},['/dashboard#qa','/officerboard','/profile'],['/admin-portal-x7k9','/teacher']],
  ['teacher',{teacher_profiles:true},['/dashboard#qa','/admin-portal-x7k9','/profile'],['/officerboard','/teacher']],
@@ -70,10 +70,10 @@ function mergedOfficers(supabase){return load('app/admin-portal-x7k9/officers/pa
  '@/components/StaffPortal':{default:({children})=>React.createElement('section',null,children)},
  '@/components/officerboard/OfficerWorkspace':{default:({embedded})=>React.createElement('div',null,embedded?'Embedded officer accountability':'Standalone officers')},
  '@/components/PageNotice':{default:({title})=>React.createElement('h1',null,title)},
- '@/lib/account-landing':{accountMemberships},
+ '@/lib/discord/account-link':load('lib/discord/account-link.ts'),'@/lib/account-landing':{accountMemberships},
  '@/lib/supabase/server':{createClient:async()=>supabase},
  '@/lib/supabase/config':{hasSupabaseConfig:()=>true},
- }).default();}
+ }).default({searchParams:Promise.resolve({})});}
 test('Merged officer workspace requires both staff and active officer membership',async()=>{
  await assert.rejects(mergedOfficers(client({},false)),/redirect:\/login/);
  await assert.rejects(mergedOfficers(client({student_profiles:true})),/redirect:\/account$/);
@@ -91,7 +91,7 @@ test('Legacy officer route takes staff into the merged workspace and leaves ordi
   'react/jsx-runtime':require('react/jsx-runtime'),
   'next/navigation':{redirect:path=>{throw new Error('redirect:'+path);}},
   '@/components/officerboard/OfficerWorkspace':{default:()=>React.createElement('div',null,'Officer dashboard')},
-  '@/lib/account-landing':{accountMemberships},
+  '@/lib/discord/account-link':load('lib/discord/account-link.ts'),'@/lib/account-landing':{accountMemberships},
   '@/lib/supabase/server':{createClient:async()=>supabase},
   '@/lib/supabase/config':{hasSupabaseConfig:()=>true},
  }).default;

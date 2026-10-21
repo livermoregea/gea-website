@@ -1,4 +1,5 @@
 "use client";
+import { dispatchDiscordNotifications } from '@/lib/discord-notifications';
 
 import WorkspaceActivity from "@/components/WorkspaceActivity";
 
@@ -35,6 +36,7 @@ export default function EventParticipation({ event, officerId, name, signup, can
     try {
       const result = await createClient().rpc(rpc, args);
       if (result.error) { setError(peetError(result.error)); return; }
+      dispatchDiscordNotifications();
       setDirty(false); setEditing(false); setNotice(message);
       startTransition(() => router.refresh());
     } catch { setError("Check your connection and try again."); }

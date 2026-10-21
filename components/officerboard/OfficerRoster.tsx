@@ -93,6 +93,7 @@ export default function OfficerRoster({profiles,data,year,years,onYearChange,onO
       else if(action.kind === "service"){name="submit_officer_volunteer";args={p_event_id:action.event.id,p_officer_id:action.person.id,p_check_in:iso(fields.get("check_in")),p_check_out:iso(fields.get("check_out")),p_notes:fields.get("notes")};}
       else{name="review_officer_volunteer";args={p_log_id:action.log.id,p_status:fields.get("status"),p_notes:fields.get("notes")};}
       const result=await createClient().rpc(name,args);if(result.error){setError(peetError(result.error));return;}
+      dispatchDiscordNotifications();
       if(action.kind === "event") {if(typeof result.data === "string")setEventId(result.data);setMode(fields.get("kind")==="meeting"?"attendance":"volunteer");onYearChange(String(fields.get("year")));}
       setAction(null);setNotice(action.kind === "event"?"Event saved.":action.kind === "service"?"Service log submitted for verification.":"Volunteer review saved.");startTransition(()=>router.refresh());
     }catch{setError("Check the dates and your connection, then try again.");}finally{setSaving(false);}

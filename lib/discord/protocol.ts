@@ -21,9 +21,25 @@ function blankModalResponse(i: Interaction) {
   const id = i.data?.custom_id || '';
   if (i.type !== 3) return null;
   if (id.startsWith('submit:')) return modal(id, 'Submit your contribution', [
-    { id: 'notes', label: 'Your work, outcome, timing, and assistance', long: true },
+    { id: 'notes', label: 'Your work, outcome, timing, and assistance', long: true, max: 4000 },
+    { id: 'notes2', label: 'Personal contribution continued (optional)', long: true, max: 1000, required: false },
     { id: 'link', label: 'Supporting link (optional)', required: false, max: 2048 },
+    { id: 'deliverable', label: 'Team deliverable (first shared submission)', long: true, required: false, max: 4000 },
+    { id: 'deliverable2', label: 'Team deliverable continued (optional)', long: true, max: 1000, required: false },
   ]);
+  if (id.startsWith('officer:form:')) {
+    switch (id.split(':')[2]) {
+      case 'team': return modal(id, 'Task details', [{ id: 'title', label: 'Task title', max: 200 }, { id: 'description', label: 'Goals and expected deliverables', long: true, max: 4000 }, { id: 'description2', label: 'Task details continued (optional)', long: true, max: 4000, required: false }, { id: 'description3', label: 'Task details continued (optional)', long: true, max: 2000, required: false }, { id: 'due', label: 'Due date (YYYY-MM-DD, optional)', max: 10, required: false }]);
+      case 'hours': return modal(id, 'Actual service times', [{ id: 'check_in', label: 'Check-in (ISO date/time with timezone)', max: 40 }, { id: 'check_out', label: 'Check-out (ISO date/time with timezone)', max: 40 }, { id: 'notes', label: 'Work performed', long: true, required: false }]);
+      case 'help': case 'cancel': return modal(id, 'Task request', [{ id: 'reason', label: 'Explain your request (10+ characters)', long: true }]);
+      case 'agenda': return modal(id, 'Add agenda item', [{ id: 'title', label: 'Agenda item title', max: 200 }, { id: 'details', label: 'Details', long: true, required: false }]);
+      case 'documents': return modal(id, 'Meeting document links', [{ id: 'agenda_url', label: 'Agenda Google Doc (optional)', max: 2048, required: false }, { id: 'notes_url', label: 'Notes Google Doc (optional)', max: 2048, required: false }]);
+      case 'returnhours': return modal(id, 'Return service log', [{ id: 'notes', label: 'Explain the correction (10+ characters)', long: true }]);
+      case 'plan': return modal(id, 'Event planning document', [{ id: 'document_url', label: 'Planning Google Doc (optional)', max: 2048, required: false }]);
+      case 'checklist': return modal(id, 'Event checklist item', [{ id: 'title', label: 'Checklist item', max: 200 }]);
+      case 'cancelapprove': case 'cancelreject': return modal(id, 'Cancellation decision', [{ id: 'notes', label: 'Decision notes (10+ characters)', long: true }]);
+    }
+  }
   if (id.startsWith('absence:')) return modal(id, 'Planned absence or tardiness', [{ id: 'notice', label: 'Absence or tardiness: timing and reason', long: true }]);
   if (id.startsWith('assign:')) return modal(id, 'Assign a task', [{ id: 'title', label: 'Task title', max: 200 }, { id: 'description', label: 'Goals, rubric expectations, and committee', long: true }, { id: 'due', label: 'Due date (YYYY-MM-DD)', required: false, max: 10 }]);
   if (id.startsWith('clarify:') || id.startsWith('reviewanswers:')) {

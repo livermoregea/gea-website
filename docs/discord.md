@@ -17,7 +17,7 @@ This module uses the website's canonical officer records, attendance RPCs, task 
 
 ## Commands and workflow
 
-- `/tasks` or `/submit-task`: choose one of your 25 most recent open tasks, open the modal, add personal work notes and a required Project / Doc Link. Evidence is committed before Groq is called. Existing shared deliverables are preserved; personal contribution evidence is stored separately.
+- `/tasks`: browse your task history with pagination and open task management controls. `/submit-task`: choose an open task and submit personal work notes with an optional supporting link. Evidence is committed before Groq is called. Shared team deliverables and personal contribution evidence are stored separately.
 - The bot asks 1–3 targeted questions in DM, with an **Answer questions** modal. If DMs fail, questions appear in the private response. Submitting answers sends the contribution into the existing pending-review state and posts a review button in `#gea-review`.
 - `/review-task`: choose a pending contribution. The independent reviewer answers targeted questions about expectations, quality, resources, and timing. Groq then supplies a recommendation with **Approve recommendation**, **Adjust scores**, **Request revision**, and **Reject** controls. Approval is one click after reviewer clarification, as required by the existing website contract. The President's work requires an advisor; participants cannot review their own task. Versions and permissions are rechecked in the database at every mutation.
 - Revision and rejection retain evidence and award no score. Both return the contribution for clarification; rejection is recorded in reviewer feedback rather than introducing a new website status. The officer can reopen `/submit-task` if a feedback DM fails.
@@ -46,7 +46,7 @@ Discord does not send modal keystrokes to the bot: it can preserve text only aft
 
 There is a small crash window between the initial response and persisting its post-response job. For strict durable acceptance before ACK, persist the job on the request path (with a sub-three-second database timeout) or use an external ingress queue; that would change the requirement that all database mutations occur after ACK.
 
-This release covers the officer task, review, attendance, event lookup, and score workflows above. Meeting minutes, volunteer time logs, strikes/appeals, roster provisioning, academy applications, and forum moderation still use the website. Committee channel notifications do not implement membership-based group assignment. Add those workflows through the fixed database action allowlist when their Discord UX is defined.
+The officer workspace is available through `/officer` and the commands below. Account provisioning, initial Discord identity linking, academy applications, and forum moderation remain website/account-administration workflows. Discord roles do not grant database privileges.
 
 ## Verification
 
@@ -119,7 +119,7 @@ Secretaries can also use `/mark-attendance` for meetings after linking Discord. 
 
 ## Missing slash commands after registration
 
-The registration script now respects Discord's command rate limits. If Discord returns HTTP 429, it waits for the supplied retry delay and retries the same command. Keep the terminal running until all eight `Registered /...` lines appear. Re-running the script updates the commands without deleting unrelated application commands. If it stops with another HTTP error, resolve that error before expecting the remaining commands to appear.
+The registration script respects Discord's command rate limits. If Discord returns HTTP 429, it waits for the supplied retry delay and retries the same command. Keep the terminal running until every command has a `Registered /...` line. Re-running the script updates the commands without deleting unrelated application commands. If it stops with another HTTP error, resolve that error before expecting the remaining commands to appear.
 
 ## Interactive Discord attendance
 
@@ -130,3 +130,48 @@ The private roster lets you select one or more officers, then choose Present, Ta
 Roster sessions belong to the reviewer/secretary who opened them and expire after one hour. Every operation rechecks active access, version, and ownership. Saving a meeting uses `save_meeting_attendance`; stale status changes reject the entire batch instead of overwriting a website/other-reviewer edit. Reviewer-only service-event saves use the existing attendance RPC and preserve private notes. Notification jobs are queued only by committed attendance changes.
 
 To activate: apply the full updated `supabase/discord.sql`, deploy the website code, **then** rerun `node --env-file=.env.local scripts/register-discord.mjs` to replace the old required command options with the roster command. The existing single-officer handler remains compatible with old registrations during deployment. Do not switch the registered command to the no-argument definition before deploying its handler. Verify locally with `tests/discord-roll-call.cjs` and, in an empty disposable PostgreSQL database only, `tests/discord-roll-call.fixture.sql`.
+
+## Officer workspace in Discord
+
+Apply **`supabase/discord-officer-workspace.sql`** after the existing Discord and website migrations listed at the top of that file. Deploy the code, then run:
+
+```sh
+node --env-file=.env.local scripts/register-discord.mjs
+```
+
+This is an additive migration, not the reset script. It preserves existing tasks, attendance, personal reflections, and verified hours. No new credentials are required. The bot needs access to each configured officer channel and `DISCORD_REVIEW_CHANNEL_ID`. Allow the reviewer role to use `/verify-hours` and `/event-requests` through Discord Integrations; database permissions still decide who can act. Do not register the new commands before deploying their handlers.
+
+| Officer workflow | Discord entry point |
+| --- | --- |
+| Discover officer tools | `/officer` |
+| View open/completed/cancelled tasks, full goals, personal reflections and evaluations | `/tasks`; select a task |
+| Create a personal or shared task; select teammates from the officer roster | `/create-task` |
+| Edit your own open task and its participants | `/tasks` → select task → Edit task / participants |
+| Submit a personal reflection, optional link, and shared team deliverable | `/submit-task` or task controls |
+| Answer AI clarification; reopen saved questions | Existing private questions and Answer questions button |
+| Request task help, select a helper, mark unblocked | `/task-help` or task controls |
+| Request independent cancellation review | `/cancel-task` or task controls |
+| View meetings, service events, schedules, attendance, participation and planning links | `/events` |
+| Request/withdraw participation in an existing service event | `/request-event` → select event → Request/withdraw |
+| Submit an advance absence/tardiness notice | `/absence-notice` or event controls |
+| Log actual service times and work notes | `/log-hours`; scheduled times are editable drafts |
+| View verified/pending hours, optionally by academic year | `/service-hours [year:2026-2027]` |
+| Read attendance/absence notices and service/conduct records privately | `/my-attendance`, `/my-records` |
+| Read meeting notes and full agenda; add an agenda item | `/events` → meeting controls |
+| Secretary/reviewer: edit document links and assign agenda actions to an officer | Meeting controls; existing website permissions apply |
+| Organizer/reviewer: planning Google Doc, add/check event checklist items | Service-event controls |
+| Change weekly workspace digest preference | `/officer` → Weekly digest settings |
+| PEET and CAGE scores | `/score` |
+| Reviewer: inspect submitted times/notes and verify or return a service log | `/verify-hours` or reviewer-channel notification |
+| Reviewer: inspect participation requests and assign officers to events | `/event-requests` or reviewer-channel notification |
+| Reviewer: inspect task help and decide cancellation requests | `/task-requests` or reviewer-channel notification |
+
+`/request-event` means requesting to participate in an **existing** service event. It does not create a new event or approve the request automatically. Requests and reviewer assignments remain independent, just as on the website. A reviewer sees the request in the private review channel and can assign the officer in Discord.
+
+Shared tasks keep one canonical team deliverable. The first contributor supplies the **team deliverable description** separately from **their personal contribution**. Later teammates submit their own contribution and clarification without replacing the shared deliverable. Each contribution has its own assessment and independent review; one officer's approval does not award everyone the same score. The roster includes active officers who have not personally linked Discord. Each newly added participant receives an assignment receipt in their position channel; shared task status updates reach the other participants too.
+
+Personal reflections and shared deliverable descriptions support up to 5,000 characters using the continuation fields. Task descriptions support up to 10,000 characters across the three task-detail fields. Raw submitted fields are saved before business validation, including formatting errors. Long private records are paginated instead of discarding their remaining text. Team selection is paginated and stored in a private, owner-scoped draft; successful task creation is idempotent. Use `/officer` → **Resume a task draft** to recover unfinished team selection and submitted form text. The one-hour UI lease is renewed for the authenticated owner; expiration does not discard their writing, and canonical permissions are checked again on save.
+
+Only a **reviewer-verified actual service log** counts as verified hours. Attendance, an event assignment, or a participation request never awards hours. Verification from either the website or Discord queues a role-channel receipt containing the officer, event, and the verified duration. Returning a previously verified log queues a correction saying it no longer counts as verified. Pending logs notify the private reviewer channel. No work notes or reviewer feedback are posted to officer channels. Approved logs remain locked against officer edits; stale review controls reject changes rather than approving a different snapshot.
+
+Verify locally with `node --test tests/discord-officer-workspace.cjs tests/discord.cjs tests/discord-dispatch.cjs tests/peet-ai.cjs` and `npx tsc --noEmit`. `tests/discord-officer-workspace.fixture.sql` exercises the actual website RPCs and permission checks in a fresh disposable PostgreSQL database only; never run that test fixture in a live project.

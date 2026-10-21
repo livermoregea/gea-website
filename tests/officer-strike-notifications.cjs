@@ -15,7 +15,7 @@ function harness(admin = false) {
   'react/jsx-runtime': jsx,
   react: { useState(initial) { const key = cursor++; if (!(key in state)) state[key] = initial; return [state[key], value => state[key] = value]; }, useTransition: () => [false, fn => fn()] },
   'next/navigation': { useRouter: () => ({ refresh() {} }) },
-  '@/lib/supabase/client': { createClient: () => ({}) },
+  '@/lib/discord-notifications':{dispatchDiscordNotifications(){}},'@/lib/supabase/client': { createClient: () => ({}) },
   '@/lib/peet': { peetError: String },
   '@/lib/officer-tracking': { CONTRACT_YEAR: '2026-2027', trackingSummary: () => ({ attendanceStrikes: 1, conductStrikes: 0 }), schoolDate: String },
   './officerboard.module.css': { default: {} },

@@ -11,6 +11,7 @@ import { z } from 'zod';
 import { rollCallResponse } from './roll-call';
 import { saveDiscordForm } from './form-drafts';
 import { peetModelId } from '@/lib/peet-model';
+import { officerResponse } from './officer';
 
 export class DiscordInputError extends Error {}
 export async function action(discordId: string, name: string, args = {}, key?: string): Promise<any> {
@@ -23,6 +24,7 @@ export async function action(discordId: string, name: string, args = {}, key?: s
 }
 async function rpc(name: string, args: Record<string, unknown>) {
   const { data, error } = await createAdminClient().rpc(name, args);
+  if (error?.code === 'P0001') throw new DiscordInputError(error.message);
   if (error) throw Object.assign(new Error('Could not save the assessment.'), { code: error.code, operation: name });
   return data;
 }
@@ -52,8 +54,16 @@ export async function handleInteraction(i: Interaction) {
   if (!await saveDiscordForm(i)) throw new DiscordInputError('A newer form was submitted. Reopen it to continue with your latest text.');
   const discordId = actorId(i);
   const me = await action(discordId, 'me');
+  const officerMessage = await officerResponse(i, async (name, args = {}, interactionKey) => {
+    const { data, error } = await createAdminClient().rpc('discord_officer_action', { p_discord_id: discordId, p_action: name, p_args: args, p_key: interactionKey || null });
+    if (error && ['P0001', '22007', '22008', '22001', '22P02', '23514'].includes(error.code)) throw new DiscordInputError(error.code === 'P0001' ? error.message : 'Check the dates, field lengths, and selections. Your submitted text is saved; use Edit submitted form to correct it.');
+    if (error) throw Object.assign(new Error('Officer workspace operation failed.'), { code: error.code, operation: name });
+    return data;
+  });
+  if (officerMessage) return discordReply(i.token, officerMessage);
   const options = Object.fromEntries((i.data?.options || []).map(o => [o.name, o.value]));
-  const fields = Object.fromEntries((i.data?.components || []).flatMap(r => r.components || []).map(c => [c.custom_id, c.value.trim()]));
+  const rawFields = Object.fromEntries((i.data?.components || []).flatMap(r => r.components || []).map(c => [c.custom_id, c.value]));
+  const fields = Object.fromEntries(Object.entries(rawFields).map(([name, value]) => [name, value.trim()]));
   const command = i.data?.name;
   if ((command === 'mark-attendance' && !options.event) || i.data?.custom_id?.startsWith('roll:')) {
     const message = await rollCallResponse(i, async (name, args, interactionKey) => {
@@ -111,11 +121,17 @@ export async function handleInteraction(i: Interaction) {
   }
   if (verb === 'absence' && i.type === 5) {
     if (!fields.notice || fields.notice.length > 2000) throw new DiscordInputError('Enter a notice within 2000 characters.');
-    await action(discordId, 'absence', { event: z.uuid().parse(id), notice: fields.notice }, key('absence'));
-    return reply('Advance notice saved. A reviewer determines whether the absence is excused.');
+    const { error } = await createAdminClient().rpc('discord_officer_action', { p_discord_id: discordId, p_action: 'absence', p_args: { id: z.uuid().parse(id), notice: fields.notice }, p_key: key('absence') });
+    if (error?.code === 'P0001') throw new DiscordInputError(error.message);
+    if (error) throw Object.assign(new Error('Could not save the absence notice.'), { code: error.code });
+    return reply('Absence / tardiness notice saved. A reviewer determines whether the absence is excused.');
   }
   if ((verb === 'submit' && i.type === 5) || verb === 'resume') {
-    if (verb === 'submit' && !fields.notes) throw new DiscordInputError('Describe the work you completed in the work notes field.');
+    if (verb === 'submit') {
+      fields.notes = (rawFields.notes || '') + (rawFields.notes2 || '');
+      fields.deliverable = (rawFields.deliverable || '') + (rawFields.deliverable2 || '');
+    }
+    if (verb === 'submit' && !fields.notes.trim()) throw new DiscordInputError('Describe the work you completed in the work notes field.');
     if (verb === 'submit' && fields.link && !productLink(fields.link)) throw new DiscordInputError('Use a full http:// or https:// supporting link, or leave the optional link blank.');
     const source = await action(discordId, 'source', { id: z.uuid().parse(id) });
     if (!source.participant_ids?.includes(me.id)) throw new DiscordInputError('Choose one of your own tasks.');
@@ -123,13 +139,13 @@ export async function handleInteraction(i: Interaction) {
     if (!task) {
       let submission: Record<string, string> = { ...fields, link: fields.link || '' };
       if (verb === 'resume') {
-        const { data: draft, error } = await createAdminClient().from('discord_submission_drafts').select('notes,project_url').eq('task_id', id).eq('officer_id', me.id).maybeSingle();
+        const { data: draft, error } = await createAdminClient().from('discord_submission_drafts').select('notes,project_url,deliverable_description').eq('task_id', id).eq('officer_id', me.id).maybeSingle();
         if (error) throw Object.assign(new Error('Could not load the saved submission.'), { code: error.code, operation: 'load_discord_submission' });
         if (!draft) throw new DiscordInputError('No saved work was found for this task. Open /submit-task and enter your work notes and document link.');
-        submission = { notes: draft.notes, link: draft.project_url };
+        submission = { notes: draft.notes, link: draft.project_url, deliverable: draft.deliverable_description || '' };
       }
       // Save evidence before the external model call so a provider outage loses no work.
-      await rpc('save_discord_submission', { p_discord_id: discordId, p_task_id: id, p_notes: submission.notes, p_url: submission.link });
+      await rpc('save_discord_contribution', { p_discord_id: discordId, p_task_id: id, p_notes: submission.notes, p_url: submission.link, p_deliverable: submission.deliverable || '' });
       const fresh = await action(discordId, 'source', { id });
       const assessment = await ai(me.id, assessmentSchema, clarificationPrompt, { originalTask: fresh, contribution: submission.notes, submissionUrl: submission.link });
       task = await rpc(source.individual_peet ? 'save_gea_peet_contribution_assessment' : 'save_gea_peet_assessment', {

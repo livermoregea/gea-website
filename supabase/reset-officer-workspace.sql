@@ -18,7 +18,7 @@ declare
   v_remaining bigint;
   v_targets text[] := array[
     'discord_jobs', 'discord_actions', 'discord_form_drafts',
-    'discord_submission_drafts', 'discord_roll_calls',
+    'discord_submission_drafts', 'discord_roll_calls', 'discord_officer_sessions',
     'gea_peet_tasks', 'peet_evaluations', 'gea_peet_ai_requests',
     'officer_task_members', 'officer_task_cancellation_requests',
     'gea_task_blockers', 'gea_agenda_items', 'tasks',

@@ -52,8 +52,8 @@ test('modals open immediately; wrong guild/application never queues', async () =
   const { handler, calls } = route();
   const result = await (await handler.POST(signed({ ...interaction, type: 3, data: { custom_id: 'submit:task' } }))).json();
   assert.equal(result.type, 9);
-  assert.equal(result.data.components[1].components[0].label, 'Supporting link (optional)');
-  assert.equal(result.data.components[1].components[0].required, false);
+  assert.equal(result.data.components[2].components[0].label, 'Supporting link (optional)');
+  assert.equal(result.data.components[2].components[0].required, false);
   for (const bad of [{ guild_id: 'other' }, { application_id: 'other' }]) {
     assert.equal((await (await handler.POST(signed({ ...interaction, ...bad }))).json()).type, 4);
   }
@@ -68,7 +68,7 @@ test('reopening a modal restores invalid text; a failed draft read never opens a
   const { handler } = route(async i => { assert.equal(protocol.actorId(i), 'officer'); return { notes: 'Long explanation\nwith original formatting', link: 'not a URL' }; });
   const result = await (await handler.POST(signed(click))).json();
   assert.equal(result.data.components[0].components[0].value, 'Long explanation\nwith original formatting');
-  assert.equal(result.data.components[1].components[0].value, 'not a URL');
+  assert.equal(result.data.components[2].components[0].value, 'not a URL');
   const failing = route(async () => { throw new Error('database unavailable'); });
   const failure = await (await failing.handler.POST(signed(click))).json();
   assert.equal(failure.type, 4);
@@ -84,12 +84,12 @@ test('draft reads are scoped to the signed Discord user and exact form; stale sa
   assert.equal(await drafts.saveDiscordForm(form), false);
   const service = load('lib/discord/service.ts', { './form-drafts': drafts,
     '@/lib/supabase/admin': { createAdminClient() { throw new Error('stale submission must not reach business operations'); } },
-    '@/lib/discord': {}, './protocol': protocol, './roll-call': {}, '@/lib/peet-ai': schemas, '@/lib/peet-model': load('lib/peet-model.ts'), '@/lib/peet': peet, '@/lib/cage': cage, '@/lib/officer-tracking': { CONTRACT_YEAR: '2026-2027' },
+    '@/lib/discord': {}, './protocol': protocol, './roll-call': {}, './officer': load('lib/discord/officer.ts', { './protocol': protocol, '@/lib/officer-tracking': { CONTRACT_YEAR: '2026-2027', schoolDate: value => value } }), '@/lib/peet-ai': schemas, '@/lib/peet-model': load('lib/peet-model.ts'), '@/lib/peet': peet, '@/lib/cage': cage, '@/lib/officer-tracking': { CONTRACT_YEAR: '2026-2027' },
   });
   await assert.rejects(service.handleInteraction(form), /newer form was submitted/);
 });
 test('cron secret is fail-closed and uses an exact bearer token', () => {
-  const dependencies = { '@/lib/supabase/admin': {}, '@/lib/discord': {}, './service': {}, './protocol': protocol, './failures': load('lib/discord/failures.ts'), './task-routing': {}, './attendance-routing': {} };
+  const dependencies = { '@/lib/supabase/admin': {}, '@/lib/discord': {}, './service': {}, './protocol': protocol, './failures': load('lib/discord/failures.ts'), './task-routing': {}, './attendance-routing': {}, './service-routing': {} };
   const worker = load('lib/discord/worker.ts', dependencies, { CRON_SECRET: 'expected' });
   for (const value of ['', 'Bearer wrong', 'expected']) assert.equal(worker.cronAuthorized(new Request('https://gea.test', { headers: { authorization: value } })), false);
   assert.equal(worker.cronAuthorized(new Request('https://gea.test', { headers: { authorization: 'Bearer expected' } })), true);
@@ -126,7 +126,7 @@ function serviceFixture(rpc, generate = async () => { throw new Error('unexpecte
     '@/lib/supabase/admin': admin,
     './form-drafts': load('lib/discord/form-drafts.ts', { '@/lib/supabase/admin': admin, './protocol': protocol }),
     '@/lib/discord': { discordReply: async (_token, message) => replies.push(message), discordDM: async () => {}, discordFetch: async () => {}, safeMessage: x => x },
-    './protocol': protocol, './roll-call': {}, '@/lib/peet-ai': schemas, '@/lib/peet-model': load('lib/peet-model.ts'), '@/lib/peet': peet, '@/lib/cage': cage, '@/lib/officer-tracking': { CONTRACT_YEAR: '2026-2027' },
+    './protocol': protocol, './roll-call': {}, './officer': load('lib/discord/officer.ts', { './protocol': protocol, '@/lib/officer-tracking': { CONTRACT_YEAR: '2026-2027', schoolDate: value => value } }), '@/lib/peet-ai': schemas, '@/lib/peet-model': load('lib/peet-model.ts'), '@/lib/peet': peet, '@/lib/cage': cage, '@/lib/officer-tracking': { CONTRACT_YEAR: '2026-2027' },
     ai: { generateObject: generate },
   }, { GROQ_API_KEY: 'fake' });
   return { service, replies, forms };
@@ -151,7 +151,7 @@ test('submission persists evidence before an AI outage and never awards scores',
   }, async () => { calls.push('model'); throw new Error('provider unavailable'); });
   const submit = { ...interaction, type: 5, data: { custom_id: `submit:${source.id}`, components: [{ components: [{ custom_id: 'notes', value: 'Completed workshop slides on time' }] }, { components: [{ custom_id: 'link', value: 'https://example.com/slides' }] }] } };
   await assert.rejects(service.handleInteraction(submit), /provider unavailable/);
-  assert.ok(calls.indexOf('save_discord_submission') < calls.indexOf('model'));
+  assert.ok(calls.indexOf('save_discord_contribution') < calls.indexOf('model'));
   assert.equal(calls.includes('approve'), false);
   assert.equal(calls.includes('save_gea_peet_assessment'), false);
 });
@@ -169,12 +169,28 @@ test('invalid task links preserve the original modal before validation, without 
 test('Discord accepts an explanation without a link and saves it before an AI outage', async () => {
   let evidence;
   const { service } = serviceFixture(async (name, args) => {
-    if (name === 'save_discord_submission') evidence = args;
+    if (name === 'save_discord_contribution') evidence = args;
     return { data: name === 'reserve_gea_peet_ai_request' ? true : args.p_action === 'me' ? { id: 'officer' } : args.p_action === 'source' ? { participant_ids: ['officer'] } : null };
   }, async () => { throw new Error('AI outage'); });
   await assert.rejects(service.handleInteraction({ ...interaction, type: 5, data: { custom_id: 'submit:11111111-1111-4111-8111-111111111111', components: [{ components: [{ custom_id: 'notes', value: 'Completed the work; no document needed.' }, { custom_id: 'link', value: '' }] }] } }), /AI outage/);
   assert.equal(evidence.p_url, '');
   assert.equal(evidence.p_notes, 'Completed the work; no document needed.');
+});
+test('shared reflection keeps full personal and team text separate before AI and preserves helpful validation errors', async () => {
+  const taskId = '11111111-1111-4111-8111-111111111111';
+  const calls = [];
+  const { service } = serviceFixture(async (name, args) => {
+    calls.push({ name, args });
+    if (name === 'save_discord_contribution') return { error: { code: 'P0001', message: 'Describe the shared team deliverable separately from your own contribution.' } };
+    return { data: args.p_action === 'me' ? { id: 'officer' } : args.p_action === 'source' ? { participant_ids: ['officer'], individual_peet: true } : null };
+  });
+  await assert.rejects(service.handleInteraction({ ...interaction, type: 5, data: { custom_id: 'submit:' + taskId, components: [{ components: [
+    { custom_id: 'notes', value: 'My personal contribution ' }, { custom_id: 'notes2', value: 'continued exactly.' }, { custom_id: 'link', value: '' }, { custom_id: 'deliverable', value: '' },
+  ] }] } }), /Describe the shared team deliverable/);
+  const evidence = calls.find(call => call.name === 'save_discord_contribution');
+  assert.equal(evidence.args.p_notes, 'My personal contribution continued exactly.');
+  assert.equal(evidence.args.p_deliverable, '');
+  assert.equal(calls.some(call => call.name === 'reserve_gea_peet_ai_request'), false);
 });
 test('resume uses only the authenticated officer’s saved evidence and never approves scores', async () => {
   const taskId = '11111111-1111-4111-8111-111111111111';
@@ -184,7 +200,7 @@ test('resume uses only the authenticated officer’s saved evidence and never ap
   const draft = { notes: 'My saved contribution', project_url: 'https://example.com/project' };
   const query = { select: () => query, eq: (key, value) => { filters.push([key, value]); return query; }, maybeSingle: async () => ({ data: draft }) };
   const { service, replies } = serviceFixture(async (name, args) => {
-    if (name === 'save_discord_submission') saved.push(args);
+    if (name === 'save_discord_contribution') saved.push(args);
     return { data: name === 'reserve_gea_peet_ai_request' ? true : name === 'save_gea_peet_assessment' ? { status: 'pending' } : args.p_action === 'me' ? { id: 'officer' } : args.p_action === 'source' ? source : null };
   }, async request => {
     assert.match(request.prompt, /My saved contribution/);
@@ -321,7 +337,7 @@ test('secretary overview is opt-in, role receipts are independent, and legacy DM
     const worker = load('lib/discord/worker.ts', {
       '@/lib/supabase/admin': { createAdminClient: () => db }, '@/lib/discord': { sendDiscordEmbed: async topic => sent.push(topic) },
       './service': { DiscordInputError: InputError }, './protocol': protocol, './failures': load('lib/discord/failures.ts'), './task-routing': {},
-      './attendance-routing': { sendAttendanceNotification: async () => { sent.push('officer'); throw new Error('Role channel blocked'); } },
+      './service-routing': {}, './attendance-routing': { sendAttendanceNotification: async () => { sent.push('officer'); throw new Error('Role channel blocked'); } },
     }, { DISCORD_ATTENDANCE_OVERVIEW: String(enabled) });
     const result = await worker.runDiscordJobs();
     assert.equal(result.completed, 2);
