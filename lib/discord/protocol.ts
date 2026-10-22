@@ -29,6 +29,7 @@ function blankModalResponse(i: Interaction) {
   ]);
   if (id.startsWith('officer:form:')) {
     switch (id.split(':')[2]) {
+      case 'strike': return modal(id, 'Explain your circumstances', [{ id: 'response', label: 'Your side of the story (10+ characters)', long: true, max: 4000 }]);
       case 'team': return modal(id, 'Task details', [{ id: 'title', label: 'Task title', max: 200 }, { id: 'description', label: 'Goals and expected deliverables', long: true, max: 4000 }, { id: 'description2', label: 'Task details continued (optional)', long: true, max: 4000, required: false }, { id: 'description3', label: 'Task details continued (optional)', long: true, max: 2000, required: false }, { id: 'due', label: 'Due date (YYYY-MM-DD, optional)', max: 10, required: false }]);
       case 'hours': return modal(id, 'Actual service times', [{ id: 'check_in', label: 'Check-in (ISO date/time with timezone)', max: 40 }, { id: 'check_out', label: 'Check-out (ISO date/time with timezone)', max: 40 }, { id: 'notes', label: 'Work performed', long: true, required: false }]);
       case 'help': case 'cancel': return modal(id, 'Task request', [{ id: 'reason', label: 'Explain your request (10+ characters)', long: true }]);

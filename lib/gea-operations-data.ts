@@ -61,7 +61,7 @@ export async function loadOperations(supabase: Awaited<ReturnType<typeof createC
             id: string;
             officer_id: string;
             response_due_at: string;
-        }>((f, t) => supabase.from('officer_strikes').select('id,officer_id,response_due_at').eq('status', 'notified').eq('officer_id', userId).order('id').range(f, t)),
+        }>((f, t) => supabase.from('officer_strikes').select('id,officer_id,response_due_at').eq('status', 'notified').is('responded_at', null).eq('officer_id', userId).order('id').range(f, t)),
     ]);
     if (prefs.error)
         throw new Error(prefs.error.message);
@@ -82,7 +82,7 @@ export async function loadOperations(supabase: Awaited<ReturnType<typeof createC
         if (reviewer)
             attention.push({ key: `cancellation:${c.id}`, title: tasks.find(t => t.id === c.task_id)?.title || 'Task cancellation', detail: 'Cancellation request awaiting review', href: `${taskHref}?task=${c.task_id}`, category: 'Review' });
     for (const c of concerns)
-        attention.push({ key: `concern:${c.id}`, title: 'Accountability notice', detail: 'Review the notice and explain your circumstances', date: c.response_due_at, href: `${taskHref}?topic=accountability`, category: 'Response' });
+        attention.push({ key: `concern:${c.id}`, title: 'Accountability notice', detail: 'Explain your circumstances within 24 hours to avoid an automatic strike', date: c.response_due_at, href: `${taskHref}?topic=accountability&strike=${c.id}`, category: 'Response' });
     const calendar: CalendarItem[] = events.filter(e => !e.cancelled).map(e => ({ id: e.id, title: e.title, start: e.starts_at, end: e.ends_at, kind: e.kind, location: e.location, href: `/operations?view=${e.kind === 'meeting' ? 'meetings' : 'events'}&event=${e.id}` }));
     for (const t of tasks)
         if (t.due_date && !t.cancelled_at && t.status !== 'completed')

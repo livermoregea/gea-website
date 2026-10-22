@@ -10,7 +10,7 @@ This module uses the website's canonical officer records, attendance RPCs, task 
 4. Install the app in your guild with `bot` and `applications.commands` OAuth scopes. Grant View Channel, Send Messages, and Embed Links only in the intended channels. No Administrator or Message Content intent is needed. Members should allow DMs from the bot; clarification falls back to the private interaction response if DMs are blocked.
 5. Create private `#gea-review` and officer-only `#tasks` and `#attendance` channels. Set `DISCORD_REVIEW_CHANNEL_ID` to the review channel ID. Optionally create incoming webhooks for `DISCORD_WEBHOOK_TASKS`, `DISCORD_WEBHOOK_ATTENDANCE`, and `DISCORD_WEBHOOK_ANNOUNCEMENTS`. Avoid public attendance channels. Webhooks contain task status/deadline updates, named attendance receipts, and academy evaluation milestones at 1, 10, 25, 50, 100, 250, 500, and 1,000 evaluations, without personal attendance reasons or scores.
 6. Enable Discord in Supabase Authentication → Providers. Enter the Discord OAuth client ID/secret there, and set the provider callback URL shown by Supabase in the Discord OAuth portal. Add `https://YOUR_DOMAIN/auth/callback` to Supabase's allowed redirect URLs. Enable manual identity linking in Supabase Auth for existing accounts.
-7. Existing officers sign in using their original school account, then use **Connect Discord** on Account Home. Later they can use **Continue with Discord**. Supabase automatically links matching verified email identities; the callback binds the verified Discord identity to the canonical officer profile and honors a same-origin `next` path. Different-email identities must be linked while signed into the original account. Preregistered officers must finish their existing reserved-ID signup first. No profile IDs, tasks, or sessions are transferred based on an unverified email or a Discord display name.
+7. Existing officers sign in using their original school account, then use **Connect Discord** on Account Home. Discord linking is available only after signing into an active officer account; there is no public Discord sign-in/link button. Students, staff without officer membership, disabled officers, and anonymous visitors cannot start the website linking flow. The connection route and callback recheck current officer access before authorization or binding. Supabase automatically links matching verified email identities; the callback binds the verified Discord identity to the canonical officer profile and honors a same-origin `next` path. Different-email identities must be linked while signed into the original account. Preregistered officers must finish their existing reserved-ID signup first. No profile IDs, tasks, or sessions are transferred based on an unverified email or a Discord display name.
 8. Set `GROQ_API_KEY`, optional `GROQ_PEET_MODEL`, `SUPABASE_SERVICE_ROLE_KEY`, and a random `CRON_SECRET`. The native `@ai-sdk/groq` provider is used for Discord AI work.
 9. Register commands from a trusted terminal with server credentials loaded: `node --env-file=.env.local scripts/register-discord.mjs`. This upserts these commands without deleting other application commands. Assignment and review commands default to Manage Server members; use Discord's Integrations command permissions to allow your reviewer role. The attendance command is available to secretaries and reviewers, enforced by database permissions. Database permissions remain authoritative.
 10. For immediate website notifications, create a Supabase **Database Webhook** on `public.discord_jobs` for **INSERT**. Choose HTTP POST to `https://YOUR_DOMAIN/api/discord/jobs` and add `Authorization: Bearer YOUR_CRON_SECRET` as a header. Supabase delivers this asynchronously after the database transaction. Also schedule this endpoint every minute, with the same header, for retries. Use an external scheduler or a Vercel plan supporting minute cron; if using Vercel, add `{ "path": "/api/discord/jobs", "schedule": "* * * * *" }` to its cron list. No hosting-plan change is made automatically. Inspect `discord_jobs.failed` and `attempts` for delivery problems.
@@ -175,3 +175,111 @@ Personal reflections and shared deliverable descriptions support up to 5,000 cha
 Only a **reviewer-verified actual service log** counts as verified hours. Attendance, an event assignment, or a participation request never awards hours. Verification from either the website or Discord queues a role-channel receipt containing the officer, event, and the verified duration. Returning a previously verified log queues a correction saying it no longer counts as verified. Pending logs notify the private reviewer channel. No work notes or reviewer feedback are posted to officer channels. Approved logs remain locked against officer edits; stale review controls reject changes rather than approving a different snapshot.
 
 Verify locally with `node --test tests/discord-officer-workspace.cjs tests/discord.cjs tests/discord-dispatch.cjs tests/peet-ai.cjs` and `npx tsc --noEmit`. `tests/discord-officer-workspace.fixture.sql` exercises the actual website RPCs and permission checks in a fresh disposable PostgreSQL database only; never run that test fixture in a live project.
+
+### Attendance and conduct explanations
+
+Apply `supabase/officer-strike-responses.sql` after `officer-strike-notifications.sql`
+and the Discord workspace migrations, then apply `supabase/officer-strike-response-window.sql` and
+`supabase/officer-strike-president-updates.sql`, and deploy the website. No command
+registration change is needed. Fresh databases include the website RPC and trigger
+in `schema.sql`; configure Discord using the migrations above as usual.
+
+New unexcused attendance records automatically create a pending incident and queue one
+private response request for an active officer with linked Discord. Manually
+recorded conduct/attendance strikes use the same request. The bot sends a DM with
+**Explain your circumstances** and **Read incident details** buttons. Submitted
+explanations are stored on the incident, visible to its officer and authorized
+reviewers. `/my-records` → **My conduct records** also offers the response form.
+Discord accepts up to 4,000 characters; the website accepts up to 10,000.
+
+The website and Discord message show a fixed response deadline, 24 hours after the
+incident is recorded. An explanation submitted before the deadline keeps the
+incident pending for reviewer judgment. Without a response, it automatically
+becomes a confirmed strike after the deadline. Late forms are rejected in the
+database, even if the timeout worker has not run yet. Reviewers cannot confirm an
+unanswered incident before its 24 hours are up. Existing confirmed strikes keep
+their historical decisions unless you apply the one-time reissue described below.
+
+`vercel.json` schedules `/api/accountability/expire` every minute. Set `CRON_SECRET`
+and `SUPABASE_SERVICE_ROLE_KEY` in the deployment. The endpoint uses the service-only
+`expire_officer_strike_responses` RPC and works independently of Discord delivery.
+Use hosting that supports minute cron, or invoke this endpoint every minute with
+`Authorization: Bearer YOUR_CRON_SECRET` from an external scheduler. Expiration
+runs on the first scheduler tick after the deadline (normally within one minute).
+Timely explanations, dismissed incidents, and corrected/cancelled absences do not
+automatically become strikes. Third confirmed strikes still open advisor review.
+
+Delivery uses the existing outbox webhook, immediate dispatch, and retry scheduler.
+If a DM fails, the bot posts a generic alert in `DISCORD_NOTICES_CHANNEL_ID`,
+mentioning only the affected officer: “@Name, please check the GEA website for a
+notice.” Set this to your **notices** channel ID and give the bot View Channel and
+Send Messages permissions. Set `NEXT_PUBLIC_SITE_URL` to the public website origin
+to include an **Open GEA website** link button. The public alert contains no incident
+reason, category, date, strike status, or response text. It never pings an entire
+role or @everyone. A successful DM does not post a channel alert. If both delivery
+methods fail, the outbox retries as usual; the website form remains available.
+The 24-hour deadline still runs from the recorded notice time, including when
+Discord delivery fails. The worker rechecks the current Discord link, active access, incident
+status, and response before sending. It skips resolved or already answered requests.
+The normal workflow migrations do not send DMs for historical strikes; use the one-time reissue below. Explanations and
+incident reasons are never posted to role channels by this feature.
+
+Validation: `node --test tests/officer-strike-notifications.cjs tests/discord-officer-workspace.cjs tests/discord-dispatch.cjs tests/discord.cjs`.
+Run `tests/officer-strike-response-window.sql` only against a disposable empty local database.
+
+### Reissue existing strikes with the new response system
+
+Deploy the updated website/bot with notices-channel configuration and minute cron,
+then apply `supabase/officer-strike-response-reissue.sql` after the response-window
+and Discord migrations, while the Discord worker is idle. It renews every active
+confirmed/pending strike for active officers, across all years, with a fresh
+24-hour deadline starting at migration execution. Dismissed/revoked records and
+disabled accounts are skipped. Reopened incidents do not count as confirmed strikes
+until an unanswered deadline expires or a reviewer decides after a response.
+
+Each linked officer gets a new DM for each incident, using the same notices-channel
+fallback. The message explains that the existing incident was reopened and asks the
+officer to submit or confirm their explanation again. Previous explanation text
+remains available on the website as a draft; the old timestamp and decision remain
+in tracking audit history. Unlinked officers receive the renewed website notice.
+
+The migration reactivates the existing outbox row, even if its previous delivery
+finished or failed. The existing outbox webhook/worker delivers these receipts;
+after applying, invoke the protected `/api/discord/jobs` endpoint to drain them if
+needed. Reapplying the migration does not extend deadlines, reopen later incidents,
+or queue another round of DMs. Rollout counts and start time are recorded in the
+service-only `officer_strike_response_reissues` table. This is a data rollout for
+existing installations; fresh empty databases do not need it.
+
+Verify with `tests/officer-strike-response-reissue.sql` in a disposable local database.
+
+### President notice updates
+
+Apply `supabase/officer-strike-president-updates.sql` after the response-window
+migration, before running the existing-strike reissue. Set
+`DISCORD_CHANNEL_PRESIDENT` to the private president channel ID; the bot needs
+View Channel and Send Messages. `NEXT_PUBLIC_SITE_URL` adds a link to the officer's
+reviewer-only website record. Fresh databases include the functions and trigger
+in `schema.sql`.
+
+The president channel receives officer name/position, update time, and response
+deadline for these events:
+
+- Notice delivered by DM.
+- DM blocked or unavailable, with the notices-channel fallback posted.
+- Both DM and fallback delivery failed.
+- First explanation submitted, whether from the website or Discord.
+
+A delivery error is described as blocked or unavailable because Discord delivery
+can fail for reasons besides a member's DM settings. No incident reason or response
+text is copied to the channel. The officer's notice delivery and the president's
+update have independent outbox jobs: a president-channel delivery failure cannot
+undo an officer response or turn a successful DM into a fallback channel notice.
+Each delivery outcome is queued once per incident/notice window; a changed outcome
+after a retry gets its own update. Response edits do not repeat the received
+notification. Reissuing an incident starts a new window, so its new delivery and
+response produce new updates. Stale delivery outcomes from an earlier window are
+ignored. Network delivery retains the outbox's usual at-least-once behavior.
+
+Verify the database trigger and delivery receipt RPC in
+`tests/officer-strike-president-updates.sql` in a disposable local database only.

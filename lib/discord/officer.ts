@@ -80,11 +80,12 @@ function taskCard(t: any): DiscordMessage {
   return message(`**${t.title}** · ${t.cancelled_at ? 'Cancelled' : t.status}\n${t.description || 'No written goals.'}\nDue: ${t.due_date || 'Not set'}\nParticipants: ${(t.people || []).map((p: any) => p.name).join(', ')}\n${t.individual_peet ? 'Shared deliverable; submit only your personal contribution for your own PEET score.' : 'Personal task.'}\n${t.submission_description ? 'Team / submitted deliverable: ' + t.submission_description : ''}`, components);
 }
 function recordCard(record: any, kind: string, id: string, page: number): DiscordMessage {
-  const fields = ['title', 'details', 'status', 'due_date', 'academic_year', 'incident_date', 'check_in', 'check_out', 'minutes', 'decisions', 'absence_notice', 'reviewer_notes', 'notes', 'review_notes', 'reason', 'officer_response', 'decision_notes', 'advisor_notes', 'description', 'submission_description', 'final_product_url', 'submission_url', 'assessment', 'answers', 'reviewer_assessment', 'reviewer_answers', 'recommendation', 'approved_scores', 'override_reason'];
+  const fields = ['title', 'details', 'status', 'due_date', 'academic_year', 'incident_date', 'response_due_at', 'check_in', 'check_out', 'minutes', 'decisions', 'absence_notice', 'reviewer_notes', 'notes', 'review_notes', 'reason', 'officer_response', 'decision_notes', 'advisor_notes', 'description', 'submission_description', 'final_product_url', 'submission_url', 'assessment', 'answers', 'reviewer_assessment', 'reviewer_answers', 'recommendation', 'approved_scores', 'override_reason'];
   const text = fields.filter(key => record[key] !== undefined && record[key] !== null && record[key] !== '').map(key => `${key.replaceAll('_', ' ')}: ${typeof record[key] === 'object' ? JSON.stringify(record[key], null, 2) : record[key]}`).join('\n');
   const controls: unknown[] = [];
   if (page) controls.push(b('Previous text', `record:${kind}:${id}:${page - 1}`));
   if ((page + 1) * 1500 < text.length) controls.push(b('More text', `record:${kind}:${id}:${page + 1}`));
+  if (kind === 'conduct' && record.status === 'notified' && new Date(record.response_due_at).getTime() > Date.now()) controls.push(b(record.responded_at ? 'Update explanation' : 'Explain your circumstances', `form:strike:${id}`, 1));
   if (kind === 'agenda' && record.can_assign && !record.task_id) controls.push(b('Assign agenda action', `assignagenda:${id}`, 1));
   return message(`**Your ${kind} record**\n${text.slice(page * 1500, (page + 1) * 1500)}`, controls.length ? [row(...controls)] : []);
 }
@@ -193,6 +194,7 @@ export async function officerResponse(i: Interaction, perform: Perform): Promise
   if (verb === 'form' && i.type === 5) {
     const form = id; id = extra; const version = pageText;
     switch (form) {
+      case 'strike': await write('strike_response', { id, response: fields.response }); return message('Your explanation has been shared with authorized reviewers. Your timely explanation keeps the incident pending for reviewer judgment.');
       case 'team': { const saved = await write('team_save', { session: id, ...fields }); return message('Task saved. Each participant gets their own reflection and evaluation.', [row(b('View task', `task:${saved.id}`))]); }
       case 'hours': await write('log_hours', { id, ...fields, check_in: fields.check_in?.trim(), check_out: fields.check_out?.trim() }); return message('Actual service times submitted for reviewer verification. They do not count as verified hours yet.');
       case 'help': await write('task_help', { id, reason: fields.reason, helper: version === '0' ? null : version, resolved: false }); return message('Task help request saved.');

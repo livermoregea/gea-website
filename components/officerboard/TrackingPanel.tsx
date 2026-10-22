@@ -16,7 +16,7 @@ import EventParticipation from "./EventParticipation";
 import styles from "./officerboard.module.css";
 
 type Action = { kind: "event"; event?: OfficerEvent } | { kind: "attendance" | "absence" | "volunteer"; event: OfficerEvent }
-  | { kind: "strike" | "generalNotes" } | { kind: "strikeDecision"; strike: OfficerStrike }
+  | { kind: "strike" | "generalNotes" } | { kind: "strikeDecision" | "strikeResponse"; strike: OfficerStrike }
   | { kind: "volunteerReview"; log: VolunteerLog } | { kind: "removalReview"; review: RemovalReview };
 const attendanceNames = { unmarked: "Not recorded", present: "Present", late: "Late", excused: "Excused absence", unexcused: "Unexcused absence" };
 
@@ -72,7 +72,7 @@ export default function TrackingPanel({ mode, profile, profiles, officerId, data
       }, "Event saved.");
       if (action.kind === "attendance") await mutate("record_officer_attendance", {
         p_event_id: action.event.id, p_officer_id: fields.get("officer"), p_status: fields.get("status"), p_notes: fields.get("notes"),
-      }, "Attendance recorded. Each unexcused absence automatically counts as a strike.");
+      }, "Attendance recorded. The officer has 24 hours to explain each unexcused absence.");
       if (action.kind === "absence") await mutate("notify_officer_absence", { p_event_id: action.event.id, p_notice: fields.get("notes") }, "Your absence notice is available to the executive team.");
       if (action.kind === "volunteer") await mutate("submit_officer_volunteer", {
         p_event_id: action.event.id, p_officer_id: officerId, p_check_in: iso(fields.get("check_in")), p_check_out: iso(fields.get("check_out")), p_notes: fields.get("notes"),
@@ -81,7 +81,8 @@ export default function TrackingPanel({ mode, profile, profiles, officerId, data
       if (action.kind === "strike") await mutate("create_officer_strike", {
         p_officer_id: officerId, p_year: year, p_category: fields.get("category"), p_incident_date: fields.get("incident_date"),
         p_reason: fields.get("notes"), p_response_due_at: null, p_attendance_id: fields.get("attendance") || null,
-      }, "Strike recorded. The officer has been notified in their portal.");
+      }, "Incident recorded. The officer has 24 hours and is prompted to explain their circumstances in their portal and linked Discord account.");
+      if (action.kind === "strikeResponse") await mutate("respond_officer_strike", { p_strike_id: action.strike.id, p_response: fields.get("response") }, "Your explanation has been shared with reviewers.");
       if (action.kind === "generalNotes") await mutate("save_officer_accountability_notes", { p_officer_id: officerId, p_year: year, p_notes: fields.get("notes") }, "General notes saved.");
       if (action.kind === "strikeDecision") await mutate("decide_officer_strike", { p_strike_id: action.strike.id, p_status: fields.get("status"), p_notes: fields.get("notes") }, "Strike decision recorded.");
       if (action.kind === "removalReview") await mutate("decide_officer_removal_review", { p_review_id: action.review.id, p_status: fields.get("status"), p_notes: fields.get("notes") }, "Advisor decision recorded. Leadership membership is not automatically changed.");
@@ -99,7 +100,7 @@ export default function TrackingPanel({ mode, profile, profiles, officerId, data
     <p role="status" className={styles.notice}>{notice || (refreshing ? "Updating records…" : "")}</p>
     {!action && modalError}
     {mode === "attendance" && <>
-      {(!embedded || showMetrics) && <div className={styles.trackingMetrics}><article><h2>Meetings attended</h2><strong>{summary.present}</strong><p>Includes recorded late arrivals</p></article><article><h2>Excused absences</h2><strong>{summary.excused}</strong><p>Reasonably excused by a reviewer</p></article><article><h2>Unexcused absences</h2><strong>{summary.unexcused}</strong><p>Each unexcused absence counts as a strike</p></article></div>}
+      {(!embedded || showMetrics) && <div className={styles.trackingMetrics}><article><h2>Meetings attended</h2><strong>{summary.present}</strong><p>Includes recorded late arrivals</p></article><article><h2>Excused absences</h2><strong>{summary.excused}</strong><p>Reasonably excused by a reviewer</p></article><article><h2>Unexcused absences</h2><strong>{summary.unexcused}</strong><p>24 hours to respond before an automatic strike</p></article></div>}
       <section className={styles.section}><div className={styles.sectionHeading}><div><h2>Leadership meetings</h2><p>Notify the executive team before a meeting when possible; explain emergencies as soon as you reasonably can.</p></div>{admin && <button className={styles.primary} onClick={() => open({ kind: "event" })}>Add meeting</button>}</div>
         {!events.length && <p className={styles.empty}>No meetings recorded for this academic year.</p>}
         {events.map(event => {
@@ -143,13 +144,14 @@ export default function TrackingPanel({ mode, profile, profiles, officerId, data
     </>}
 
     {mode === "accountability" && <>
-      {admin && officerSubject && <div className={styles.sectionHeading}><div><h2>Professionalism &amp; conduct log</h2><p>Record a strike for {officerName(officerId)}. It takes effect immediately and appears in their portal.</p></div><button className={styles.primary} onClick={() => open({ kind: "strike" })}>Log conduct strike</button></div>}
+      {admin && officerSubject && <div className={styles.sectionHeading}><div><h2>Professionalism &amp; conduct log</h2><p>Record a strike for {officerName(officerId)}. The officer has 24 hours to explain through their portal or linked Discord account.</p></div><button className={styles.primary} onClick={() => open({ kind: "strike" })}>Log conduct strike</button></div>}
       {(!embedded || showMetrics) && <div className={styles.trackingMetrics}><article><h2>Attendance strikes</h2><strong>{summary.attendanceStrikes}/3</strong><p>{summary.attendanceStrikes >= 3 ? "Formal review required" : summary.attendanceStrikes === 2 ? "Advisor review stage" : summary.attendanceStrikes === 1 ? "Peer review stage" : "No confirmed strikes"}</p></article><article><h2>Conduct & professionalism</h2><strong>{summary.conductStrikes}/3</strong><p>{summary.conductStrikes >= 3 ? "Formal review required" : summary.conductStrikes === 2 ? "Advisor review stage" : summary.conductStrikes === 1 ? "Peer review stage" : "No confirmed strikes"}</p></article></div>}
-      <p className={styles.warning}>The two categories are independent. Each unexcused absence automatically counts as an attendance strike. Low PEET scores do not automatically issue strikes. Three confirmed strikes in either category initiate formal review; removal requires Academy Advisor approval.</p>
+      <p className={styles.warning}>The two categories are independent. Unexcused absences and conduct incidents allow 24 hours for an explanation. No response means an automatic strike; timely explanations await reviewer judgment. Low PEET scores do not automatically issue strikes. Three confirmed strikes in either category initiate formal review; removal requires Academy Advisor approval.</p>
       <section className={styles.section}><div className={styles.sectionHeading}><h2>General notes</h2>{admin && <button className={styles.secondary} onClick={() => open({kind:"generalNotes"})}>Edit general notes</button>}</div><p className={styles.empty}>{generalNotes?.notes || "No general notes recorded."}</p></section>
-      <section className={styles.section}><div className={styles.sectionHeading}><div><h2>Strike history</h2><p>Strikes take effect when recorded. This history serves as your notification.</p></div></div>
+      <section className={styles.section}><div className={styles.sectionHeading}><div><h2>Strike history</h2><p>Please explain your circumstances within 24 hours of each attendance or conduct notice. Reviewers can use your explanation to correct the record.</p></div></div>
         {!strikes.length && <p className={styles.empty}>No strikes recorded for this academic year.</p>}
-        {strikes.map(strike => <article key={strike.id} className={styles.taskRow}><div className={styles.taskCopy}><span className={styles.badge}>{strike.category === "attendance" ? "Attendance" : "Conduct / professionalism"}</span> <span className={styles.badge}>{strike.status === "notified" ? "Pending review" : strike.status}</span><h3>{schoolDate(strike.incident_date,false)}</h3><p>{strike.reason}</p><p>Notification: {schoolDate(strike.notified_at)}</p>{strike.officer_response && <p><strong>Officer explanation:</strong> {strike.officer_response}</p>}{strike.decision_notes && <p><strong>Review decision:</strong> {strike.decision_notes}</p>}</div><div className={styles.actions}>
+        {strikes.map(strike => <article key={strike.id} className={styles.taskRow}><div className={styles.taskCopy}><span className={styles.badge}>{strike.category === "attendance" ? "Attendance" : "Conduct / professionalism"}</span> <span className={styles.badge}>{strike.status === "notified" ? "Pending review" : strike.status}</span><h3>{schoolDate(strike.incident_date,false)}</h3><p>{strike.reason}</p><p>Notification: {schoolDate(strike.notified_at)}</p>{strike.status === "notified" && <p>Respond by: {schoolDate(strike.response_due_at)} · {strike.responded_at ? "Explanation received; awaiting reviewer judgment." : new Date(strike.response_due_at).getTime() <= Date.now() ? "Response window ended. An unanswered incident becomes a strike automatically." : "No response within 24 hours means an automatic strike."}</p>}{(strike.status === "notified" || strike.responded_at) && <p><strong>{strike.responded_at ? "Explanation submitted" : "Explanation requested"}</strong>{strike.responded_at ? ` · ${schoolDate(strike.responded_at)}` : " · Please share your side of the story."}</p>}{strike.officer_response && <p><strong>Officer explanation:</strong> {strike.officer_response}</p>}{strike.decision_notes && <p><strong>Review decision:</strong> {strike.decision_notes}</p>}</div><div className={styles.actions}>
+          {profile.id === strike.officer_id && strike.status === "notified" && new Date(strike.response_due_at).getTime() > Date.now() && <button className={styles.primary} onClick={() => open({ kind: "strikeResponse", strike })}>{strike.responded_at ? "Update explanation" : "Explain your circumstances"}<span className="sr-only"> for incident {strike.incident_date}</span></button>}
           {admin && ["notified","confirmed"].includes(strike.status) && <button className={styles.secondary} onClick={() => open({ kind: "strikeDecision", strike })}>{strike.status === "confirmed" ? "Revoke strike" : "Review concern"}<span className="sr-only"> for incident {strike.incident_date}</span></button>}
         </div></article>)}
       </section>
@@ -170,7 +172,7 @@ export default function TrackingPanel({ mode, profile, profiles, officerId, data
           <h2 className={styles.modalTitle}>Record attendance</h2><p>{action.event.title}</p>
           {embedded ? <><input type="hidden" name="officer" value={officerId} /><p>Recording for {officerName(officerId)}</p></> : <label>Officer<select name="officer" defaultValue={officerId}>{leadershipRoster.map(person=><option value={person.id} key={person.id}>{person.name}</option>)}</select></label>}
           <label>Attendance status<select name="status" defaultValue={attendanceFor(action.event)?.status ?? "unmarked"}>{Object.entries(attendanceNames).map(([value,label])=><option value={value} key={value}>{label}</option>)}</select></label>
-          <label>Reviewer notes<textarea name="notes" rows={3} maxLength={10000} defaultValue={attendanceFor(action.event)?.reviewer_notes} /></label><p>Saving an unexcused absence automatically issues an attendance strike.</p>
+          <label>Reviewer notes<textarea name="notes" rows={3} maxLength={10000} defaultValue={attendanceFor(action.event)?.reviewer_notes} /></label><p>Saving an unexcused absence starts a 24-hour response window. No response means an automatic strike.</p>
         </>}
         {action.kind === "absence" && <><h2 className={styles.modalTitle}>Explain an absence</h2><p>{action.event.title}. This notice does not automatically excuse an absence. The executive team will review your circumstances.</p><label>Absence notice<textarea name="notes" required rows={4} maxLength={10000} defaultValue={attendanceFor(action.event)?.absence_notice} /></label></>}
         {action.kind === "volunteer" && <>
@@ -179,16 +181,22 @@ export default function TrackingPanel({ mode, profile, profiles, officerId, data
         </>}
         {action.kind === "volunteerReview" && <><h2 className={styles.modalTitle}>Verify volunteer service</h2><p>{officerName(action.log.officer_id)} · {eventFor(action.log.event_id)?.title}</p>{logDetails(action.log)}<label>Verification decision<select name="status" defaultValue="approved"><option value="approved">Approve service</option><option value="rejected">Return for correction</option></select></label><label>Review notes<textarea name="notes" rows={4} maxLength={10000} defaultValue={action.log.review_notes} /></label><p>Only verified time at GEA-approved events counts toward the two-event requirement.</p></>}
         {action.kind === "strike" && <>
-          <h2 className={styles.modalTitle}>Record a strike</h2><p>{officerName(officerId)} · {year}. This strike takes effect immediately and notifies the officer in their portal.</p>
+          <h2 className={styles.modalTitle}>Record a strike</h2><p>{officerName(officerId)} · {year}. The officer has 24 hours to explain before an unanswered incident becomes a strike.</p>
           <label>Category<select name="category" defaultValue="conduct"><option value="attendance">Attendance</option><option value="conduct">Leadership conduct & professionalism</option></select></label>
           <label>Incident date<input name="incident_date" type="date" required /></label>
           <label>Linked unexcused absence (optional for historical records)<select name="attendance" defaultValue=""><option value="">No linked record</option>{data.attendance.filter(row=>row.officer_id===officerId&&row.status==='unexcused'&&!eventFor(row.event_id)?.cancelled&&eventFor(row.event_id)?.academic_year===year&&!data.strikes.some(strike=>strike.attendance_id===row.id&&['notified','confirmed'].includes(strike.status))).map(row=><option value={row.id} key={row.id}>{eventFor(row.event_id)?.title}</option>)}</select></label>
           <label>Reason for the strike<textarea name="notes" required minLength={10} rows={4} maxLength={10000} /></label>
-          <p>The strike appears in the officer’s portal as a notification. No response is required or accepted.</p>
+          <p>The incident appears in the officer’s portal with a 24-hour response deadline. The officer is asked to explain their circumstances on the website or through a private Discord form.</p>
         </>}
         {action.kind === "generalNotes" && <><h2 className={styles.modalTitle}>General accountability notes</h2><p>These notes are visible to this officer and designated reviewers.</p><label>General notes<textarea name="notes" rows={5} maxLength={10000} defaultValue={generalNotes?.notes} /></label></>}
+        {action.kind === "strikeResponse" && <>
+          <h2 className={styles.modalTitle}>Explain your circumstances</h2><p>{action.strike.reason}</p><p>Respond by: {schoolDate(action.strike.response_due_at)}</p>
+          <p>Share your side of the story, including any circumstances reviewers should consider. Your explanation is shared with authorized reviewers.</p>
+          <label>Your explanation<textarea name="response" required minLength={10} maxLength={10000} rows={6} defaultValue={action.strike.officer_response} /></label>
+          <p>An explanation submitted within 24 hours keeps the incident pending for reviewer judgment.</p>
+        </>}
         {action.kind === "strikeDecision" && <>
-          <h2 className={styles.modalTitle}>Review strike</h2><p>{action.strike.reason}</p><p>Officer explanation: {action.strike.officer_response || "No historical explanation on file."}</p>
+          <h2 className={styles.modalTitle}>Review strike</h2><p>{action.strike.reason}</p><p>Officer explanation: {action.strike.officer_response || "Awaiting the officer’s explanation."}</p>
           <label>Decision<select name="status" defaultValue={action.strike.status === "confirmed" ? "revoked" : "dismissed"}>{action.strike.status === "confirmed" ? <option value="revoked">Revoke confirmed strike</option> : <><option value="dismissed">Dismiss concern</option><option value="confirmed">Confirm strike after individual review</option></>}</select></label>
           <label>Decision and review notes<textarea name="notes" required minLength={10} rows={4} maxLength={10000} /></label>
           <p>Document the reason for any correction to the strike record.</p>

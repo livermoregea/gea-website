@@ -60,7 +60,7 @@ do not create destructive test records in the live academy data.
 - [ ] **Profile requests:** submit a change, see Pending review immediately and after refresh, approve/reject it as admin, and check the member sees the result. A connection failure preserves entered values and permits retry.
 - [ ] **Task permissions:** an assigned task is editable by its assigner, not its assignee or an unrelated reviewer. A self-created task allows only description changes and a date within three days of its original deadline; repeated edits cannot extend that window. Submitted self-created tasks and closed tasks remain locked.
 - [ ] **Submission and PEET:** submit description-only, link-only, and combined work. Empty work is rejected. Review the evidence and score 3/3/3: the total is 85, meets expectations, and uses the good-score mint color. Confirm history survives refresh. Test cancellation with independent review using sample records.
-- [ ] **Attendance and meetings:** create a sample meeting, record and save attendance, switch meetings and return, and reload. On a phone, confirm each officer card offers all statuses and notes without sideways scrolling, and that the fixed Save bar stays usable with the keyboard and larger text. Resize to desktop and back with unsaved edits; choices and notes must remain. Verify unsaved changes are protected when leaving by a workspace link or signing out. Check partial-save failures retain unsaved rows. Recording an absence must not automatically issue a strike.
+- [ ] **Attendance and meetings:** create a sample meeting, record and save attendance, switch meetings and return, and reload. On a phone, confirm each officer card offers all statuses and notes without sideways scrolling, and that the fixed Save bar stays usable with the keyboard and larger text. Resize to desktop and back with unsaved edits; choices and notes must remain. Verify unsaved changes are protected when leaving by a workspace link or signing out. Check partial-save failures retain unsaved rows. Recording an unexcused absence requests an explanation within 24 hours; unanswered incidents automatically become strikes at expiry. Repeated saves must not duplicate the strike or request.
 - [ ] **Volunteer and accountability:** log actual service times, approve/return a log, and check verified totals. Exercise a concern, officer response, and reviewer decision. Attendance and conduct counts remain separate. Only authorized reviewers/advisors can make the corresponding decisions.
 - [ ] **Admin operations:** use sample records to confirm account creation/access editing, teacher invitations, student management, profile reviews, interview slots, leadership changes, and announcement controls. If archiving is used, verify an export before testing its clearing action in the preview.
 - [ ] **Device/accessibility:** inspect home, forum, workspace, task modal, and roster at phone and desktop widths and 200% text size. Use keyboard navigation and a screen reader. Confirm dialog opening/closing focus, errors, table scrolling, reduced motion, and no clipped or covered actions.
@@ -82,3 +82,22 @@ See [the current admin and AI release review](admin-ai-release-review.md) for th
 249-test result, isolated production build, dependency security fixes, disposable
 PEET database fixture, live synthetic provider check, and remaining authenticated
 browser and deployment gates. The earlier results above are historical.
+
+## Attendance and conduct explanations
+
+Apply `supabase/officer-strike-responses.sql` after the strike-notification migration
+(and the Discord workspace migrations if using the bot), then deploy. Verify a new
+unexcused absence and conduct strike each show an unanswered request on the member's
+website and send one private Discord form to a linked member. Submit from either
+surface, refresh the other, and confirm reviewers see the explanation. Test a
+revoked strike, a disabled member, an unlinked member, and blocked Discord DMs;
+the website form must remain available for active members. No production migration
+or live Discord messages are sent by the local verification tests.
+
+Apply `supabase/officer-strike-response-window.sql` last and deploy the minute cron
+in `vercel.json` with `CRON_SECRET` and `SUPABASE_SERVICE_ROLE_KEY`. Check that
+website and Discord show the same deadline, a timely reply remains pending for
+review, a late reply is rejected, and a timed-out incident becomes a strike on the
+next scheduler tick. `tests/officer-strike-response-window.sql` verifies the
+boundary rules, repeated processing, permissions, corrected absences, and the
+third-strike advisor review in a disposable local database.

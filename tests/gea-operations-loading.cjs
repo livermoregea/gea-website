@@ -1,7 +1,7 @@
 const {test}=require('node:test');const assert=require('node:assert/strict');const vm=require('node:vm');const fs=require('node:fs');const ts=require('typescript');
-function harness({builders=false,missing='builder_submissions'}={}){
+function harness({builders=false,missing='builder_submissions',concerns=[]}={}){
  const requested=[];
- const query=(source,rpc=false)=>{const q={select(){return this;},order(){return this;},range(){return this;},eq(){return this;},maybeSingle(){return this;},then(resolve){const error=source===missing?{code:'PGRST205',message:`Missing ${source}`} : null;const data=rpc&&['is_peet_admin','can_manage_meetings'].includes(source)?true:source==='gea_digest_preferences'?null:[];resolve({data,error});}};requested.push(source);return q;};
+ const query=(source,rpc=false)=>{const q={select(){return this;},order(){return this;},range(){return this;},eq(){return this;},in(){return this;},is(){return this;},maybeSingle(){return this;},then(resolve){const error=source===missing?{code:'PGRST205',message:`Missing ${source}`} : null;const data=rpc&&['is_peet_admin','can_manage_meetings'].includes(source)?true:source==='gea_digest_preferences'?null:source==='officer_strikes'?concerns:[];resolve({data,error});}};requested.push(source);return q;};
  const exports={};
  const deps={'./officer-workspace-navigation':{officerWorkspaceHref:staff=>staff?'/admin-portal-x7k9/officers':'/officerboard',legacyPlanningHref:()=>'/officerboard?view=overview'},'./account-landing':{accountMemberships:async()=>({isAdmin:true,isTeacher:false,isOfficer:true})},'./site-features':{BUILDERS_ENABLED:builders},'./gea-operations':{taskAttention:()=>[]},'./officer-tracking':{schoolToday:()=> '2026-10-16'}};
  vm.runInNewContext(ts.transpileModule(fs.readFileSync('lib/gea-operations-data.ts','utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2020}}).outputText,{exports,require:name=>deps[name]??{},Date,Intl,Set,URLSearchParams});
@@ -30,4 +30,11 @@ test('Pending service updates link to Volunteer service with the matching event 
  assert.equal(target.pathname,'/admin-portal-x7k9/officers');
  assert.equal(target.searchParams.get('view'),'volunteer');
  assert.equal(target.searchParams.get('event'),'club-rush');
+});
+
+test('Unanswered strike requests link to the explanation workspace with the response deadline',async()=>{
+ const h=harness({concerns:[{id:'incident',officer_id:'me',response_due_at:'2000-01-01'}]});
+ const data=await h.load();const item=data.attention.find(item=>item.key==='concern:incident');
+ assert.equal(item.category,'Response');assert.match(item.detail,/within 24 hours/);
+ assert.equal(item.date,'2000-01-01');assert.match(item.href,/topic=accountability/);
 });

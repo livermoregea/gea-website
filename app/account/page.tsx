@@ -51,11 +51,12 @@ export default async function AccountHomePage({ searchParams }: { searchParams: 
         <span className={styles.action}>{destination.action}<span aria-hidden="true">↗</span></span>
       </Link>)}
     </nav>
+    {discord === 'officer-only' && <p role="status">Discord connections are available only to active officers. If you should have officer access, contact an advisor.</p>}
     {discord === 'link-required' && <p role="status">This Discord login is not linked to an active officer record. Sign out, sign in with your original school account, then choose Connect Discord. If you have not signed up yet, complete your officer signup first.</p>}
     {discord === 'already-linked' && commandsReady && <p role="status">Discord is already linked to your GEA One account. Your officer connection has been synced; try /score in Discord.</p>}
     {discord === 'sync-failed' && <p role="status">Discord is linked to your login, but officer access could not be synced. Try checking the connection again, or contact an advisor.</p>}
     {discord === 'linked-elsewhere' && <p role="status">That Discord identity is already linked, but it is not attached to your current GEA One login. Sign in to the GEA One account you originally linked, or ask an advisor to help resolve the account connection.</p>}
-    {membership.isOfficer && <DiscordConnect signedIn linked={identityLinked} commandsReady={commandsReady} />}
+    {membership.isOfficer && <DiscordConnect officer signedIn linked={identityLinked} commandsReady={commandsReady} />}
     <div className={styles.settings}>
       <div><p>Your account</p><span>Personal details &amp; profile changes</span></div>
       <Link href="/profile">Profile &amp; settings <span aria-hidden="true">→</span></Link>

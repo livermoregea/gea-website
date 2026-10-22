@@ -55,7 +55,9 @@ export async function handleInteraction(i: Interaction) {
   const discordId = actorId(i);
   const me = await action(discordId, 'me');
   const officerMessage = await officerResponse(i, async (name, args = {}, interactionKey) => {
-    const { data, error } = await createAdminClient().rpc('discord_officer_action', { p_discord_id: discordId, p_action: name, p_args: args, p_key: interactionKey || null });
+    const { data, error } = name === 'strike_response'
+      ? await createAdminClient().rpc('discord_strike_response', { p_discord_id: discordId, p_strike_id: args.id, p_response: args.response, p_key: interactionKey })
+      : await createAdminClient().rpc('discord_officer_action', { p_discord_id: discordId, p_action: name, p_args: args, p_key: interactionKey || null });
     if (error && ['P0001', '22007', '22008', '22001', '22P02', '23514'].includes(error.code)) throw new DiscordInputError(error.code === 'P0001' ? error.message : 'Check the dates, field lengths, and selections. Your submitted text is saved; use Edit submitted form to correct it.');
     if (error) throw Object.assign(new Error('Officer workspace operation failed.'), { code: error.code, operation: name });
     return data;

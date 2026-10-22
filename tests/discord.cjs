@@ -89,7 +89,7 @@ test('draft reads are scoped to the signed Discord user and exact form; stale sa
   await assert.rejects(service.handleInteraction(form), /newer form was submitted/);
 });
 test('cron secret is fail-closed and uses an exact bearer token', () => {
-  const dependencies = { '@/lib/supabase/admin': {}, '@/lib/discord': {}, './service': {}, './protocol': protocol, './failures': load('lib/discord/failures.ts'), './task-routing': {}, './attendance-routing': {}, './service-routing': {} };
+  const dependencies = { '@/lib/supabase/admin': {}, '@/lib/discord': {}, './service': {}, './protocol': protocol, './failures': load('lib/discord/failures.ts'), './task-routing': {}, './attendance-routing': {}, './president-notices': {}, './strike-routing': {}, './service-routing': {} };
   const worker = load('lib/discord/worker.ts', dependencies, { CRON_SECRET: 'expected' });
   for (const value of ['', 'Bearer wrong', 'expected']) assert.equal(worker.cronAuthorized(new Request('https://gea.test', { headers: { authorization: value } })), false);
   assert.equal(worker.cronAuthorized(new Request('https://gea.test', { headers: { authorization: 'Bearer expected' } })), true);
@@ -337,7 +337,7 @@ test('secretary overview is opt-in, role receipts are independent, and legacy DM
     const worker = load('lib/discord/worker.ts', {
       '@/lib/supabase/admin': { createAdminClient: () => db }, '@/lib/discord': { sendDiscordEmbed: async topic => sent.push(topic) },
       './service': { DiscordInputError: InputError }, './protocol': protocol, './failures': load('lib/discord/failures.ts'), './task-routing': {},
-      './service-routing': {}, './attendance-routing': { sendAttendanceNotification: async () => { sent.push('officer'); throw new Error('Role channel blocked'); } },
+      './president-notices': {}, './strike-routing': {}, './service-routing': {}, './attendance-routing': { sendAttendanceNotification: async () => { sent.push('officer'); throw new Error('Role channel blocked'); } },
     }, { DISCORD_ATTENDANCE_OVERVIEW: String(enabled) });
     const result = await worker.runDiscordJobs();
     assert.equal(result.completed, 2);

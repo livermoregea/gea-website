@@ -47,7 +47,7 @@ test('a Discord assignment sends the notification it creates without a second co
   class InputError extends Error {}
   const worker = load('lib/discord/worker.ts', {
     '@/lib/supabase/admin': { createAdminClient: () => db }, '@/lib/discord': {}, './protocol': protocol,
-    './failures': load('lib/discord/failures.ts', {}), './attendance-routing': {}, './service-routing': {},
+    './failures': load('lib/discord/failures.ts', {}), './attendance-routing': {}, './president-notices': {}, './strike-routing': {}, './service-routing': {},
     './service': { DiscordInputError: InputError, handleInteraction: async () => queue.push({ id: 'notification', kind: 'notification', payload: { topic: 'tasks', title: 'Assigned task' } }) },
     './task-routing': { sendTaskNotification: async payload => sent.push(payload) },
   });
@@ -86,7 +86,7 @@ function rollCallWorker(batchDuration = 0) {
   class InputError extends Error {}
   const worker = load('lib/discord/worker.ts', {
     '@/lib/supabase/admin': { createAdminClient: () => db }, '@/lib/discord': { sendDiscordEmbed: async (_topic, message) => overviews.push(message) },
-    './protocol': load('lib/discord/protocol.ts', {}), './failures': load('lib/discord/failures.ts', {}), './task-routing': {}, './service-routing': {},
+    './protocol': load('lib/discord/protocol.ts', {}), './failures': load('lib/discord/failures.ts', {}), './task-routing': {}, './president-notices': {}, './strike-routing': {}, './service-routing': {},
     './service': { DiscordInputError: InputError }, './attendance-routing': { sendAttendanceNotification: async message => receipts.push(message) },
   }, { Date: Clock, process: { env: { DISCORD_ATTENDANCE_OVERVIEW: 'true' } } });
   return { worker, queue, receipts, overviews, finished };
@@ -109,4 +109,53 @@ test('draining a large attendance queue still stops starting batches when its ti
   assert.equal(result.claimed, 10);
   assert.equal(result.completed, 10);
   assert.equal(r.queue.length, 12);
+});
+
+test('strike requests are delivered through the durable worker', async () => {
+ const payload = { topic: 'strike_response', strike_id: 'incident', officer_id: 'officer' };
+ const queue = [{ id: 'strike-response:incident', kind: 'notification', attempts: 1, payload }];
+ const sent = [], finished = [];
+ const db = { rpc: async () => ({ data: queue.splice(0, 5) }), from: () => ({ update: values => ({ eq: async (_key, id) => { finished.push({ id, values }); return {}; } }) }) };
+ const worker = load('lib/discord/worker.ts', {
+  '@/lib/supabase/admin': { createAdminClient: () => db }, '@/lib/discord': {}, './protocol': load('lib/discord/protocol.ts', {}),
+  './failures': load('lib/discord/failures.ts', {}), './attendance-routing': {}, './service-routing': {}, './task-routing': {},
+  './service': { DiscordInputError: class extends Error {} }, './president-notices': {}, './strike-routing': { sendStrikeResponseRequest: async value => sent.push(value) },
+ });
+ const result = await worker.runDiscordJobs();
+ assert.equal(result.completed, 1); assert.equal(sent[0], payload);
+ assert.ok(finished[0].values.finished_at);
+});
+
+test('The scheduled deadline endpoint authenticates before running timeouts and reports failures', async () => {
+ for (const [authorized, fail, status] of [[false, false, 401], [true, false, 200], [true, true, 503]]) {
+  const calls = [];
+  const api = load('app/api/accountability/expire/route.ts', {
+   'next/server': { NextResponse: { json: Response.json } },
+   '@/lib/discord/worker': { cronAuthorized: () => authorized },
+   '@/lib/supabase/admin': { createAdminClient: () => ({ rpc: async name => { calls.push(name); return { data: 2, error: fail ? {} : null }; } }) },
+  });
+  const result = await api.GET(new Request('https://gea.test/api/accountability/expire'));
+  assert.equal(result.status, status); assert.equal(calls.length, authorized ? 1 : 0);
+  if (status === 200) assert.equal((await result.json()).confirmed, 2);
+ }
+ const config = JSON.parse(fs.readFileSync('vercel.json', 'utf8'));
+ assert.ok(config.crons.some(job => job.path === '/api/accountability/expire' && job.schedule === '* * * * *'));
+});
+
+test('president status delivery fails independently of officer notice delivery', async () => {
+ const queue = [
+  { id: 'officer-notice', kind: 'notification', attempts: 1, payload: { topic: 'strike_response' } },
+  { id: 'president-update', kind: 'notification', attempts: 1, payload: { topic: 'strike_president' } },
+ ];
+ const finished = [], db = { rpc: async () => ({ data: queue.splice(0, 5) }), from: () => ({ update: values => ({ eq: async (_key, id) => { finished.push({ id, values }); return {}; } }) }) };
+ const worker = load('lib/discord/worker.ts', {
+  '@/lib/supabase/admin': { createAdminClient: () => db }, '@/lib/discord': {}, './protocol': load('lib/discord/protocol.ts', {}), './failures': load('lib/discord/failures.ts', {}),
+  './service': { DiscordInputError: class extends Error {} }, './task-routing': {}, './service-routing': {}, './attendance-routing': {},
+  './strike-routing': { sendStrikeResponseRequest: async () => {} }, './president-notices': { sendPresidentNoticeUpdate: async () => { throw new Error('President channel unavailable'); } },
+ });
+ const result = await worker.runDiscordJobs();
+ assert.equal(result.completed, 1);
+ assert.ok(finished.find(item => item.id === 'officer-notice').values.finished_at);
+ const retry = finished.find(item => item.id === 'president-update').values;
+ assert.equal(retry.finished_at, undefined); assert.equal(retry.failed, false); assert.ok(retry.available_at);
 });

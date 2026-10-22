@@ -21,7 +21,7 @@ Staff without active officer access can read their academy updates through `/ope
 
 Document sharing access is managed in Google Docs. Saving a link does not change Google sharing permissions.
 
-The secretary's roll call returns only officer names, positions, and attendance statuses. It never reveals absence notices, reviewer notes, evaluations, strikes, or audit history. Saves preserve existing private reviewer notes. A disabled officer loses access immediately. Attendance never generates a strike automatically. Existing rules about future attendance and corrections linked to confirmed strikes still apply.
+The secretary's roll call returns only officer names, positions, and attendance statuses. It never reveals absence notices, reviewer notes, evaluations, strikes, or audit history. Saves preserve existing private reviewer notes. A disabled officer loses access immediately. Each unexcused absence starts a 24-hour explanation window after applying the strike response window migrations. Existing rules about future attendance and corrections linked to confirmed strikes still apply.
 
 Attendance saves are atomic for the submitted batch and reject stale statuses. Meeting notes and event plans use version checks to prevent overwriting another editor. Operational edits enter the existing reviewer-only audit log. New tables have RLS; browsers write only through permission-checked RPCs.
 
@@ -92,4 +92,4 @@ Meetings and events also have a short description directly in GEA One. Reviewers
 
 ### Professionalism and conduct logging
 
-Reviewers can open **More → Conduct & strikes**, select an officer, and choose **Log conduct concern**. The form defaults to **Leadership conduct & professionalism**; attendance concerns remain a separate category. Concerns are stored in the existing `officer_strikes` table and use the existing response and confirmation process. Logging a concern does not immediately confirm a strike. Ordinary officers use **More → Concerns & notes** to read their own concerns and respond. No new SQL migration is needed for this navigation change.
+Reviewers can open **More → Conduct & strikes**, select an officer, and choose **Log conduct strike**. Attendance and conduct remain separate categories. Incidents stay pending during a 24-hour response window; unanswered incidents automatically become strikes after it ends. Apply `supabase/officer-strike-responses.sql` and then `supabase/officer-strike-response-window.sql` after `officer-strike-notifications.sql` to let officers explain their circumstances from **Concerns & notes** or the bot's private Discord form. Unanswered active incidents appear in the officer's attention list. Reviewers see the explanation alongside the incident and can revoke a strike after reviewing it. A timely response keeps the incident pending for reviewer judgment. See [Discord setup and delivery behavior](discord.md#attendance-and-conduct-explanations).

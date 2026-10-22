@@ -6,6 +6,8 @@ import { discordFailureCode, discordFailureMessage } from './failures';
 import { timingSafeEqual } from 'node:crypto';
 import { sendTaskNotification } from './task-routing';
 import { sendAttendanceNotification } from './attendance-routing';
+import { sendPresidentNoticeUpdate } from './president-notices';
+import { sendStrikeResponseRequest } from './strike-routing';
 import { sendServiceNotification } from './service-routing';
 export function cronAuthorized(request: Request) {
   const secret = process.env.CRON_SECRET;
@@ -43,7 +45,9 @@ async function runDiscordBatch() {
     let terminal = false;
     try {
       if (job.kind === 'notification') {
-        if (job.payload.topic === 'tasks') await sendTaskNotification(job.payload);
+        if (job.payload.topic === 'strike_response') await sendStrikeResponseRequest(job.payload);
+        else if (job.payload.topic === 'strike_president') await sendPresidentNoticeUpdate(job.payload);
+        else if (job.payload.topic === 'tasks') await sendTaskNotification(job.payload);
         else if (['service_receipt', 'service_review', 'event_request', 'event_assignment', 'workflow_review'].includes(job.payload.topic)) await sendServiceNotification(job.payload);
         else if (job.payload.topic === 'attendance_receipt') {
           // Retire older private-DM jobs; new receipts target position channels.

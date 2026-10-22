@@ -3,7 +3,6 @@ import type { Metadata } from "next";
 import GEAOneBadge from "@/components/GEAOneBadge";
 import { redirect } from "next/navigation";
 import StudentAuthForm from "@/components/StudentAuthForm";
-import DiscordConnect from "@/components/DiscordConnect";
 import { createClient } from "@/lib/supabase/server";
 import { hasSupabaseConfig } from "@/lib/supabase/config";
 import { accountLanding } from "@/lib/account-landing";
@@ -35,12 +34,12 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
           {demoMode ? "GEA One preview" : "Your GEA One account"}
         </h1>
         <div id="student-account" className="mt-6 scroll-mt-28">
-          {discord && <p role="status" className="mb-4 text-sm text-graphite">{discord === 'identity-already-linked' ? 'This Discord identity is already linked. Sign in to the GEA One account you originally connected, then check your Discord connection from Account Home.' : 'Discord sign-in could not finish. Sign in with your existing GEA One account and connect Discord from Account Home, or contact an advisor if Discord setup is incomplete.'}</p>}
+          {discord && <p role="status" className="mb-4 text-sm text-graphite">{discord === 'officer-sign-in' ? 'Discord connections are for active officers only. Sign in with your GEA One account first, then connect Discord from Account Home.' : discord === 'identity-already-linked' ? 'This Discord identity is already linked. Sign in to the GEA One account you originally connected, then check your Discord connection from Account Home.' : 'Discord sign-in could not finish. Sign in with your existing GEA One account and connect Discord from Account Home, or contact an advisor if Discord setup is incomplete.'}</p>}
           {demoMode
             ? <p className="text-center text-sm text-graphite/80">Sign-in is unavailable in this preview.</p>
             : <StudentAuthForm key={initialMode} redirectTo={destination ?? "/account/redirect"} initialMode={initialMode} />}
         </div>
-        {!demoMode && <DiscordConnect />}
+        {!demoMode && <p className="mt-5 text-sm text-graphite/75">Officers can connect Discord from Account Home after signing in with their GEA One account.</p>}
         <div className="mt-5 text-center"><Link href="/contact" className="inline-flex min-h-11 items-center text-sm text-forest underline underline-offset-4">Need help signing in?</Link></div>
       </section>
     </div>

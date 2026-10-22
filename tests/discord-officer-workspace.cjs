@@ -116,3 +116,124 @@ test('verified-hour receipts use the officer role channel, exact verified durati
   assert.equal(sent[2].path, 'channels/333333333333333333/messages');
   assert.match(sent[2].body.components[0].components[0].custom_id, /reviewlog/);
 });
+
+test('conduct records open a private response form and submit only the incident and explanation', async () => {
+ const result = await officer.officerResponse(custom(`record:conduct:${uuid}:0`), async () => ({ status: 'notified', response_due_at: '2099-01-01', reason: 'Incident details' }));
+ const control = allControls(result).find(c => c.label === 'Explain your circumstances');
+ assert.ok(control);
+ const modal = protocol.modalResponse({ ...base, type: 3, data: { custom_id: control.custom_id } });
+ assert.equal(modal.type, 9); assert.equal(modal.data.components[0].components[0].required, true);
+ assert.ok(modal.data.components[0].components[0].max_length <= 4000);
+ let called;
+ const receipt = await officer.officerResponse({ ...base, type: 5, data: { custom_id: control.custom_id, components: [{ components: [{ custom_id: 'response', value: 'There was a family emergency.' }] }] } }, async (...args) => { called = args; });
+ assert.equal(called[0], 'strike_response'); assert.equal(called[1].id, uuid);
+ assert.equal(called[1].response, 'There was a family emergency.');
+ assert.equal(called[2], 'interaction:strike_response');
+ assert.match(receipt.content, /authorized reviewers/);
+ const resolved = await officer.officerResponse(custom(`record:conduct:${uuid}:0`), async () => ({ status: 'revoked' }));
+ assert.equal(allControls(resolved).length, 0);
+});
+test('strike response notifications use the current private Discord link and skip completed or disabled recipients', async () => {
+ let strike = { id: uuid, officer_id: 'officer', category: 'conduct', status: 'notified', response_due_at: '2099-01-01', incident_date: '2026-10-22' };
+ let profile = { discord_id: '111111111111111111', access_enabled: true }; const sent = [];
+ const db = { rpc: async () => ({}), from(table) { return { select() { return this; }, eq() { return this; }, async maybeSingle() { return { data: table === 'officer_strikes' ? strike : profile }; } }; } };
+ const routing = load('lib/discord/strike-routing.ts', { '@/lib/supabase/admin': { createAdminClient: () => db }, '@/lib/discord': { discordDM: async (...args) => sent.push(args) }, './protocol': protocol });
+ await routing.sendStrikeResponseRequest({ strike_id: uuid, officer_id: 'officer' });
+ assert.equal(sent.length, 1); assert.equal(sent[0][0], profile.discord_id);
+ assert.match(sent[0][1].content, /No response within 24 hours means an automatic strike/);
+ assert.match(sent[0][1].content, /<t:/);
+ assert.ok(allControls(sent[0][1]).some(c => c.custom_id === `officer:form:strike:${uuid}`));
+ strike.responded_at = 'today'; await routing.sendStrikeResponseRequest({ strike_id: uuid, officer_id: 'officer' });
+ delete strike.responded_at; profile.access_enabled = false; await routing.sendStrikeResponseRequest({ strike_id: uuid, officer_id: 'officer' });
+ profile.access_enabled = true; strike.status = 'revoked'; await routing.sendStrikeResponseRequest({ strike_id: uuid, officer_id: 'officer' });
+ assert.equal(sent.length, 1);
+});
+
+test('Discord closes expired response forms even before the timeout worker confirms the strike', async () => {
+ const expired = await officer.officerResponse(custom(`record:conduct:${uuid}:0`), async () => ({ status: 'notified', response_due_at: '2000-01-01' }));
+ assert.equal(allControls(expired).length, 0);
+});
+
+test('failed DMs fall back to a generic notices-channel alert that mentions only the officer', async () => {
+ const strike = { id: uuid, officer_id: 'officer', category: 'conduct', status: 'notified', response_due_at: '2099-01-01', incident_date: '2026-10-22', reason: 'Private incident reason' };
+ const profile = { discord_id: '111111111111111111', access_enabled: true };
+ const db = { rpc: async () => ({}), from(table) { return { select() { return this; }, eq() { return this; }, async maybeSingle() { return { data: table === 'officer_strikes' ? strike : profile }; } }; } };
+ const sent = [];
+ const routing = load('lib/discord/strike-routing.ts', {
+  '@/lib/supabase/admin': { createAdminClient: () => db }, './protocol': protocol,
+  '@/lib/discord': { discordDM: async () => { throw new Error('DM blocked'); }, discordFetch: async (path, body) => sent.push({ path, body }) },
+ }, { DISCORD_NOTICES_CHANNEL_ID: '222222222222222222', NEXT_PUBLIC_SITE_URL: 'https://gea.example' });
+ await routing.sendStrikeResponseRequest({ strike_id: uuid, officer_id: 'officer' });
+ assert.equal(sent.length, 1); assert.equal(sent[0].path, 'channels/222222222222222222/messages');
+ assert.equal(sent[0].body.content, '<@111111111111111111>, please check the GEA website for a notice.');
+ assert.deepEqual(Array.from(sent[0].body.allowed_mentions.users), [profile.discord_id]);
+ assert.equal(sent[0].body.allowed_mentions.parse.length, 0); assert.equal(sent[0].body.allowed_mentions.roles.length, 0);
+ const link = allControls(sent[0].body)[0];
+ assert.equal(link.style, 5); assert.equal(link.url, 'https://gea.example/officerboard?topic=accountability');
+ const message = JSON.stringify(sent[0].body);
+ for (const privateText of [strike.reason, strike.id, strike.category, strike.incident_date, strike.response_due_at]) assert.equal(message.includes(privateText), false);
+});
+test('missing notices configuration or failed fallback delivery leaves the request retryable', async () => {
+ const strike = { id: uuid, officer_id: 'officer', status: 'notified', response_due_at: '2099-01-01' };
+ const db = { rpc: async () => ({}), from(table) { return { select() { return this; }, eq() { return this; }, async maybeSingle() { return { data: table === 'officer_strikes' ? strike : { discord_id: '111111111111111111', access_enabled: true } }; } }; } };
+ for (const env of [{}, { DISCORD_NOTICES_CHANNEL_ID: 'bad' }, { DISCORD_NOTICES_CHANNEL_ID: '222222222222222222' }]) {
+  const routing = load('lib/discord/strike-routing.ts', {
+   '@/lib/supabase/admin': { createAdminClient: () => db }, './protocol': protocol,
+   '@/lib/discord': { discordDM: async () => { throw new Error('DM blocked'); }, discordFetch: async () => { throw new Error('Channel delivery failed'); } },
+  }, env);
+  await assert.rejects(routing.sendStrikeResponseRequest({ strike_id: uuid, officer_id: 'officer' }));
+ }
+});
+
+test('reissued existing strikes explain the renewed response opportunity in the new DM', async () => {
+ const strike = { id: uuid, officer_id: 'officer', category: 'attendance', status: 'notified', response_due_at: '2099-01-01', incident_date: '2026-10-22' };
+ const db = { rpc: async () => ({}), from(table) { return { select() { return this; }, eq() { return this; }, async maybeSingle() { return { data: table === 'officer_strikes' ? strike : { discord_id: '111111111111111111', access_enabled: true } }; } }; } };
+ const sent = [];
+ const routing = load('lib/discord/strike-routing.ts', { '@/lib/supabase/admin': { createAdminClient: () => db }, './protocol': protocol, '@/lib/discord': { discordDM: async (...args) => sent.push(args) } });
+ await routing.sendStrikeResponseRequest({ strike_id: uuid, officer_id: 'officer', reissued: true });
+ assert.equal(sent.length, 1);
+ assert.match(sent[0][1].content, /existing incident has been reopened/);
+ assert.match(sent[0][1].content, /submit or confirm your explanation again/);
+ assert.match(sent[0][1].content, /24 hours/);
+ assert.ok(allControls(sent[0][1]).some(c => c.custom_id === `officer:form:strike:${uuid}`));
+});
+
+test('DM and fallback outcomes queue independent president updates without mistaking receipt failures for blocked DMs', async () => {
+ for (const outcome of ['dm_sent', 'notices_sent', 'delivery_failed', 'receipt_failed']) {
+  const calls = [], fallback = [];
+  const strike = { id: uuid, officer_id: 'officer', status: 'notified', response_due_at: '2099-01-01', notified_at: '2026-10-22T12:00:00Z' };
+  const db = { rpc: async (name, args) => { calls.push({ name, args }); return { error: outcome === 'receipt_failed' ? {} : null }; }, from(table) { return { select() { return this; }, eq() { return this; }, async maybeSingle() { return { data: table === 'officer_strikes' ? strike : { discord_id: '111111111111111111', access_enabled: true } }; } }; } };
+  const routing = load('lib/discord/strike-routing.ts', {
+   '@/lib/supabase/admin': { createAdminClient: () => db }, './protocol': protocol,
+   '@/lib/discord': { discordDM: async () => { if (['notices_sent','delivery_failed'].includes(outcome)) throw new Error('DM blocked'); }, discordFetch: async () => { fallback.push(true); if (outcome === 'delivery_failed') throw new Error('Fallback blocked'); } },
+  }, { DISCORD_NOTICES_CHANNEL_ID: '222222222222222222' });
+  const send = routing.sendStrikeResponseRequest({ strike_id: uuid, officer_id: 'officer' });
+  if (['delivery_failed','receipt_failed'].includes(outcome)) await assert.rejects(send); else await send;
+  assert.equal(calls.length, 1); assert.equal(calls[0].name, 'record_discord_notice_delivery');
+  assert.equal(calls[0].args.p_status, outcome === 'receipt_failed' ? 'dm_sent' : outcome);
+  assert.equal(calls[0].args.p_notice_at, strike.notified_at);
+  assert.equal(fallback.length, ['notices_sent','delivery_failed'].includes(outcome) ? 1 : 0);
+ }
+});
+test('president updates include officer and delivery status with a private reviewer link and no explanation text', async () => {
+ const sent = [];
+ const db = { from() { return { select() { return this; }, eq() { return this; }, async maybeSingle() { return { data: { name: 'Taylor', position: 'Vice President', officer_response: 'Private explanation' } }; } }; } };
+ const routing = load('lib/discord/president-notices.ts', {
+  '@/lib/supabase/admin': { createAdminClient: () => db }, './protocol': protocol,
+  '@/lib/discord': { discordFetch: async (path, body) => sent.push({ path, body }), safeMessage: message => ({ ...message, allowed_mentions: { parse: [] } }) },
+ }, { DISCORD_CHANNEL_PRESIDENT: '333333333333333333', NEXT_PUBLIC_SITE_URL: 'https://gea.example' });
+ for (const status of ['dm_sent','notices_sent','delivery_failed','responded']) await routing.sendPresidentNoticeUpdate({ status, officer_id: uuid, strike_id: uuid, occurred_at: '2026-10-22T12:00:00Z', response_due_at: '2026-10-23T12:00:00Z' });
+ assert.equal(sent.length, 4);
+ assert.match(sent[0].body.embeds[0].description, /delivered by DM/);
+ assert.match(sent[1].body.embeds[0].description, /blocked or unavailable/);
+ assert.match(sent[2].body.embeds[0].description, /delivery failed/);
+ assert.match(sent[3].body.embeds[0].description, /submitted an explanation/);
+ for (const item of sent) {
+  assert.equal(item.path, 'channels/333333333333333333/messages');
+  assert.match(JSON.stringify(item.body), /Taylor/); assert.match(JSON.stringify(item.body), /Vice President/);
+  assert.equal(JSON.stringify(item.body).includes('Private explanation'), false);
+  assert.equal(item.body.allowed_mentions.parse.length, 0);
+  const link = new URL(allControls(item.body)[0].url);
+  assert.equal(link.pathname, '/admin-portal-x7k9/officers'); assert.equal(link.searchParams.get('officer'), uuid);
+ }
+});
