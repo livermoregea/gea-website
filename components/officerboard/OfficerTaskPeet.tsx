@@ -37,7 +37,8 @@ export default function OfficerTaskPeet({ officerTask, actorId, mode, manualFall
         const { data, error } = await query;
         if (error) throw new Error("Could not load task clarification. Retry, or use the manual form below.");
         if (active) {
-          const rows = (data || []) as PeetTask[];
+          const participants = [officerTask.assigned_to, ...(officerTask.officer_task_members || []).map(member => member.officer_id)];
+          const rows = ((data || []) as PeetTask[]).filter(row => mode !== "review" || !officerTask.individual_peet || participants.includes(row.student_id));
           setContributions(rows);
           const selected = mode === "submit" ? rows.find(row => row.student_id === actorId) : rows.find(row => row.status === "pending") || rows[0];
           setSelectedStudent(selected?.student_id || ""); setTask(selected || null);

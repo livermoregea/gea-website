@@ -29,7 +29,7 @@ import AdminTabs, { type AdminSectionKey } from "@/components/admin/AdminTabs";
 import { WorkspaceNavigationContext } from "@/lib/workspace-navigation-context";
 import { officerRecordTarget } from "@/lib/officer-workspace-navigation";
 
-type Action = { kind: "add" } | { kind: "edit" | "submit" | "cancel" | "review" | "end"; task: OfficerTask } | { kind: "cancellationReview"; task: OfficerTask; request: TaskCancellationRequest };
+type Action = { kind: "add" } | { kind: "edit" | "submit" | "cancel" | "review" | "end" | "people"; task: OfficerTask } | { kind: "cancellationReview"; task: OfficerTask; request: TaskCancellationRequest };
 const statusLabels = { in_progress: "In progress", submitted: "Awaiting review", completed: "Completed" };
 function dateLabel(value: string | null) {
   if (!value) return "No deadline";
@@ -97,7 +97,7 @@ export default function OfficerBoard({ profile, profiles, tasks, evaluations, tr
   const summary = peetSummary(visibleTasks, evaluations, overview ? undefined : selectedOfficer);
   const evaluationFor = (task: OfficerTask) => evaluationForOfficer(evaluations, task.id, overview ? undefined : selectedOfficer);
   const ownerName = (task: OfficerTask) => { const person = profiles.find(person => person.id === task.assigned_to) ?? teammates.find(person => person.id === task.assigned_to); return person ? `${person.name}${"email" in person && person.email ? ` (${person.email})` : ""}` : "Officer"; };
-  const reviewQueue = admin ? tasks.filter(task => (overview || isOfficerTaskParticipant(task, selectedOfficer)) && !task.cancelled_at && task.status === "submitted" && (!task.individual_peet || task.contributions?.some(row => row.status === "pending")) && !isOfficerTaskParticipant(task, profile.id)) : [];
+  const reviewQueue = admin ? tasks.filter(task => (overview || isOfficerTaskParticipant(task, selectedOfficer)) && !task.cancelled_at && task.status === "submitted" && (!task.individual_peet || task.contributions?.some(row => row.status === "pending" && isOfficerTaskParticipant(task, row.student_id))) && !isOfficerTaskParticipant(task, profile.id)) : [];
   const canEvaluate = (task: OfficerTask) => !isOfficerTaskParticipant(task, profile.id) &&
     (isSuperAdmin || profile.reviewer_kind === "advisor" || !officerTaskPeople(task).some(id => profiles.find(person => person.id === id)?.reviewer_kind === "president"));
   const peopleNames = Object.fromEntries([...teammates, ...profiles].map(person => [person.id, person.name]));
@@ -252,7 +252,7 @@ export default function OfficerBoard({ profile, profiles, tasks, evaluations, tr
   }
   const taskQuery = taskSearch.trim().toLowerCase();
   const matchingTasks = visibleTasks.filter(task => [task.title, task.description, task.submission_description, task.cancellation_reason, task.end_notes, evaluationFor(task)?.feedback_notes].some(value => value?.toLowerCase().includes(taskQuery)));
-  const activeTasks = sortOfficerTasks(matchingTasks.filter(task => !task.cancelled_at && !taskCompleteFor(task, overview ? undefined : selectedOfficer) && (task.status === "in_progress" || needsTaskContribution(task, profile.id) || (admin && task.individual_peet && task.status === "submitted" && !task.contributions?.some(row => row.status === "pending")) || clarificationTaskIds.includes(task.id))));
+  const activeTasks = sortOfficerTasks(matchingTasks.filter(task => !task.cancelled_at && !taskCompleteFor(task, overview ? undefined : selectedOfficer) && (task.status === "in_progress" || needsTaskContribution(task, profile.id) || (admin && task.individual_peet && task.status === "submitted" && !task.contributions?.some(row => row.status === "pending" && isOfficerTaskParticipant(task, row.student_id))) || clarificationTaskIds.includes(task.id))));
   const waitingTasks = sortOfficerTasks(matchingTasks.filter(task => !task.cancelled_at && task.status === "submitted" && !needsTaskContribution(task, profile.id) && !taskCompleteFor(task, profile.id) && !clarificationTaskIds.includes(task.id) && (!admin || isOfficerTaskParticipant(task, profile.id))));
   const cancelledTasks = matchingTasks.filter(task => task.cancelled_at);
   const matchingRequests = selectedRequests.filter(request => !taskQuery || matchingTasks.some(task => task.id === request.task_id) || `${request.reason} ${request.review_notes}`.toLowerCase().includes(taskQuery));
@@ -269,8 +269,13 @@ export default function OfficerBoard({ profile, profiles, tasks, evaluations, tr
       </div>
     </details>;
   }
+  function manageParticipants(task: OfficerTask) {
+    return admin && !task.cancelled_at && task.status !== "completed" && officerTaskPeople(task).length > 1
+      ? <button type="button" className={styles.secondary} disabled={busy} onClick={() => openAction({ kind: "people", task })}>Manage participants<span className="sr-only"> for {task.title}</span></button>
+      : null;
+  }
   function workLink(task: OfficerTask) {
-    return <>{officerTaskPeople(task).length > 1 && <p className={styles.sharedPeople}>Shared with {officerTaskPeople(task).map(id => peopleNames[id] || "Former officer").join(", ")} · {task.individual_peet ? "Shared deliverable · Individual reflections and scores" : "Historical shared submission and evaluation"}</p>}<OfficerTaskSubmission task={task} /></>;
+    return <>{officerTaskPeople(task).length > 1 && <p className={styles.sharedPeople}>Shared with {officerTaskPeople(task).map(id => peopleNames[id] || "Former officer").join(", ")} · {task.individual_peet ? "Shared deliverable · Individual reflections and scores" : "Historical shared submission and evaluation"}</p>}{manageParticipants(task)}<OfficerTaskSubmission task={task} /></>;
   }
 
   function manualEvaluationForm(task: OfficerTask) {
@@ -389,11 +394,12 @@ export default function OfficerBoard({ profile, profiles, tasks, evaluations, tr
     </div></div>
 
     {explainer && <PeetExplainer onClose={closeExplainer} />}
-    {action && <Modal title={action.kind === "add" ? "Add task" : `${action.kind === "cancellationReview" ? "Review cancellation" : action.kind === "cancel" ? "Cancel" : action.kind} task: ${action.task.title}`} busy={busy} onClose={closeAction}>
+    {action && <Modal title={action.kind === "add" ? "Add task" : `${action.kind === "cancellationReview" ? "Review cancellation" : action.kind === "cancel" ? "Cancel" : action.kind === "people" ? "Manage participants for" : action.kind} task: ${action.task.title}`} busy={busy} onClose={closeAction}>
       {error && <ActionError message={error} className={styles.error} />}
       {(action.kind === "add" || action.kind === "edit") && <form onSubmit={saveTask} onChange={captureTaskDraft} className={styles.form}>
         <h2 className={styles.modalTitle}>{action.kind === "add" ? "Start with an idea." : "Edit task."}</h2>
         <p>{editingSelfTask ? "You can update the description, add people, and move the deadline up to three days before or after its original date." : "Log the work, set your goal, and give it a deadline."}</p>
+        {action.kind === "edit" && manageParticipants(action.task)}
         <fieldset disabled={busy}>
           <label>Task title<input name="title" readOnly={editingSelfTask} required maxLength={200} defaultValue={action.kind === "edit" ? action.task.title : taskDraft.title} /></label>
           <label>Description<textarea name="description" rows={4} maxLength={10000} defaultValue={action.kind === "edit" ? action.task.description : taskDraft.description} /></label>
@@ -412,6 +418,16 @@ export default function OfficerBoard({ profile, profiles, tasks, evaluations, tr
         </fieldset>
         <div className={styles.modalActions}><button type="button" className={styles.secondary} disabled={busy} onClick={closeAction}>Cancel</button><button className={styles.primary} disabled={busy}>{busy ? "Saving…" : "Save task"}</button></div>
       </form>}
+      {action.kind === "people" && admin && <div className={styles.form}>
+        <h2 className={styles.modalTitle}>Manage participants</h2>
+        <p>{action.task.title}</p>
+        <p>Remove someone from this task. Existing reflections and scores are kept. Removing the primary officer transfers that role to a remaining teammate.</p>
+        <ul>{officerTaskPeople(action.task).map(id => <li key={id}>
+          <span>{peopleNames[id] || "Former officer"}{id === action.task.assigned_to ? " · Primary officer" : ""}</span>{" "}
+          <button type="button" className={styles.secondary} disabled={busy || officerTaskPeople(action.task).length < 2} onClick={() => void mutate("remove_officer_task_participant", { p_task_id: action.task.id, p_officer_id: id }, `${peopleNames[id] || "Officer"} removed from the task.`)}>Remove<span className="sr-only"> {peopleNames[id] || "officer"} from {action.task.title}</span></button>
+        </li>)}</ul>
+        <div className={styles.modalActions}><button type="button" className={styles.secondary} disabled={busy} onClick={closeAction}>Close</button></div>
+      </div>}
       {action.kind === "submit" && <OfficerTaskPeet peopleNames={peopleNames} key={`submit-${action.task.id}`} officerTask={action.task} actorId={profile.id} mode="submit" onBusyChange={setAiBusy}
         onComplete={message => { setAction(null); setNotice(message); startTransition(() => router.refresh()); }}
         manualFallback={<form onSubmit={submitProduct} className={styles.form}>

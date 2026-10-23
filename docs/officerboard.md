@@ -362,7 +362,9 @@ support keyboard and screen-reader navigation.
 
 ## Shared officer tasks
 
-Apply `supabase/officer-individual-contributions.sql` after `gea-peet-ai.sql` and the existing shared-task migrations. It is also included last in `supabase/schema.sql`.
+Admins can open **Manage participants** from shared-task details or **Edit task** in the admin page and officer workspace. They can remove any participant, including themselves or the primary officer, from in-progress and awaiting-review tasks. Removing the primary officer transfers the role to a remaining teammate; at least one participant must remain. Completed and cancelled tasks retain their membership. Reflections and scores are preserved, and membership changes are audited. Existing installations must apply `supabase/officer-task-participant-removal.sql` after `officer-individual-contributions.sql`; fresh installations include it in `schema.sql`.
+
+Apply `supabase/officer-individual-contributions.sql` after `gea-peet-ai.sql` and the existing shared-task migrations. It is also included in `supabase/schema.sql`.
 
 Reviewers can select **Shared collaborative task** and choose two or more officers. Assigning a collaboration does not automatically include the assigner. Regular multi-officer assignment still creates separate task copies. Officers who add people to their own task remain a participant.
 

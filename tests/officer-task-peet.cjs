@@ -44,9 +44,18 @@ test('A teammate gets their own reflection form after shared delivery instead of
 test('Reviewers select and score each participant contribution separately',async()=>{
  const a={id:'a-reflection',task_id:'task-1',student_id:'a',student_name:'Alice',status:'pending',version:2};
  const b={id:'b-reflection',task_id:'task-1',student_id:'b',student_name:'Bob',status:'pending',version:2};
- const h=harness('review',[a,b]);h.props.officerTask.individual_peet=true;
+ const h=harness('review',[a,b]);h.props.officerTask.individual_peet=true;h.props.officerTask.assigned_to='a';h.props.officerTask.officer_task_members=[{officer_id:'b'}];
  h.render();await h.settle();let tree=h.render();
  nodes(tree,n=>n.type==='select')[0].props.onChange({target:{value:'b'}});tree=h.render();
  const card=nodes(tree,n=>n.type===h.type('PeetTaskCard'))[0];assert.equal(card.props.task.student_id,'b');
  card.props.onSaved({...b,status:'approved',version:3});assert.match(h.completed[0],/officer.*evaluation.*saved/i);assert.doesNotMatch(h.completed[0],/task is complete/);
 });
+
+test('Removed participants do not appear in contribution review selection',async()=>{
+ const former={id:'former',student_id:'removed',student_name:'Former teammate',status:'pending'};
+ const current={id:'current',student_id:'student',student_name:'Current officer',status:'pending'};
+ const h=harness('review',[former,current]);h.props.officerTask.individual_peet=true;
+ h.render();await h.settle();const tree=h.render();
+ assert.equal(nodes(tree,n=>n.type==='option').length,1);
+ assert.equal(nodes(tree,n=>n.type===h.type('PeetTaskCard'))[0].props.task.student_id,'student');
+ });
