@@ -1,5 +1,6 @@
 -- One-time rollout for existing strikes. Deploy the new website/bot first, then
 -- apply after officer-strike-response-window.sql and the Discord migrations.
+-- Install officer-strike-response-scheduler.sql before this rollout for automatic expiry.
 -- Apply officer-strike-president-updates.sql first to enable president updates.
 -- Run with the Discord worker idle. Reapplying never restarts the window or resends notices.
 begin;

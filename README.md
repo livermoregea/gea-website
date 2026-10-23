@@ -177,3 +177,13 @@ GEA One's planning dashboard, calendar, meeting minutes, secretary roll call, ev
 
 
 AI-assisted PEET clarification and Efficiency, Effectiveness, and Time scoring are built into the existing task submission and evaluation dialogs: see [setup and API documentation](docs/peet-ai.md). Apply `supabase/gea-peet-ai.sql` before enabling the feature.
+
+### Automatic 24-hour notice deadlines on Vercel Hobby
+
+Run [`supabase/officer-strike-response-scheduler.sql`](supabase/officer-strike-response-scheduler.sql)
+in the Supabase SQL editor as `postgres` after applying the response-window
+migration. It installs one named Supabase Cron job that checks unanswered notices
+every minute directly in Postgres. No Vercel cron or external scheduler is needed
+for automatic strike confirmation. Keep `vercel.json` crons empty. Verify successful
+runs in Supabase → Integrations → Cron → History before reissuing existing notices.
+See [deadline setup](docs/discord.md#attendance-and-conduct-explanations).

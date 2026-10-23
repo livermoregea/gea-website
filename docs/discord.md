@@ -200,14 +200,30 @@ database, even if the timeout worker has not run yet. Reviewers cannot confirm a
 unanswered incident before its 24 hours are up. Existing confirmed strikes keep
 their historical decisions unless you apply the one-time reissue described below.
 
-`vercel.json` schedules `/api/accountability/expire` every minute. Set `CRON_SECRET`
-and `SUPABASE_SERVICE_ROLE_KEY` in the deployment. The endpoint uses the service-only
-`expire_officer_strike_responses` RPC and works independently of Discord delivery.
-Use hosting that supports minute cron, or invoke this endpoint every minute with
-`Authorization: Bearer YOUR_CRON_SECRET` from an external scheduler. Expiration
-runs on the first scheduler tick after the deadline (normally within one minute).
-Timely explanations, dismissed incidents, and corrected/cancelled absences do not
-automatically become strikes. Third confirmed strikes still open advisor review.
+`vercel.json` intentionally contains no scheduled jobs so deployment works on
+Vercel Hobby. For the 24-hour rule, apply
+`supabase/officer-strike-response-scheduler.sql` in the Supabase SQL editor as
+`postgres`, after the response-window migration. It enables Supabase Cron and
+registers `gea-officer-strike-response-expiry` to run every minute inside the
+database. It calls `expire_officer_strike_responses()` directly, so the deadline
+check requires no website request, cron secret, Vercel cron, or external scheduler.
+Reapplying updates the same named job instead of duplicating it.
+
+If Cron is not enabled for your project, enable `pg_cron` under
+**Integrations → Cron**, then rerun the script. Verify the job is active and its
+History shows successful runs. The installer includes SQL queries for checking
+this. Supabase documents [enabling Cron](https://supabase.com/docs/guides/cron/install)
+and [scheduling database functions](https://supabase.com/docs/guides/cron/quickstart).
+This hosted setup is deliberately separate from `schema.sql` so ordinary local
+PostgreSQL installations do not require the optional `pg_cron` extension.
+
+The response cutoff stays exactly 24 hours from the recorded notice. Confirmation
+runs on the first database scheduler tick after the deadline, normally within one
+minute, even when nobody opens the website. Timely explanations, dismissed
+incidents, and corrected/cancelled absences do not automatically become strikes.
+Third confirmed strikes still open advisor review. The protected
+`/api/accountability/expire` endpoint remains available as a manual/external fallback;
+no external expiry job is needed when the database job is active.
 
 Delivery uses the existing outbox webhook, immediate dispatch, and retry scheduler.
 If a DM fails, the bot posts a generic alert in `DISCORD_NOTICES_CHANNEL_ID`,
@@ -229,7 +245,8 @@ Run `tests/officer-strike-response-window.sql` only against a disposable empty l
 
 ### Reissue existing strikes with the new response system
 
-Deploy the updated website/bot with notices-channel configuration and minute cron,
+Deploy the updated website/bot with notices-channel configuration and install
+`officer-strike-response-scheduler.sql` in Supabase,
 then apply `supabase/officer-strike-response-reissue.sql` after the response-window
 and Discord migrations, while the Discord worker is idle. It renews every active
 confirmed/pending strike for active officers, across all years, with a fresh
@@ -283,3 +300,21 @@ ignored. Network delivery retains the outbox's usual at-least-once behavior.
 
 Verify the database trigger and delivery receipt RPC in
 `tests/officer-strike-president-updates.sql` in a disposable local database only.
+
+### Vercel Hobby: deployment and Discord retries
+
+Vercel Hobby only supports daily Vercel cron schedules; adding `* * * * *` to
+`vercel.json` rejects deployment. Keep the default empty `crons` list and redeploy.
+The Supabase database job above handles the 24-hour rule without a Vercel plan
+upgrade. See [Vercel scheduling limits](https://vercel.com/docs/cron-jobs/usage-and-pricing).
+
+Normal Discord delivery still starts immediately through website dispatch and the
+existing database webhook. For scheduled retries, use Supabase Cron's HTTP request
+option or an external scheduler to GET `https://YOUR_DOMAIN/api/discord/jobs` with
+`Authorization: Bearer YOUR_CRON_SECRET`. Keep that secret and
+`SUPABASE_SERVICE_ROLE_KEY` configured in Vercel Production. This retry mechanism
+is separate from the database's direct deadline enforcement.
+
+If you already configured an external job for `/api/accountability/expire`, it is
+safe to disable it after verifying the Supabase deadline job. Expiry is idempotent,
+so an overlap while switching schedulers does not create duplicate strikes.

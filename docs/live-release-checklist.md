@@ -94,8 +94,13 @@ revoked strike, a disabled member, an unlinked member, and blocked Discord DMs;
 the website form must remain available for active members. No production migration
 or live Discord messages are sent by the local verification tests.
 
-Apply `supabase/officer-strike-response-window.sql` last and deploy the minute cron
-in `vercel.json` with `CRON_SECRET` and `SUPABASE_SERVICE_ROLE_KEY`. Check that
+Apply `supabase/officer-strike-response-window.sql`, then run
+`supabase/officer-strike-response-scheduler.sql` in the Supabase SQL editor as
+`postgres`. Verify `gea-officer-strike-response-expiry` is active and has successful
+runs under Integrations → Cron → History. Keep Vercel crons empty on Hobby.
+Deadline enforcement now runs inside the database without Vercel or an external
+scheduler. Configure Discord delivery/retries separately; see
+[deployment and Discord retries](discord.md#vercel-hobby-deployment-and-discord-retries). Check that
 website and Discord show the same deadline, a timely reply remains pending for
 review, a late reply is rejected, and a timed-out incident becomes a strike on the
 next scheduler tick. `tests/officer-strike-response-window.sql` verifies the

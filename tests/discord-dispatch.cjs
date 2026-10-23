@@ -138,8 +138,7 @@ test('The scheduled deadline endpoint authenticates before running timeouts and 
   assert.equal(result.status, status); assert.equal(calls.length, authorized ? 1 : 0);
   if (status === 200) assert.equal((await result.json()).confirmed, 2);
  }
- const config = JSON.parse(fs.readFileSync('vercel.json', 'utf8'));
- assert.ok(config.crons.some(job => job.path === '/api/accountability/expire' && job.schedule === '* * * * *'));
+
 });
 
 test('president status delivery fails independently of officer notice delivery', async () => {
@@ -158,4 +157,9 @@ test('president status delivery fails independently of officer notice delivery',
  assert.ok(finished.find(item => item.id === 'officer-notice').values.finished_at);
  const retry = finished.find(item => item.id === 'president-update').values;
  assert.equal(retry.finished_at, undefined); assert.equal(retry.failed, false); assert.ok(retry.available_at);
+});
+
+test('the default deployment supports Vercel Hobby without paid cron scheduling', () => {
+ const config = JSON.parse(fs.readFileSync('vercel.json', 'utf8'));
+ assert.deepEqual(config.crons ?? [], []);
 });
