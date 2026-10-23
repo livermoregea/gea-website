@@ -25,7 +25,7 @@ select public.test_assert((select payload->>'reissued'='true' from public.discor
 select public.test_assert((select status='dismissed' from public.officer_strikes where id=:'dismissed'),'Dismissed incident stays closed');
 select public.test_assert((select notified_at<(select started_at from public.officer_strike_response_reissues) from public.officer_strikes where id=:'disabled'),'Disabled officer is not reissued');
 select public.test_assert((select response_due_at-notified_at=interval '24 hours' and notified_at=(select started_at from public.officer_strike_response_reissues) from public.officer_strikes where id=:'unlinked'),'Unlinked active officer gets a renewed website notice');
-select public.test_assert(not exists(select 1 from public.discord_jobs where id='strike-response:'||:'unlinked'),'Unlinked officer has no undeliverable DM job');
+select public.test_assert((select payload->>'topic'='strike_response' from public.discord_jobs where id='strike-response:'||:'unlinked'),'Unlinked officer receives a channel fallback job');
 -- Complete the reissued job and shorten the window to detect any reset on rerun.
 update public.discord_jobs set finished_at=now(),payload='{}' where id='strike-response:'||:'legacy';
 update public.officer_strikes set response_due_at=notified_at+interval '23 hours' where id=:'legacy';

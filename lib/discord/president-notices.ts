@@ -4,7 +4,8 @@ import { row } from './protocol';
 
 const updates = {
   dm_sent: 'Notice delivered by DM.',
-  notices_sent: 'DM blocked or unavailable. A fallback alert was posted in notices.',
+  not_linked: 'DM unavailable: this officer has not linked Discord. A channel alert will be attempted. They must finish GEA One signup, then connect Discord from Account Home. The notice remains on the website.',
+  notices_sent: 'DM blocked or unavailable (including unlinked accounts). A fallback alert was posted in notices or the officer position channel.',
   delivery_failed: 'Notice delivery failed: the DM was unavailable and the notices-channel fallback failed. Check the delivery queue; the website notice remains available.',
   responded: 'The officer submitted an explanation. It is ready for review on the GEA website.',
 } as const;

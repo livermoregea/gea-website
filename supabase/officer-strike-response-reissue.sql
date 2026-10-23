@@ -35,16 +35,14 @@ begin
    response_due_at=started+interval '24 hours',responded_at=null,
    decided_by=null,decided_at=null,decision_notes='' where id=incident.id;
   reopened:=reopened+1;
-  if incident.discord_id is not null then
-   -- Reuse the canonical outbox ID, including finished/failed old receipts.
-   -- A single database job per incident prevents duplicate queued notices.
-   insert into public.discord_jobs(id,kind,payload,available_at)
-   values('strike-response:'||incident.id,'notification',
-    jsonb_build_object('topic','strike_response','strike_id',incident.id,'officer_id',incident.officer_id,'reissued',true),started)
-   on conflict(id) do update set kind=excluded.kind,payload=excluded.payload,
-    available_at=excluded.available_at,attempts=0,leased_until=null,finished_at=null,failed=false;
-   queued:=queued+1;
-  end if;
+  -- Reuse the canonical outbox ID, including finished/failed old receipts.
+  -- A single database job per incident prevents duplicate queued notices.
+  insert into public.discord_jobs(id,kind,payload,available_at)
+  values('strike-response:'||incident.id,'notification',
+   jsonb_build_object('topic','strike_response','strike_id',incident.id,'officer_id',incident.officer_id,'reissued',true),started)
+  on conflict(id) do update set kind=excluded.kind,payload=excluded.payload,
+   available_at=excluded.available_at,attempts=0,leased_until=null,finished_at=null,failed=false;
+  queued:=queued+1;
  end loop;
  update public.officer_strike_response_reissues set reissued_count=reopened,queued_count=queued
  where id='existing-strikes-v1';

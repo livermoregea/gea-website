@@ -6,7 +6,7 @@ const ts = require('typescript');
 function load(file, deps = {}, env = {}) {
   const exports = {};
   vm.runInNewContext(ts.transpileModule(fs.readFileSync(file, 'utf8'), { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020 } }).outputText,
-    { exports, require: name => deps[name] ?? require(name), process: { env }, Error, Date, URL, Object, Set });
+    { exports, require: name => deps[name] ?? (name === './task-routing' ? load('lib/discord/task-routing.ts', { '@/lib/discord': {} }, env) : require(name)), process: { env }, Error, Date, URL, Object, Set });
   return exports;
 }
 const protocol = load('lib/discord/protocol.ts');
@@ -222,12 +222,13 @@ test('president updates include officer and delivery status with a private revie
   '@/lib/supabase/admin': { createAdminClient: () => db }, './protocol': protocol,
   '@/lib/discord': { discordFetch: async (path, body) => sent.push({ path, body }), safeMessage: message => ({ ...message, allowed_mentions: { parse: [] } }) },
  }, { DISCORD_CHANNEL_PRESIDENT: '333333333333333333', NEXT_PUBLIC_SITE_URL: 'https://gea.example' });
- for (const status of ['dm_sent','notices_sent','delivery_failed','responded']) await routing.sendPresidentNoticeUpdate({ status, officer_id: uuid, strike_id: uuid, occurred_at: '2026-10-22T12:00:00Z', response_due_at: '2026-10-23T12:00:00Z' });
- assert.equal(sent.length, 4);
+ for (const status of ['dm_sent','notices_sent','delivery_failed','responded','not_linked']) await routing.sendPresidentNoticeUpdate({ status, officer_id: uuid, strike_id: uuid, occurred_at: '2026-10-22T12:00:00Z', response_due_at: '2026-10-23T12:00:00Z' });
+ assert.equal(sent.length, 5);
  assert.match(sent[0].body.embeds[0].description, /delivered by DM/);
  assert.match(sent[1].body.embeds[0].description, /blocked or unavailable/);
  assert.match(sent[2].body.embeds[0].description, /delivery failed/);
  assert.match(sent[3].body.embeds[0].description, /submitted an explanation/);
+ assert.match(sent[4].body.embeds[0].description, /has not linked Discord/);
  for (const item of sent) {
   assert.equal(item.path, 'channels/333333333333333333/messages');
   assert.match(JSON.stringify(item.body), /Taylor/); assert.match(JSON.stringify(item.body), /Vice President/);
@@ -236,4 +237,43 @@ test('president updates include officer and delivery status with a private revie
   const link = new URL(allControls(item.body)[0].url);
   assert.equal(link.pathname, '/admin-portal-x7k9/officers'); assert.equal(link.searchParams.get('officer'), uuid);
  }
+});
+
+test('unlinked officers receive generic channel alerts with only their matching role ping', async () => {
+ for (const destination of ['notices', 'position', 'notices-failed']) {
+  const sent = [], receipts = []; let dmCalls = 0;
+  const strike = { id: uuid, officer_id: 'officer', status: 'notified', response_due_at: '2099-01-01', notified_at: '2026-10-22T12:00:00Z', reason: 'Private incident details' };
+  const profile = { access_enabled: true, discord_id: null, name: 'Taylor', position: 'Vice President' };
+  const db = { rpc: async (_name, args) => { receipts.push(args.p_status); return {}; }, from(table) { return { select() { return this; }, eq() { return this; }, async maybeSingle() { return { data: table === 'officer_strikes' ? strike : profile }; } }; } };
+  const routing = load('lib/discord/strike-routing.ts', {
+   '@/lib/supabase/admin': { createAdminClient: () => db }, './protocol': protocol,
+   '@/lib/discord': { discordDM: async () => { dmCalls++; }, discordFetch: async (path, body) => {
+    if (destination === 'notices-failed' && path.includes('222222222222222222')) throw new Error('Notices inaccessible');
+    sent.push({ path, body });
+   } },
+  }, { ...(destination !== 'position' ? { DISCORD_NOTICES_CHANNEL_ID: '222222222222222222' } : {}), DISCORD_CHANNEL_VICE_PRESIDENT: '333333333333333333', DISCORD_ROLE_VICE_PRESIDENT: '444444444444444444', NEXT_PUBLIC_SITE_URL: 'https://gea.example' });
+  await routing.sendStrikeResponseRequest({ strike_id: uuid, officer_id: 'officer' });
+  assert.equal(dmCalls, 0); assert.equal(sent.length, 1);
+  assert.match(sent[0].body.content, /Connect Discord to link your accounts/);
+  const linkAccount = allControls(sent[0].body).find(control => control.label === 'Link Discord account');
+  assert.equal(linkAccount.url, 'https://gea.example/account');
+  assert.equal(sent[0].path, `channels/${destination === 'notices' ? '222222222222222222' : '333333333333333333'}/messages`);
+  assert.match(sent[0].body.content, /<@&444444444444444444> \(Taylor\), please check the GEA website/);
+  assert.deepEqual(Array.from(sent[0].body.allowed_mentions.roles), ['444444444444444444']);
+  assert.equal(sent[0].body.allowed_mentions.users.length, 0); assert.equal(sent[0].body.allowed_mentions.parse.length, 0);
+  assert.equal(JSON.stringify(sent[0].body).includes(strike.reason), false);
+  assert.deepEqual(receipts, ['notices_sent']);
+ }
+});
+test('unlinked officers without a mapped role are addressed by name and undeliverable alerts remain retryable', async () => {
+ const sent = [], receipts = [];
+ const db = { rpc: async (_name, args) => { receipts.push(args.p_status); return {}; }, from(table) { return { select() { return this; }, eq() { return this; }, async maybeSingle() { return { data: table === 'officer_strikes' ? { id: uuid, status: 'notified', response_due_at: '2099-01-01' } : { name: 'Casey', position: 'Unmapped position', access_enabled: true } }; } }; } };
+ const deps = { '@/lib/supabase/admin': { createAdminClient: () => db }, './protocol': protocol, '@/lib/discord': { discordFetch: async (path, body) => sent.push({ path, body }) } };
+ await load('lib/discord/strike-routing.ts', deps, { DISCORD_NOTICES_CHANNEL_ID: '222222222222222222' }).sendStrikeResponseRequest({ strike_id: uuid, officer_id: 'officer' });
+ assert.match(sent[0].body.content, /^Casey, please check the GEA website for a notice\./);
+ assert.match(sent[0].body.content, /finish signup/);
+ assert.match(sent[0].body.content, /Account Home → Connect Discord to link your accounts/);
+ assert.equal(sent[0].body.allowed_mentions.roles.length, 0);
+ await assert.rejects(load('lib/discord/strike-routing.ts', deps).sendStrikeResponseRequest({ strike_id: uuid, officer_id: 'officer' }));
+ assert.deepEqual(receipts, ['notices_sent', 'delivery_failed']);
 });

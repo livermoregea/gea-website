@@ -231,8 +231,8 @@ mentioning only the affected officer: “@Name, please check the GEA website for
 notice.” Set this to your **notices** channel ID and give the bot View Channel and
 Send Messages permissions. Set `NEXT_PUBLIC_SITE_URL` to the public website origin
 to include an **Open GEA website** link button. The public alert contains no incident
-reason, category, date, strike status, or response text. It never pings an entire
-role or @everyone. A successful DM does not post a channel alert. If both delivery
+reason, category, date, strike status, or response text. Linked officers are mentioned individually. Unlinked officers can receive their
+matching configured position-role ping; other roles and @everyone are not pinged. A successful DM does not post a channel alert. If both delivery
 methods fail, the outbox retries as usual; the website form remains available.
 The 24-hour deadline still runs from the recorded notice time, including when
 Discord delivery fails. The worker rechecks the current Discord link, active access, incident
@@ -282,6 +282,7 @@ in `schema.sql`.
 The president channel receives officer name/position, update time, and response
 deadline for these events:
 
+- Officer has not linked Discord, so no DM can be sent.
 - Notice delivered by DM.
 - DM blocked or unavailable, with the notices-channel fallback posted.
 - Both DM and fallback delivery failed.
@@ -318,3 +319,44 @@ is separate from the database's direct deadline enforcement.
 If you already configured an external job for `/api/accountability/expire`, it is
 safe to disable it after verifying the Supabase deadline job. Expiry is idempotent,
 so an overlap while switching schedulers does not create duplicate strikes.
+
+### Missing officer Discord links
+
+An officer channel configuration does not connect individual accounts. Each officer
+must finish their GEA One signup, then use **Account Home → Connect Discord**.
+A preregistered roster entry alone cannot receive a DM.
+
+Deploy the latest bot, then apply
+`supabase/officer-strike-notice-link-recovery.sql` after the president-updates
+migration. It reports current unanswered notices with missing links to the
+president, and automatically queues still-open notices when an officer connects
+Discord. It also recovers missing jobs for already-linked officers. The backfill
+is safe to rerun and does not restart the reissue rollout or extend deadlines.
+Expired and answered notices are not sent on connection. Checking an unchanged
+connection does not resend completed messages. The existing webhook/worker must
+still process the queued updates.
+
+Verify using `tests/officer-strike-notice-link-recovery.sql` in a disposable local
+database only.
+
+### Channel alerts for officers without linked Discord
+
+Deploy the updated bot and apply `supabase/officer-strike-channel-fallback.sql`
+after `officer-strike-notice-link-recovery.sql`. Every pending notice is queued for
+an active officer, even before they connect Discord. Existing still-open notices
+with missing jobs are queued by the migration without resetting deadlines.
+
+The bot tries a DM for linked officers. If there is no Discord link or the DM
+fails, it posts “@Position (Name), please check the GEA website for a notice.”
+in `DISCORD_NOTICES_CHANNEL_ID`. If notices is unconfigured or inaccessible,
+it tries the matching `DISCORD_CHANNEL_*` position channel. An unlinked officer's
+matching `DISCORD_ROLE_*` is the only allowed role ping; without a mapped role,
+the officer is addressed by name. Unlinked officers are also asked to finish
+signup/sign in and use Account Home → Connect Discord, with a **Link Discord
+account** button when `NEXT_PUBLIC_SITE_URL` is configured. No incident details or
+explanations are posted.
+If neither destination works, the job remains retryable and a president failure
+update is queued. A successful channel post queues the president delivery update.
+
+Officers still need to finish GEA signup and use the website to read/respond to
+the notice. Connecting Discord later also enables direct DMs for pending notices.
